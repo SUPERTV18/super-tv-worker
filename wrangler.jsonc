@@ -5,6 +5,6 @@
   "compatibility_date": "2026-09-13",
   "assets": { "directory": "./public", "binding": "ASSETS" },
   "kv_namespaces": [
-    { "binding": "DATA_KV", "id": "PUT_YOUR_KV_NAMESPACE_ID_HERE" }
+    { "binding": "DATA_KV", "id": "3bf2696d6cb0472dae2233fe9e27cfe2" }
   ]
 }
