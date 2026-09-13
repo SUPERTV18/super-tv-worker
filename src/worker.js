@@ -29,7 +29,11 @@ function json(data, status = 200) {
 }
 
 
-function text(body, status = 200, contentType = "text/plain; charset=utf-8") {
+function text(
+  body,
+  status = 200,
+  contentType = "text/plain; charset=utf-8"
+) {
   return new Response(body, {
     status,
     headers: {
@@ -47,74 +51,141 @@ function text(body, status = 200, contentType = "text/plain; charset=utf-8") {
 
 async function loadChannels(env) {
 
-  // أولاً KV
+  // ----------------------------------------
+  // أولاً: KV
+  // ----------------------------------------
+
   if (env.DATA_KV) {
     try {
-      const kvData = await env.DATA_KV.get("channels", "json");
+
+      const kvData =
+        await env.DATA_KV.get(
+          "channels",
+          "json"
+        );
 
       if (kvData) {
         return kvData;
       }
+
     } catch (e) {
-      console.error("KV CHANNELS ERROR:", e);
+
+      console.error(
+        "KV CHANNELS ERROR:",
+        e
+      );
+
     }
   }
 
 
-  // ثانياً public/data/channels.json
+  // ----------------------------------------
+  // ثانياً: public/data/channels.json
+  // ----------------------------------------
+
   if (env.ASSETS) {
+
     try {
 
-      const response = await env.ASSETS.fetch(
-        new Request(
-          new URL(
-            "/data/channels.json",
-            "https://internal.local"
+      const response =
+        await env.ASSETS.fetch(
+          new Request(
+            new URL(
+              "/data/channels.json",
+              "https://internal.local"
+            )
           )
-        )
-      );
+        );
+
 
       if (response.ok) {
+
         return await response.json();
+
       }
 
     } catch (e) {
-      console.error("ASSETS CHANNELS ERROR:", e);
+
+      console.error(
+        "ASSETS CHANNELS ERROR:",
+        e
+      );
+
     }
+
   }
 
 
-  throw new Error("channels.json not found");
+  throw new Error(
+    "channels.json not found"
+  );
 }
 
 
 // ============================================================
-// Security
+// APP SECURITY
 // ============================================================
 
-function checkAppSecurity(request, env) {
+function checkAppSecurity(
+  request,
+  env
+) {
 
   const ua =
-    (request.headers.get("User-Agent") || "")
-      .toLowerCase();
+    (
+      request.headers.get(
+        "User-Agent"
+      ) || ""
+    ).toLowerCase();
+
 
   const appKey =
-    request.headers.get("X-App-Key") || "";
+    request.headers.get(
+      "X-App-Key"
+    ) || "";
 
 
-  if (!ua.includes(NEW_UA.toLowerCase())) {
+  // ----------------------------------------
+  // User-Agent
+  // ----------------------------------------
+
+  if (
+    !ua.includes(
+      NEW_UA.toLowerCase()
+    )
+  ) {
+
     return false;
+
   }
 
+
+  // ----------------------------------------
+  // APP_SECRET
+  // ----------------------------------------
 
   if (!env.APP_SECRET) {
-    console.error("APP_SECRET is not configured");
+
+    console.error(
+      "APP_SECRET is not configured"
+    );
+
     return false;
+
   }
 
 
-  if (appKey !== env.APP_SECRET) {
+  // ----------------------------------------
+  // X-App-Key
+  // ----------------------------------------
+
+  if (
+    appKey !==
+    env.APP_SECRET
+  ) {
+
     return false;
+
   }
 
 
@@ -123,150 +194,13 @@ function checkAppSecurity(request, env) {
 
 
 // ============================================================
-// DEBUG SECURITY
-// ============================================================
-
-async function saveDebugResult(request, env, id) {
-
-  if (!env.DATA_KV) {
-    return;
-  }
-
-
-  const ua =
-    request.headers.get("User-Agent") || "";
-
-  const appKey =
-    request.headers.get("X-App-Key") || "";
-
-
-  const result = {
-
-    id: id,
-
-    time: new Date().toISOString(),
-
-    uaReceived:
-      !!ua,
-
-    uaHasStv2026:
-      ua.toLowerCase().includes(
-        NEW_UA.toLowerCase()
-      ),
-
-    appKeyReceived:
-      !!appKey,
-
-    appKeyValid:
-      !!env.APP_SECRET &&
-      appKey === env.APP_SECRET
-
-  };
-
-
-  try {
-
-    await env.DATA_KV.put(
-      "debug:security",
-      JSON.stringify(
-        result,
-        null,
-        2
-      ),
-      {
-        expirationTtl: 600
-      }
-    );
-
-  } catch (e) {
-
-    console.error(
-      "DEBUG SAVE ERROR:",
-      e
-    );
-
-  }
-}
-
-
-// ============================================================
-// DEBUG RESULT
-// ============================================================
-
-async function debugResultApi(request, env) {
-
-  if (!env.DATA_KV) {
-
-    return json(
-      {
-        error:
-          "DATA_KV is not configured"
-      },
-      500
-    );
-
-  }
-
-
-  try {
-
-    const result =
-      await env.DATA_KV.get(
-        "debug:security"
-      );
-
-
-    if (!result) {
-
-      return json(
-        {
-          message:
-            "No test request received yet"
-        },
-        404
-      );
-
-    }
-
-
-    return new Response(
-      result,
-      {
-        status: 200,
-        headers: {
-          "Content-Type":
-            "application/json; charset=utf-8",
-
-          "Access-Control-Allow-Origin":
-            "*",
-
-          "Cache-Control":
-            "no-store"
-        }
-      }
-    );
-
-
-  } catch (e) {
-
-    return json(
-      {
-        error:
-          e.message
-      },
-      500
-    );
-
-  }
-
-}
-
-
-// ============================================================
 // CHANNELS API
 // ============================================================
 
-async function channelsApi(request, env) {
+async function channelsApi(
+  request,
+  env
+) {
 
   try {
 
@@ -291,7 +225,6 @@ async function channelsApi(request, env) {
     );
 
   }
-
 }
 
 
@@ -299,12 +232,22 @@ async function channelsApi(request, env) {
 // PLAY M3U8
 // ============================================================
 
-async function playApi(request, env, url) {
+async function playApi(
+  request,
+  env,
+  url
+) {
 
   try {
 
+    // ----------------------------------------
+    // Channel ID
+    // ----------------------------------------
+
     const id =
-      url.searchParams.get("id");
+      url.searchParams.get(
+        "id"
+      );
 
 
     if (!id) {
@@ -317,50 +260,23 @@ async function playApi(request, env, url) {
     }
 
 
-    // ========================================================
-    // قراءة الهيدرز
-    // ========================================================
+    // ----------------------------------------
+    // User-Agent
+    // ----------------------------------------
 
     const ua =
-      request.headers.get("User-Agent") || "";
+      request.headers.get(
+        "User-Agent"
+      ) || "";
 
-    const appKey =
-      request.headers.get("X-App-Key") || "";
-
-
-    // ========================================================
-    // DEBUG
-    //
-    // عند تشغيل:
-    //
-    // ?id=b1_FHD&debug=1
-    //
-    // سيتم حفظ نتيجة الهيدرز في KV
-    // بدون إرجاع JSON للمشغل.
-    // ========================================================
-
-    const debug =
-      url.searchParams.get("debug") === "1";
-
-
-    if (debug) {
-
-      await saveDebugResult(
-        request,
-        env,
-        id
-      );
-
-    }
-
-
-    // ========================================================
-    // OLD UA FALLBACK
-    // ========================================================
 
     const lowerUA =
       ua.toLowerCase();
 
+
+    // ----------------------------------------
+    // OLD UA FALLBACK
+    // ----------------------------------------
 
     if (
       lowerUA.includes(
@@ -379,9 +295,9 @@ async function playApi(request, env, url) {
     }
 
 
-    // ========================================================
-    // SECURITY
-    // ========================================================
+    // ----------------------------------------
+    // APP SECURITY
+    // ----------------------------------------
 
     if (
       !checkAppSecurity(
@@ -398,9 +314,9 @@ async function playApi(request, env, url) {
     }
 
 
-    // ========================================================
-    // VIEWER
-    // ========================================================
+    // ----------------------------------------
+    // Viewer
+    // ----------------------------------------
 
     await incrementViewer(
       env,
@@ -408,9 +324,9 @@ async function playApi(request, env, url) {
     );
 
 
-    // ========================================================
-    // LOAD CHANNELS
-    // ========================================================
+    // ----------------------------------------
+    // Load channels
+    // ----------------------------------------
 
     const data =
       await loadChannels(env);
@@ -420,6 +336,10 @@ async function playApi(request, env, url) {
       null;
 
 
+    // ----------------------------------------
+    // Search channel
+    // ----------------------------------------
+
     for (
       const group
       of Object.values(data)
@@ -428,7 +348,9 @@ async function playApi(request, env, url) {
       if (
         !Array.isArray(group)
       ) {
+
         continue;
+
       }
 
 
@@ -452,9 +374,9 @@ async function playApi(request, env, url) {
     }
 
 
-    // ========================================================
-    // CHANNEL NOT FOUND
-    // ========================================================
+    // ----------------------------------------
+    // Channel not found
+    // ----------------------------------------
 
     if (!channel) {
 
@@ -466,9 +388,9 @@ async function playApi(request, env, url) {
     }
 
 
-    // ========================================================
-    // URL MISSING
-    // ========================================================
+    // ----------------------------------------
+    // URL missing
+    // ----------------------------------------
 
     if (!channel.url) {
 
@@ -480,9 +402,9 @@ async function playApi(request, env, url) {
     }
 
 
-    // ========================================================
-    // NORMAL CHANNEL
-    // ========================================================
+    // ----------------------------------------
+    // Normal channels
+    // ----------------------------------------
 
     if (
       !channel.url
@@ -498,9 +420,9 @@ async function playApi(request, env, url) {
     }
 
 
-    // ========================================================
+    // ----------------------------------------
     // OSTORA
-    // ========================================================
+    // ----------------------------------------
 
     const cleanUrl =
       channel.url.split("#")[0];
@@ -511,11 +433,13 @@ async function playApi(request, env, url) {
         cleanUrl,
         {
           headers: {
+
             "User-Agent":
               "Mozilla/5.0",
 
             "Referer":
               "https://ostora.pages.dev/"
+
           }
         }
       );
@@ -552,7 +476,6 @@ async function playApi(request, env, url) {
     );
 
   }
-
 }
 
 
@@ -594,7 +517,9 @@ async function playlistApi(
           channels
         )
       ) {
+
         continue;
+
       }
 
 
@@ -619,6 +544,7 @@ async function playlistApi(
       m3u,
       {
         status: 200,
+
         headers: {
 
           "Content-Type":
@@ -653,7 +579,6 @@ async function playlistApi(
     );
 
   }
-
 }
 
 
@@ -666,6 +591,10 @@ async function proxyM3u8Api(
   env,
   url
 ) {
+
+  // ----------------------------------------
+  // Security
+  // ----------------------------------------
 
   if (
     !checkAppSecurity(
@@ -681,6 +610,10 @@ async function proxyM3u8Api(
 
   }
 
+
+  // ----------------------------------------
+  // Target URL
+  // ----------------------------------------
 
   const target =
     url.searchParams.get(
@@ -708,8 +641,10 @@ async function proxyM3u8Api(
             "follow",
 
           headers: {
+
             "User-Agent":
               PROXY_UA
+
           }
         }
       );
@@ -721,9 +656,9 @@ async function proxyM3u8Api(
       ) || "";
 
 
-    // ========================================================
+    // ----------------------------------------
     // M3U8
-    // ========================================================
+    // ----------------------------------------
 
     if (
       contentType.includes(
@@ -754,6 +689,7 @@ async function proxyM3u8Api(
         body,
         {
           status: 200,
+
           headers: {
 
             "Content-Type":
@@ -772,9 +708,9 @@ async function proxyM3u8Api(
     }
 
 
-    // ========================================================
-    // OTHER
-    // ========================================================
+    // ----------------------------------------
+    // Other content
+    // ----------------------------------------
 
     return new Response(
       upstream.body,
@@ -810,7 +746,6 @@ async function proxyM3u8Api(
     );
 
   }
-
 }
 
 
@@ -823,6 +758,10 @@ async function tsApi(
   env,
   url
 ) {
+
+  // ----------------------------------------
+  // Security
+  // ----------------------------------------
 
   if (
     !checkAppSecurity(
@@ -838,6 +777,10 @@ async function tsApi(
 
   }
 
+
+  // ----------------------------------------
+  // Target
+  // ----------------------------------------
 
   const target =
     url.searchParams.get(
@@ -862,8 +805,10 @@ async function tsApi(
         target,
         {
           headers: {
+
             "User-Agent":
               PROXY_UA
+
           }
         }
       );
@@ -905,7 +850,6 @@ async function tsApi(
     );
 
   }
-
 }
 
 
@@ -917,6 +861,10 @@ async function saveApi(
   request,
   env
 ) {
+
+  // ----------------------------------------
+  // Security
+  // ----------------------------------------
 
   if (
     !checkAppSecurity(
@@ -932,6 +880,10 @@ async function saveApi(
 
   }
 
+
+  // ----------------------------------------
+  // Method
+  // ----------------------------------------
 
   if (
     request.method !==
@@ -1001,12 +953,11 @@ async function saveApi(
     );
 
   }
-
 }
 
 
 // ============================================================
-// VIEWERS
+// VIEWER INCREMENT
 // ============================================================
 
 async function incrementViewer(
@@ -1015,7 +966,9 @@ async function incrementViewer(
 ) {
 
   if (!env.DATA_KV) {
+
     return;
+
   }
 
 
@@ -1038,17 +991,22 @@ async function incrementViewer(
 
     await env.DATA_KV.put(
       key,
+
       JSON.stringify({
+
         count:
           count + 1,
 
         lastActivity:
           Date.now()
+
       }),
+
       {
         expirationTtl:
           31
       }
+
     );
 
 
@@ -1060,9 +1018,12 @@ async function incrementViewer(
     );
 
   }
-
 }
 
+
+// ============================================================
+// VIEWERS API
+// ============================================================
 
 async function viewersApi(
   request,
@@ -1109,27 +1070,28 @@ async function viewersApi(
 
 
     return json({
+
       [id]:
         data?.count || 0
+
     });
 
 
   } catch (e) {
 
-    return json(
-      {
-        [id]:
-          0
-      }
-    );
+    return json({
+
+      [id]:
+        0
+
+    });
 
   }
-
 }
 
 
 // ============================================================
-// ADMIN / STATIC ASSETS
+// STATIC ASSETS
 // ============================================================
 
 async function serveAsset(
@@ -1150,7 +1112,6 @@ async function serveAsset(
   return env.ASSETS.fetch(
     request
   );
-
 }
 
 
@@ -1184,6 +1145,7 @@ export default {
         null,
         {
           status: 204,
+
           headers: {
 
             "Access-Control-Allow-Origin":
@@ -1197,23 +1159,6 @@ export default {
 
           }
         }
-      );
-
-    }
-
-
-    // ========================================================
-    // DEBUG RESULT
-    // ========================================================
-
-    if (
-      url.pathname ===
-      "/api/debug-result"
-    ) {
-
-      return debugResultApi(
-        request,
-        env
       );
 
     }
@@ -1237,7 +1182,7 @@ export default {
 
 
     // ========================================================
-    // PLAY
+    // PLAY M3U8
     // ========================================================
 
     if (
