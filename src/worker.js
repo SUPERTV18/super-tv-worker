@@ -1,7 +1,7 @@
 // ======================================================
 // SUPER TV API - Cloudflare Worker
 // حماية User-Agent + Secret مخفي
-// + Debug مؤقت لاختبار X-App-Key
+// + اختبار مؤقت داخل play.m3u8
 // ======================================================
 
 const NEW_UA = "stv2026";
@@ -28,6 +28,7 @@ function json(data, status = 200) {
   });
 }
 
+
 function text(
   data,
   status = 200,
@@ -41,6 +42,7 @@ function text(
     }
   });
 }
+
 
 function redirect(url, status = 302) {
   return Response.redirect(url, status);
@@ -84,7 +86,11 @@ function checkAppSecurity(request, env) {
   // User-Agent
   // ----------------------------------------------------
 
-  if (!ua.includes(NEW_UA.toLowerCase())) {
+  if (
+    !ua.includes(
+      NEW_UA.toLowerCase()
+    )
+  ) {
     return false;
   }
 
@@ -94,57 +100,23 @@ function checkAppSecurity(request, env) {
   // ----------------------------------------------------
 
   if (!env.APP_SECRET) {
-    console.error("APP_SECRET is not configured");
+
+    console.error(
+      "APP_SECRET is not configured"
+    );
+
     return false;
   }
 
 
-  if (appKey !== env.APP_SECRET) {
+  if (
+    appKey !== env.APP_SECRET
+  ) {
     return false;
   }
 
 
   return true;
-}
-
-
-// ======================================================
-// DEBUG SECURITY
-//
-// مؤقت فقط لمعرفة هل AppCreator24 يرسل:
-// User-Agent
-// X-App-Key
-//
-// لا يعرض قيمة المفتاح نفسها.
-// ======================================================
-
-function securityDebugApi(request, env) {
-
-  const ua =
-    request.headers.get("User-Agent") || "";
-
-  const appKey =
-    request.headers.get("X-App-Key") || "";
-
-
-  return json({
-
-    uaReceived:
-      !!ua,
-
-    uaHasStv2026:
-      ua.toLowerCase().includes(
-        NEW_UA.toLowerCase()
-      ),
-
-    appKeyReceived:
-      !!appKey,
-
-    appKeyValid:
-      !!env.APP_SECRET &&
-      appKey === env.APP_SECRET
-
-  });
 }
 
 
@@ -156,17 +128,26 @@ function securityDebugApi(request, env) {
 // 2- data/channels.json من Assets
 // ======================================================
 
-async function loadChannels(env, request) {
+async function loadChannels(
+  env,
+  request
+) {
 
   if (env.DATA_KV) {
 
     try {
 
       const saved =
-        await env.DATA_KV.get("channels");
+        await env.DATA_KV.get(
+          "channels"
+        );
+
 
       if (saved) {
-        return JSON.parse(saved);
+
+        return JSON.parse(
+          saved
+        );
       }
 
     } catch (e) {
@@ -184,8 +165,10 @@ async function loadChannels(env, request) {
     const url =
       new URL(request.url);
 
+
     url.pathname =
       "/data/channels.json";
+
 
     url.search = "";
 
@@ -218,6 +201,7 @@ async function loadChannels(env, request) {
       e
     );
 
+
     throw new Error(
       "channels.json not found"
     );
@@ -229,13 +213,18 @@ async function loadChannels(env, request) {
 // البحث عن قناة
 // ======================================================
 
-function findChannel(data, id) {
+function findChannel(
+  data,
+  id
+) {
 
   for (
     const group of Object.values(data)
   ) {
 
-    if (!Array.isArray(group)) {
+    if (
+      !Array.isArray(group)
+    ) {
       continue;
     }
 
@@ -243,7 +232,8 @@ function findChannel(data, id) {
     const found =
       group.find(
         ch =>
-          String(ch.id) === String(id)
+          String(ch.id) ===
+          String(id)
       );
 
 
@@ -261,7 +251,10 @@ function findChannel(data, id) {
 // عداد المشاهدين
 // ======================================================
 
-async function incrementViewer(env, id) {
+async function incrementViewer(
+  env,
+  id
+) {
 
   if (!env.DATA_KV) {
     return;
@@ -295,11 +288,15 @@ async function incrementViewer(env, id) {
 
       if (
         old.lastActivity &&
-        now - old.lastActivity <= 30000
+        now -
+          old.lastActivity <=
+          30000
       ) {
 
         count =
-          Number(old.count || 0) + 1;
+          Number(
+            old.count || 0
+          ) + 1;
 
       } else {
 
@@ -338,13 +335,19 @@ async function incrementViewer(env, id) {
 // API: /api/viewers
 // ======================================================
 
-async function viewersApi(request, env) {
+async function viewersApi(
+  request,
+  env
+) {
 
   const url =
     new URL(request.url);
 
+
   const id =
-    url.searchParams.get("id");
+    url.searchParams.get(
+      "id"
+    );
 
 
   if (!id) {
@@ -417,7 +420,9 @@ async function channelsApi(
       );
 
 
-    return json(data);
+    return json(
+      data
+    );
 
   } catch (e) {
 
@@ -433,7 +438,6 @@ async function channelsApi(
 
 // ======================================================
 // API: /api/save
-// حماية إضافية أيضًا
 // ======================================================
 
 async function saveApi(
@@ -442,19 +446,23 @@ async function saveApi(
 ) {
 
   if (
-    request.method !== "POST"
+    request.method !==
+    "POST"
   ) {
 
     return json(
       {
-        error: "Method not allowed"
+        error:
+          "Method not allowed"
       },
       405
     );
   }
 
 
+  // ----------------------------------------------------
   // حماية Secret
+  // ----------------------------------------------------
 
   if (
     !checkAppSecurity(
@@ -626,7 +634,9 @@ async function playApi(
 
 
     const id =
-      url.searchParams.get("id");
+      url.searchParams.get(
+        "id"
+      );
 
 
     if (!id) {
@@ -637,6 +647,60 @@ async function playApi(
       );
     }
 
+
+    // ==================================================
+    // DEBUG
+    //
+    // استخدم:
+    //
+    // /api/play.m3u8?id=debug
+    //
+    // لا يعرض قيمة المفتاح نفسها.
+    // ==================================================
+
+    if (
+      id === "debug"
+    ) {
+
+      const ua =
+        request.headers.get(
+          "User-Agent"
+        ) || "";
+
+
+      const appKey =
+        request.headers.get(
+          "X-App-Key"
+        ) || "";
+
+
+      return json({
+
+        uaReceived:
+          !!ua,
+
+        uaHasStv2026:
+          ua
+            .toLowerCase()
+            .includes(
+              NEW_UA.toLowerCase()
+            ),
+
+        appKeyReceived:
+          !!appKey,
+
+        appKeyValid:
+          !!env.APP_SECRET &&
+          appKey ===
+            env.APP_SECRET
+
+      });
+    }
+
+
+    // ==================================================
+    // User-Agent
+    // ==================================================
 
     const ua =
       (
@@ -756,7 +820,9 @@ async function playApi(
     if (
       !channel.url
         .toLowerCase()
-        .includes("ostora")
+        .includes(
+          "ostora"
+        )
     ) {
 
       return redirect(
@@ -771,7 +837,9 @@ async function playApi(
     // ==================================================
 
     const cleanUrl =
-      channel.url.split("#")[0];
+      channel.url.split(
+        "#"
+      )[0];
 
 
     const response =
@@ -787,7 +855,8 @@ async function playApi(
               "https://ostora.pages.dev/"
           },
 
-          redirect: "follow"
+          redirect:
+            "follow"
         }
       );
 
@@ -833,7 +902,9 @@ async function proxyM3u8Api(
   env
 ) {
 
+  // ----------------------------------------------------
   // حماية الـ Proxy
+  // ----------------------------------------------------
 
   if (
     !checkAppSecurity(
@@ -854,7 +925,9 @@ async function proxyM3u8Api(
 
 
   const target =
-    url.searchParams.get("url");
+    url.searchParams.get(
+      "url"
+    );
 
 
   if (!target) {
@@ -872,9 +945,11 @@ async function proxyM3u8Api(
       await fetch(
         target,
         {
-          redirect: "follow",
+          redirect:
+            "follow",
 
           headers: {
+
             "User-Agent":
               PROXY_UA
           }
@@ -895,10 +970,14 @@ async function proxyM3u8Api(
     if (
       contentType
         .toLowerCase()
-        .includes("mpegurl") ||
+        .includes(
+          "mpegurl"
+        ) ||
       target
         .toLowerCase()
-        .includes(".m3u8")
+        .includes(
+          ".m3u8"
+        )
     ) {
 
       let body =
@@ -991,7 +1070,9 @@ async function tsApi(
   env
 ) {
 
+  // ----------------------------------------------------
   // حماية الـ TS Proxy
+  // ----------------------------------------------------
 
   if (
     !checkAppSecurity(
@@ -1012,7 +1093,9 @@ async function tsApi(
 
 
   const target =
-    url.searchParams.get("url");
+    url.searchParams.get(
+      "url"
+    );
 
 
   if (!target) {
@@ -1090,7 +1173,8 @@ function handleOptions() {
     null,
     {
       status: 204,
-      headers: corsHeaders()
+      headers:
+        corsHeaders()
     }
   );
 }
@@ -1121,27 +1205,11 @@ export default {
     // ------------------------------------------
 
     if (
-      request.method === "OPTIONS"
+      request.method ===
+      "OPTIONS"
     ) {
 
       return handleOptions();
-    }
-
-
-    // ------------------------------------------
-    // DEBUG SECURITY
-    // مؤقت
-    // ------------------------------------------
-
-    if (
-      pathname ===
-      "/api/debug-security"
-    ) {
-
-      return securityDebugApi(
-        request,
-        env
-      );
     }
 
 
@@ -1262,8 +1330,10 @@ export default {
     // ------------------------------------------
 
     if (
-      pathname === "/admin" ||
-      pathname === "/admin/"
+      pathname ===
+        "/admin" ||
+      pathname ===
+        "/admin/"
     ) {
 
       const adminUrl =
