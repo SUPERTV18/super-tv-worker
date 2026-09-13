@@ -1,133 +1,128 @@
-// ============================================================
+// ======================================================
 // SUPER TV API - Cloudflare Worker
-// تحويل api/play.m3u8.js من Vercel إلى Cloudflare Worker
-// نفس طريقة العمل الأصلية
-// ============================================================
+// تحويل API القديم من Vercel إلى Cloudflare Worker
+// ======================================================
 
 const NEW_UA = "stv2026";
 const OLD_UA = "2026stv";
 
-// ============================================================
-// فيديو الاستجابة للـ UA القديم
-// ============================================================
-
 const FALLBACK_VIDEO =
   "https://github.com/himasabry/video/raw/refs/heads/main/output.m3u8";
 
-// ============================================================
-// CORS
-// ============================================================
+const PROXY_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-  "Access-Control-Allow-Headers":
-    "Content-Type, X-Admin-Key, User-Agent, Referer, Origin",
-};
 
-// ============================================================
-// Response Helpers
-// ============================================================
-
-function txt(text, status = 200) {
-  return new Response(text, {
-    status,
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      ...corsHeaders,
-    },
-  });
-}
+// ======================================================
+// أدوات عامة
+// ======================================================
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      ...corsHeaders,
-    },
+      "Access-Control-Allow-Origin": "*"
+    }
   });
 }
 
-function redirect(url) {
-  return new Response(null, {
-    status: 302,
+function text(data, status = 200, contentType = "text/plain; charset=utf-8") {
+  return new Response(data, {
+    status,
     headers: {
-      Location: url,
-      ...corsHeaders,
-    },
+      "Content-Type": contentType,
+      "Access-Control-Allow-Origin": "*"
+    }
   });
 }
 
-// ============================================================
-// Load channels.json
-// ============================================================
+function redirect(url, status = 302) {
+  return Response.redirect(url, status);
+}
 
-async function loadChannels(env, req) {
-  // ----------------------------------------------------------
-  // أولاً نحاول KV
-  // ----------------------------------------------------------
+
+// ======================================================
+// CORS
+// ======================================================
+
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": "*"
+  };
+}
+
+
+// ======================================================
+// قراءة channels.json
+//
+// الأولوية:
+// 1- KV
+// 2- data/channels.json من Assets
+// ======================================================
+
+async function loadChannels(env, request) {
+  // ------------------------------------------
+  // محاولة القراءة من KV
+  // ------------------------------------------
 
   if (env.DATA_KV) {
     try {
-      const data = await env.DATA_KV.get(
-        "channels",
-        "json"
-      );
+      const saved = await env.DATA_KV.get("channels");
 
-      if (data) {
-        return data;
+      if (saved) {
+        return JSON.parse(saved);
       }
     } catch (e) {
-      console.error(
-        "KV channels error:",
-        e
-      );
+      console.error("KV CHANNELS ERROR:", e);
     }
   }
 
-  // ----------------------------------------------------------
-  // fallback إلى:
-  // public/data/channels.json
-  // ----------------------------------------------------------
+  // ------------------------------------------
+  // fallback إلى data/channels.json
+  // ------------------------------------------
 
-  if (!env.ASSETS) {
-    throw new Error(
-      "ASSETS binding is missing"
+  try {
+    const url = new URL(request.url);
+    url.pathname = "/data/channels.json";
+    url.search = "";
+
+    const response = await env.ASSETS.fetch(
+      new Request(url.toString(), {
+        method: "GET"
+      })
     );
+
+    if (!response.ok) {
+      throw new Error(
+        `channels.json HTTP ${response.status}`
+      );
+    }
+
+    return await response.json();
+
+  } catch (e) {
+    console.error("ASSET CHANNELS ERROR:", e);
+    throw new Error("channels.json not found");
   }
-
-  const url = new URL(
-    "/data/channels.json",
-    req.url
-  );
-
-  const response = await env.ASSETS.fetch(
-    new Request(url)
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      "channels.json not found"
-    );
-  }
-
-  return await response.json();
 }
 
-// ============================================================
-// Find Channel
-// ============================================================
+
+// ======================================================
+// البحث عن قناة
+// ======================================================
 
 function findChannel(data, id) {
   for (const group of Object.values(data)) {
+
     if (!Array.isArray(group)) {
       continue;
     }
 
     const found = group.find(
-      (channel) =>
-        String(channel.id) === String(id)
+      ch => String(ch.id) === String(id)
     );
 
     if (found) {
@@ -138,324 +133,184 @@ function findChannel(data, id) {
   return null;
 }
 
-// ============================================================
-// Viewer Counter
-// ============================================================
+
+// ======================================================
+// عداد المشاهدين
+//
+// Worker لا يستطيع تعديل viewers.json مباشرة.
+// لذلك نستخدم KV.
+//
+// نحافظ على فكرة activity لمدة 30 ثانية.
+// ======================================================
 
 async function incrementViewer(env, id) {
+
   if (!env.DATA_KV) {
     return;
   }
 
-  try {
-    const key = `viewer:${id}`;
+  const key = `viewer:${id}`;
 
-    const current = Number(
-      (await env.DATA_KV.get(key)) || 0
+  try {
+
+    const old = await env.DATA_KV.get(
+      key,
+      "json"
     );
+
+    const now = Date.now();
+
+    let count = 0;
+
+    if (old && typeof old === "object") {
+
+      // إذا كانت آخر Activity منذ أكثر من 30 ثانية
+      // نبدأ جلسة جديدة.
+
+      if (
+        old.lastActivity &&
+        now - old.lastActivity <= 30000
+      ) {
+        count = Number(old.count || 0) + 1;
+      } else {
+        count = 1;
+      }
+
+    } else {
+      count = 1;
+    }
 
     await env.DATA_KV.put(
       key,
-      String(current + 1),
+      JSON.stringify({
+        count,
+        lastActivity: now
+      }),
       {
-        expirationTtl: 35,
+        expirationTtl: 31
       }
     );
+
   } catch (e) {
+
     console.error(
-      "VIEWER ERROR:",
+      "VIEWER INCREMENT ERROR:",
       e
     );
   }
 }
 
-// ============================================================
-// PLAY API
-// ============================================================
 
-async function play(req, env) {
-  try {
-    const url = new URL(req.url);
+// ======================================================
+// API: /api/viewers
+// ======================================================
 
-    const id =
-      url.searchParams.get("id");
+async function viewersApi(request, env) {
 
-    // --------------------------------------------------------
-    // Missing ID
-    // --------------------------------------------------------
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id");
 
-    if (!id) {
-      return txt(
-        "Missing id",
-        400
-      );
-    }
-
-    // --------------------------------------------------------
-    // User-Agent
-    // نفس حماية Vercel بالضبط
-    // --------------------------------------------------------
-
-    const userAgent =
-      req.headers.get("User-Agent") || "";
-
-    const ua =
-      userAgent.toLowerCase();
-
-    // --------------------------------------------------------
-    // Viewer Counter
-    // --------------------------------------------------------
-
-    await incrementViewer(
-      env,
-      id
+  if (!id) {
+    return json(
+      { error: "Missing id" },
+      400
     );
+  }
 
-    // --------------------------------------------------------
-    // UA القديم
-    // --------------------------------------------------------
+  let count = 0;
 
-    if (
-      ua.includes(
-        OLD_UA.toLowerCase()
-      ) ||
-      ua.includes("superlivetv")
-    ) {
-      return redirect(
-        FALLBACK_VIDEO
+  if (env.DATA_KV) {
+
+    try {
+
+      const data = await env.DATA_KV.get(
+        `viewer:${id}`,
+        "json"
+      );
+
+      if (
+        data &&
+        typeof data === "object"
+      ) {
+        count = Number(
+          data.count || 0
+        );
+      }
+
+    } catch (e) {
+
+      console.error(
+        "VIEWERS API ERROR:",
+        e
       );
     }
+  }
 
-    // --------------------------------------------------------
-    // السماح للتطبيق فقط
-    // --------------------------------------------------------
+  return json({
+    [id]: count
+  });
+}
 
-    if (
-      !ua.includes(
-        NEW_UA.toLowerCase()
-      )
-    ) {
-      return txt(
-        "Forbidden",
-        403
-      );
-    }
 
-    // --------------------------------------------------------
-    // قراءة channels.json
-    // --------------------------------------------------------
+// ======================================================
+// API: /api/channels
+// ======================================================
+
+async function channelsApi(request, env) {
+
+  try {
 
     const data =
       await loadChannels(
         env,
-        req
+        request
       );
 
-    // --------------------------------------------------------
-    // البحث عن القناة
-    // --------------------------------------------------------
-
-    const channel =
-      findChannel(
-        data,
-        id
-      );
-
-    // --------------------------------------------------------
-    // القناة غير موجودة
-    // --------------------------------------------------------
-
-    if (!channel) {
-      return txt(
-        "Channel not found",
-        404
-      );
-    }
-
-    // --------------------------------------------------------
-    // الرابط غير موجود
-    // --------------------------------------------------------
-
-    if (!channel.url) {
-      return txt(
-        "Channel URL missing",
-        404
-      );
-    }
-
-    // ========================================================
-    // القنوات العادية
-    //
-    // نفس Vercel بالضبط:
-    //
-    // return res
-    //   .status(302)
-    //   .setHeader("Location", channel.url)
-    //   .end();
-    // ========================================================
-
-    if (
-      !String(channel.url)
-        .toLowerCase()
-        .includes("ostora")
-    ) {
-      return redirect(
-        String(channel.url)
-      );
-    }
-
-    // ========================================================
-    // OSTORA
-    // ========================================================
-
-    const cleanUrl =
-      String(channel.url)
-        .split("#")[0];
-
-    let response;
-
-    try {
-      response = await fetch(
-        cleanUrl,
-        {
-          method: "GET",
-          redirect: "follow",
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0",
-            "Referer":
-              "https://ostora.pages.dev/",
-          },
-        }
-      );
-    } catch (e) {
-      console.error(
-        "UPSTREAM FETCH ERROR:",
-        e
-      );
-
-      return txt(
-        "Upstream fetch error: " +
-          (e?.message ||
-            "Unknown error"),
-        502
-      );
-    }
-
-    // --------------------------------------------------------
-    // Upstream Error
-    // --------------------------------------------------------
-
-    if (!response.ok) {
-      return txt(
-        `Upstream error: ${response.status}`,
-        response.status
-      );
-    }
-
-    // --------------------------------------------------------
-    // نفس Vercel:
-    // Redirect إلى الرابط النهائي
-    // --------------------------------------------------------
-
-    return redirect(
-      response.url
-    );
+    return json(data);
 
   } catch (e) {
-    console.error(
-      "PLAY ERROR:",
-      e
-    );
 
-    return txt(
-      "Server error: " +
-        (e?.message ||
-          "Unknown error"),
+    return json(
+      {
+        error: e.message
+      },
       500
     );
   }
 }
 
-// ============================================================
-// CHANNELS API
-// ============================================================
 
-async function channelsApi(
-  req,
-  env
-) {
+// ======================================================
+// API: /api/save
+// ======================================================
+
+async function saveApi(request, env) {
+
+  if (request.method !== "POST") {
+
+    return json(
+      {
+        error: "Method not allowed"
+      },
+      405
+    );
+  }
+
+  if (!env.DATA_KV) {
+
+    return json(
+      {
+        error:
+          "DATA_KV is not configured"
+      },
+      500
+    );
+  }
+
   try {
-    // --------------------------------------------------------
-    // GET
-    // --------------------------------------------------------
-
-    if (
-      req.method === "GET"
-    ) {
-      return json(
-        await loadChannels(
-          env,
-          req
-        )
-      );
-    }
-
-    // --------------------------------------------------------
-    // POST
-    // --------------------------------------------------------
-
-    if (
-      req.method !== "POST"
-    ) {
-      return json(
-        {
-          error:
-            "Method not allowed",
-        },
-        405
-      );
-    }
-
-    // --------------------------------------------------------
-    // Admin key
-    // --------------------------------------------------------
-
-    if (env.ADMIN_KEY) {
-      const key =
-        req.headers.get(
-          "X-Admin-Key"
-        );
-
-      if (
-        key !== env.ADMIN_KEY
-      ) {
-        return json(
-          {
-            error:
-              "Unauthorized",
-          },
-          401
-        );
-      }
-    }
-
-    // --------------------------------------------------------
-    // KV required
-    // --------------------------------------------------------
-
-    if (!env.DATA_KV) {
-      return json(
-        {
-          error:
-            "DATA_KV binding is required",
-        },
-        500
-      );
-    }
 
     const body =
-      await req.json();
+      await request.json();
 
     await env.DATA_KV.put(
       "channels",
@@ -463,121 +318,69 @@ async function channelsApi(
     );
 
     return json({
-      status: "ok",
+      status: "ok"
     });
 
   } catch (e) {
+
     console.error(
-      "CHANNEL API ERROR:",
+      "SAVE ERROR:",
       e
     );
 
     return json(
       {
-        error:
-          e?.message ||
-          "Unknown error",
+        error: e.message
       },
       500
     );
   }
 }
 
-// ============================================================
-// VIEWERS API
-// ============================================================
 
-async function viewers(
-  req,
-  env
-) {
+// ======================================================
+// API: /api/playlist.m3u
+// ======================================================
+
+async function playlistApi(request, env) {
+
   try {
-    const id =
-      new URL(req.url)
-        .searchParams
-        .get("id");
 
-    if (!id) {
-      return json(
-        {
-          error:
-            "Missing id",
-        },
-        400
-      );
-    }
-
-    let count = 0;
-
-    if (env.DATA_KV) {
-      count = Number(
-        (await env.DATA_KV.get(
-          `viewer:${id}`
-        )) || 0
-      );
-    }
-
-    return json({
-      [id]: count,
-    });
-
-  } catch (e) {
-    return json(
-      {
-        error:
-          e?.message ||
-          "Unknown error",
-      },
-      500
-    );
-  }
-}
-
-// ============================================================
-// PLAYLIST
-// ============================================================
-
-async function playlist(
-  req,
-  env
-) {
-  try {
     const data =
       await loadChannels(
         env,
-        req
+        request
       );
 
-    const base =
-      new URL(req.url)
-        .origin;
+    const requestUrl =
+      new URL(request.url);
 
-    let m3u =
-      "#EXTM3U\n";
+    const base =
+      requestUrl.origin;
+
+    let m3u = "#EXTM3U\n";
 
     for (
-      const group in data
+      const category in data
     ) {
-      const list =
-        Array.isArray(
-          data[group]
+
+      if (
+        !Array.isArray(
+          data[category]
         )
-          ? data[group]
-          : [];
+      ) {
+        continue;
+      }
 
       for (
-        const channel of list
+        const ch of data[category]
       ) {
-        m3u +=
-          `#EXTINF:-1 tvg-id="${channel.id}" ` +
-          `group-title="${group}",${channel.name}\n`;
 
         m3u +=
-          `${base}/api/play.m3u8?id=` +
-          encodeURIComponent(
-            channel.id
-          ) +
-          "\n";
+          `#EXTINF:-1 tvg-id="${ch.id}" group-title="${category}",${ch.name}\n`;
+
+        m3u +=
+          `${base}/api/play.m3u8?id=${encodeURIComponent(ch.id)}\n`;
       }
     }
 
@@ -587,157 +390,643 @@ async function playlist(
         status: 200,
         headers: {
           "Content-Type":
-            "application/x-mpegURL; charset=utf-8",
+            "application/x-mpegURL",
+
           "Content-Disposition":
             'attachment; filename="SuperTV.m3u"',
-          ...corsHeaders,
-          "Cache-Control":
-            "no-store",
-        },
+
+          "Access-Control-Allow-Origin":
+            "*"
+        }
       }
     );
 
   } catch (e) {
-    return txt(
-      "Playlist error: " +
-        (e?.message ||
-          "Unknown error"),
+
+    console.error(
+      "PLAYLIST ERROR:",
+      e
+    );
+
+    return text(
+      "Playlist error",
       500
     );
   }
 }
 
-// ============================================================
-// MAIN WORKER
-// ============================================================
 
-export default {
-  async fetch(
-    req,
-    env
-  ) {
-    try {
-      const url =
-        new URL(req.url);
+// ======================================================
+// API: /api/play.m3u8
+// ======================================================
 
-      const path =
-        url.pathname;
+async function playApi(request, env) {
 
-      // ------------------------------------------------------
-      // CORS OPTIONS
-      // ------------------------------------------------------
+  try {
 
-      if (
-        req.method ===
-        "OPTIONS"
-      ) {
-        return new Response(
-          null,
-          {
-            status: 204,
-            headers:
-              corsHeaders,
-          }
-        );
-      }
+    const url =
+      new URL(request.url);
 
-      // ------------------------------------------------------
-      // PLAY
-      // ------------------------------------------------------
+    const id =
+      url.searchParams.get("id");
 
-      if (
-        path ===
-        "/api/play.m3u8"
-      ) {
-        return await play(
-          req,
-          env
-        );
-      }
+    if (!id) {
 
-      // ------------------------------------------------------
-      // CHANNELS
-      // ------------------------------------------------------
-
-      if (
-        path ===
-          "/api/channels" ||
-        path ===
-          "/api/save"
-      ) {
-        return await channelsApi(
-          req,
-          env
-        );
-      }
-
-      // ------------------------------------------------------
-      // VIEWERS
-      // ------------------------------------------------------
-
-      if (
-        path ===
-        "/api/viewers"
-      ) {
-        return await viewers(
-          req,
-          env
-        );
-      }
-
-      // ------------------------------------------------------
-      // PLAYLIST
-      // ------------------------------------------------------
-
-      if (
-        path ===
-        "/api/playlist.m3u"
-      ) {
-        return await playlist(
-          req,
-          env
-        );
-      }
-
-      // ------------------------------------------------------
-      // ADMIN
-      // ------------------------------------------------------
-
-      if (
-        path === "/admin" ||
-        path === "/admin/"
-      ) {
-        return env.ASSETS.fetch(
-          new Request(
-            new URL(
-              "/admin.html",
-              req.url
-            ),
-            req
-          )
-        );
-      }
-
-      // ------------------------------------------------------
-      // STATIC ASSETS
-      // ------------------------------------------------------
-
-      return env.ASSETS.fetch(
-        req
+      return text(
+        "Missing id",
+        400
       );
+    }
+
+    const ua =
+      (
+        request.headers.get(
+          "User-Agent"
+        ) || ""
+      ).toLowerCase();
+
+
+    // ==================================================
+    // عداد المشاهدين
+    // ==================================================
+
+    await incrementViewer(
+      env,
+      id
+    );
+
+
+    // ==================================================
+    // UA القديم
+    // ==================================================
+
+    if (
+      ua.includes(
+        OLD_UA.toLowerCase()
+      ) ||
+      ua.includes(
+        "superlivetv"
+      )
+    ) {
+
+      return redirect(
+        FALLBACK_VIDEO,
+        302
+      );
+    }
+
+
+    // ==================================================
+    // السماح للتطبيق فقط
+    // ==================================================
+
+    if (
+      !ua.includes(
+        NEW_UA.toLowerCase()
+      )
+    ) {
+
+      return text(
+        "Forbidden",
+        403
+      );
+    }
+
+
+    // ==================================================
+    // قراءة القنوات
+    // ==================================================
+
+    let data;
+
+    try {
+
+      data =
+        await loadChannels(
+          env,
+          request
+        );
 
     } catch (e) {
-      console.error(
-        "WORKER ERROR:",
-        e
-      );
 
-      return txt(
-        "Server error: " +
-          (e?.message ||
-            "Unknown error"),
+      return text(
+        "channels.json not found",
         500
       );
     }
-  },
+
+
+    // ==================================================
+    // البحث عن القناة
+    // ==================================================
+
+    const channel =
+      findChannel(
+        data,
+        id
+      );
+
+
+    // ==================================================
+    // القناة غير موجودة
+    // ==================================================
+
+    if (!channel) {
+
+      return text(
+        "Channel not found",
+        404
+      );
+    }
+
+
+    if (!channel.url) {
+
+      return text(
+        "Channel URL missing",
+        404
+      );
+    }
+
+
+    // ==================================================
+    // القنوات العادية
+    // نفس نظام Vercel القديم:
+    // Redirect مباشر للمصدر
+    // ==================================================
+
+    if (
+      !channel.url
+        .toLowerCase()
+        .includes("ostora")
+    ) {
+
+      return redirect(
+        channel.url,
+        302
+      );
+    }
+
+
+    // ==================================================
+    // OSTORA
+    // ==================================================
+
+    const cleanUrl =
+      channel.url.split("#")[0];
+
+
+    const response =
+      await fetch(
+        cleanUrl,
+        {
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0",
+
+            "Referer":
+              "https://ostora.pages.dev/"
+          },
+
+          redirect: "follow"
+        }
+      );
+
+
+    if (!response.ok) {
+
+      return text(
+        `Upstream error: ${response.status}`,
+        response.status
+      );
+    }
+
+
+    return redirect(
+      response.url,
+      302
+    );
+
+
+  } catch (e) {
+
+    console.error(
+      "PLAY ERROR:",
+      e
+    );
+
+    return text(
+      "Server error: " +
+        e.message,
+      500
+    );
+  }
+}
+
+
+// ======================================================
+// API: /api/proxy.m3u8
+// ======================================================
+
+async function proxyM3u8Api(
+  request,
+  env
+) {
+
+  const url =
+    new URL(request.url);
+
+  const target =
+    url.searchParams.get("url");
+
+  if (!target) {
+
+    return text(
+      "Missing url",
+      400
+    );
+  }
+
+
+  try {
+
+    const upstream =
+      await fetch(
+        target,
+        {
+          redirect: "follow",
+
+          headers: {
+            "User-Agent":
+              PROXY_UA
+          }
+        }
+      );
+
+
+    const contentType =
+      upstream.headers.get(
+        "content-type"
+      ) || "";
+
+
+    // ==================================================
+    // M3U8
+    // ==================================================
+
+    if (
+      contentType
+        .toLowerCase()
+        .includes("mpegurl") ||
+      target
+        .toLowerCase()
+        .includes(".m3u8")
+    ) {
+
+      let body =
+        await upstream.text();
+
+
+      // ==================================================
+      // تعديل روابط الـM3U8
+      // ==================================================
+
+      body =
+        body.replace(
+          /(https?:\/\/[^\s]+)/g,
+          (u) =>
+            `${url.origin}/api/ts?url=${encodeURIComponent(u)}`
+        );
+
+
+      return new Response(
+        body,
+        {
+          status: upstream.status,
+
+          headers: {
+            "Content-Type":
+              "application/vnd.apple.mpegurl",
+
+            "Access-Control-Allow-Origin":
+              "*"
+          }
+        }
+      );
+    }
+
+
+    // ==================================================
+    // أي محتوى آخر
+    // ==================================================
+
+    const headers =
+      new Headers();
+
+    headers.set(
+      "Access-Control-Allow-Origin",
+      "*"
+    );
+
+    if (contentType) {
+
+      headers.set(
+        "Content-Type",
+        contentType
+      );
+    }
+
+
+    return new Response(
+      upstream.body,
+      {
+        status:
+          upstream.status,
+
+        headers
+      }
+    );
+
+
+  } catch (e) {
+
+    console.error(
+      "PROXY ERROR:",
+      e
+    );
+
+    return text(
+      "Proxy error",
+      500
+    );
+  }
+}
+
+
+// ======================================================
+// API: /api/ts
+// ======================================================
+
+async function tsApi(
+  request,
+  env
+) {
+
+  const url =
+    new URL(request.url);
+
+  const target =
+    url.searchParams.get("url");
+
+  if (!target) {
+
+    return text(
+      "Missing url",
+      400
+    );
+  }
+
+
+  try {
+
+    const upstream =
+      await fetch(
+        target,
+        {
+          headers: {
+            "User-Agent":
+              PROXY_UA
+          }
+        }
+      );
+
+
+    const contentType =
+      upstream.headers.get(
+        "content-type"
+      ) ||
+      "video/mp2t";
+
+
+    return new Response(
+      upstream.body,
+      {
+        status:
+          upstream.status,
+
+        headers: {
+          "Content-Type":
+            contentType,
+
+          "Access-Control-Allow-Origin":
+            "*"
+        }
+      }
+    );
+
+
+  } catch (e) {
+
+    console.error(
+      "TS PROXY ERROR:",
+      e
+    );
+
+    return text(
+      "TS Proxy Error",
+      500
+    );
+  }
+}
+
+
+// ======================================================
+// OPTIONS
+// ======================================================
+
+function handleOptions() {
+
+  return new Response(
+    null,
+    {
+      status: 204,
+      headers: corsHeaders()
+    }
+  );
+}
+
+
+// ======================================================
+// Worker Router
+// ======================================================
+
+export default {
+
+  async fetch(
+    request,
+    env,
+    ctx
+  ) {
+
+    const url =
+      new URL(request.url);
+
+    const pathname =
+      url.pathname;
+
+
+    // ------------------------------------------
+    // CORS preflight
+    // ------------------------------------------
+
+    if (
+      request.method === "OPTIONS"
+    ) {
+
+      return handleOptions();
+    }
+
+
+    // ------------------------------------------
+    // /api/channels
+    // ------------------------------------------
+
+    if (
+      pathname ===
+      "/api/channels"
+    ) {
+
+      return channelsApi(
+        request,
+        env
+      );
+    }
+
+
+    // ------------------------------------------
+    // /api/play.m3u8
+    // ------------------------------------------
+
+    if (
+      pathname ===
+      "/api/play.m3u8"
+    ) {
+
+      return playApi(
+        request,
+        env
+      );
+    }
+
+
+    // ------------------------------------------
+    // /api/playlist.m3u
+    // ------------------------------------------
+
+    if (
+      pathname ===
+      "/api/playlist.m3u"
+    ) {
+
+      return playlistApi(
+        request,
+        env
+      );
+    }
+
+
+    // ------------------------------------------
+    // /api/proxy.m3u8
+    // ------------------------------------------
+
+    if (
+      pathname ===
+      "/api/proxy.m3u8"
+    ) {
+
+      return proxyM3u8Api(
+        request,
+        env
+      );
+    }
+
+
+    // ------------------------------------------
+    // /api/ts
+    // ------------------------------------------
+
+    if (
+      pathname ===
+      "/api/ts"
+    ) {
+
+      return tsApi(
+        request,
+        env
+      );
+    }
+
+
+    // ------------------------------------------
+    // /api/save
+    // ------------------------------------------
+
+    if (
+      pathname ===
+      "/api/save"
+    ) {
+
+      return saveApi(
+        request,
+        env
+      );
+    }
+
+
+    // ------------------------------------------
+    // /api/viewers
+    // ------------------------------------------
+
+    if (
+      pathname ===
+      "/api/viewers"
+    ) {
+
+      return viewersApi(
+        request,
+        env
+      );
+    }
+
+
+    // ------------------------------------------
+    // /admin
+    // ------------------------------------------
+
+    if (
+      pathname === "/admin" ||
+      pathname === "/admin/"
+    ) {
+
+      const adminUrl =
+        new URL(request.url);
+
+      adminUrl.pathname =
+        "/admin.html";
+
+      return env.ASSETS.fetch(
+        new Request(adminUrl, request)
+      );
+    }
+
+
+    // ------------------------------------------
+    // الملفات الثابتة
+    // admin.html / data / إلخ
+    // ------------------------------------------
+
+    return env.ASSETS.fetch(
+      request
+    );
+  }
 };
