@@ -1,6 +1,7 @@
 // ======================================================
 // SUPER TV API - Cloudflare Worker
 // حماية User-Agent + Secret مخفي
+// + Debug مؤقت لاختبار X-App-Key
 // ======================================================
 
 const NEW_UA = "stv2026";
@@ -104,6 +105,46 @@ function checkAppSecurity(request, env) {
 
 
   return true;
+}
+
+
+// ======================================================
+// DEBUG SECURITY
+//
+// مؤقت فقط لمعرفة هل AppCreator24 يرسل:
+// User-Agent
+// X-App-Key
+//
+// لا يعرض قيمة المفتاح نفسها.
+// ======================================================
+
+function securityDebugApi(request, env) {
+
+  const ua =
+    request.headers.get("User-Agent") || "";
+
+  const appKey =
+    request.headers.get("X-App-Key") || "";
+
+
+  return json({
+
+    uaReceived:
+      !!ua,
+
+    uaHasStv2026:
+      ua.toLowerCase().includes(
+        NEW_UA.toLowerCase()
+      ),
+
+    appKeyReceived:
+      !!appKey,
+
+    appKeyValid:
+      !!env.APP_SECRET &&
+      appKey === env.APP_SECRET
+
+  });
 }
 
 
@@ -414,6 +455,7 @@ async function saveApi(
 
 
   // حماية Secret
+
   if (
     !checkAppSecurity(
       request,
@@ -792,6 +834,7 @@ async function proxyM3u8Api(
 ) {
 
   // حماية الـ Proxy
+
   if (
     !checkAppSecurity(
       request,
@@ -949,6 +992,7 @@ async function tsApi(
 ) {
 
   // حماية الـ TS Proxy
+
   if (
     !checkAppSecurity(
       request,
@@ -1081,6 +1125,23 @@ export default {
     ) {
 
       return handleOptions();
+    }
+
+
+    // ------------------------------------------
+    // DEBUG SECURITY
+    // مؤقت
+    // ------------------------------------------
+
+    if (
+      pathname ===
+      "/api/debug-security"
+    ) {
+
+      return securityDebugApi(
+        request,
+        env
+      );
     }
 
 
