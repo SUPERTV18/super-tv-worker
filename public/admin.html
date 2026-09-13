@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>لوحة تحكم Super IPTV</title>
+<style>
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #0f172a;
+  color: #fff;
+  margin: 0;
+  padding: 0;
+}
+header {
+  background: linear-gradient(90deg,#1e293b,#0f172a);
+  padding: 20px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+.container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: auto;
+}
+.form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 10px;
+}
+input, select, button {
+  padding: 10px;
+  border-radius: 6px;
+  border: 0;
+  font-size: 14px;
+}
+input, select { width: 100%; }
+button {
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+button:hover { transform: scale(1.05); }
+button.green { background: #22c55e; color: #000; }
+button.red { background: #ef4444; color: #fff; }
+button.blue { background: #3b82f6; color: #fff; }
+button.yellow { background: #facc15; color: #000; }
+.search {
+  margin-bottom: 20px;
+  padding: 10px;
+  width: 100%;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+  background: #1e293b;
+  color: #fff;
+}
+
+/* بطاقات القنوات */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 15px;
+}
+.card {
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 10px;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.card.dragging {
+  opacity: 0.5;
+  transform: scale(1.05);
+  border: 2px dashed #22c55e;
+}
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+}
+.card h3 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  color: #22c55e;
+}
+.card p {
+  margin: 5px 0;
+  font-size: 14px;
+}
+.card .viewers {
+  font-weight: bold;
+  color: #3b82f6;
+}
+.card .buttons {
+  margin-top: 10px;
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+}
+.sort-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  justify-content: flex-end;
+}
+@media(max-width:600px){
+  .form {grid-template-columns:1fr;}
+  .cards {grid-template-columns:1fr;}
+  .sort-buttons {justify-content: center;}
+}
+</style>
+</head>
+<body>
+<header>لوحة تحكم Super IPTV</header>
+<div class="container">
+
+<!-- فورم إضافة وتعديل -->
+<div class="form">
+<input id="id" placeholder="ID">
+<input id="name" placeholder="اسم القناة">
+<input id="url" placeholder="رابط البث">
+<input id="group" placeholder="اسم الباقة">
+<input id="ua" placeholder="User-Agent">
+<input id="ref" placeholder="Referer">
+<input id="org" placeholder="Origin">
+<input id="adminKey" type="password" placeholder="Admin Key (optional)">
+<button onclick="addChannel()" class="green">➕ إضافة</button>
+<button onclick="updateChannel()" class="blue">💾 حفظ التعديل</button>
+</div>
+
+<!-- أزرار الترتيب -->
+<div class="sort-buttons">
+  <button onclick="sortByViewers()" class="yellow">ترتيب حسب المشاهدين ⬆️</button>
+  <button onclick="sortByName()" class="yellow">ترتيب حسب الاسم ⬆️</button>
+</div>
+
+<!-- البحث -->
+<input class="search" id="search" placeholder="بحث سريع..." oninput="render()">
+
+<!-- قائمة القنوات -->
+<div class="cards" id="list"></div>
+
+<script>
+let channels = {};
+let editId = null;
+const list = document.getElementById("list");
+const search = document.getElementById("search");
+const id = document.getElementById("id");
+const name = document.getElementById("name");
+const url = document.getElementById("url");
+const group = document.getElementById("group");
+const ua = document.getElementById("ua");
+const ref = document.getElementById("ref");
+const org = document.getElementById("org");
+
+async function load(){
+  const r = await fetch('/api/channels');
+  channels = await r.json();
+  render();
+  loadViewers();
+}
+
+function render(){
+  const q = search.value.toLowerCase();
+  list.innerHTML='';
+  for(const grp in channels){
+    channels[grp].forEach(ch=>{
+      if(ch.name.toLowerCase().includes(q) || ch.id.toString().includes(q)){
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.setAttribute('draggable', true);
+        card.dataset.id = ch.id;
+        card.dataset.group = grp;
+        card.innerHTML = `
+          <h3>${ch.name}</h3>
+          <p><strong>ID:</strong> ${ch.id}</p>
+          <p><strong>الباقة:</strong> ${grp}</p>
+          <p class="viewers"><strong>المشاهدين:</strong> <span id="viewers-${ch.id}">0</span></p>
+          <div class="buttons">
+            <button onclick='edit("${grp}","${ch.id}")' class="blue">✏️ تعديل</button>
+            <button onclick='del("${grp}","${ch.id}")' class="red">🗑 حذف</button>
+          </div>
+        `;
+        addDragAndDrop(card);
+        list.appendChild(card);
+      }
+    })
+  }
+}
+
+// إضافة قناة
+function addChannel(){
+  const g = group.value.trim();
+  if(!channels[g]) channels[g]=[];
+  channels[g].push({
+    id:id.value.trim(),
+    name:name.value.trim(),
+    url:url.value.trim(),
+    headers:{
+      "User-Agent": ua.value.trim(),
+      "Referer": ref.value.trim(),
+      "Origin": org.value.trim()
+    }
+  });
+  save();
+}
+
+// تعديل قناة
+function edit(grp, idVal){
+  const ch = channels[grp].find(x=>x.id==idVal);
+  id.value=ch.id; name.value=ch.name; url.value=ch.url; group.value=grp;
+  ua.value=ch.headers?.["User-Agent"]||""; ref.value=ch.headers?.["Referer"]||""; org.value=ch.headers?.["Origin"]||"";
+  editId=idVal;
+}
+
+// حفظ التعديل
+function updateChannel(){
+  if(!editId) return alert("اختر قناة أولاً");
+  const g = group.value.trim();
+  for(const k in channels) channels[k]=channels[k].filter(x=>x.id!=editId);
+  if(!channels[g]) channels[g]=[];
+  channels[g].push({
+    id:id.value.trim(),
+    name:name.value.trim(),
+    url:url.value.trim(),
+    headers:{
+      "User-Agent": ua.value.trim(),
+      "Referer": ref.value.trim(),
+      "Origin": org.value.trim()
+    }
+  });
+  editId=null;
+  save();
+}
+
+// حذف قناة
+function del(grp, idVal){
+  if(!confirm("حذف القناة؟")) return;
+  channels[grp]=channels[grp].filter(x=>x.id!=idVal);
+  save();
+}
+
+// حفظ بيانات القنوات في السيرفر
+async function save(){
+  const key=document.getElementById('adminKey').value.trim();
+  const headers={'Content-Type':'application/json'};
+  if(key) headers['X-Admin-Key']=key;
+  const r=await fetch('/api/channels',{
+    method:'POST',
+    headers,
+    body:JSON.stringify(channels)
+  });
+  if(!r.ok){const d=await r.json().catch(()=>({}));alert(d.error||'فشل الحفظ');return;}
+  id.value=name.value=url.value=group.value=ua.value=ref.value=org.value="";
+  load();
+}
+
+// جلب عدد المشاهدين
+async function loadViewers(){
+  try{
+    for(const grp in channels){
+      for(const ch of channels[grp]){
+        const res = await fetch(`/api/viewers?id=${ch.id}`);
+        const data = await res.json();
+        const count = data[ch.id] || 0;
+        const el = document.getElementById(`viewers-${ch.id}`);
+        if(el) el.innerText = count;
+      }
+    }
+  }catch(e){ console.error("خطأ في جلب المشاهدين:", e.message); }
+}
+
+// === Drag & Drop مع حفظ الترتيب ===
+function addDragAndDrop(card){
+  card.addEventListener('dragstart', e=>{
+    card.classList.add('dragging');
+  });
+  card.addEventListener('dragend', e=>{
+    card.classList.remove('dragging');
+    updateChannelOrder();
+  });
+
+  list.addEventListener('dragover', e=>{
+    e.preventDefault();
+    const draggingCard = document.querySelector('.dragging');
+    const afterElement = getDragAfterElement(list, e.clientY);
+    if(afterElement == null){
+      list.appendChild(draggingCard);
+    } else {
+      list.insertBefore(draggingCard, afterElement);
+    }
+  });
+}
+
+// حساب البطاقة التالية أثناء السحب
+function getDragAfterElement(container, y){
+  const draggableElements = [...container.querySelectorAll('.card:not(.dragging)')];
+  return draggableElements.reduce((closest, child)=>{
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height/2;
+    if(offset < 0 && offset > closest.offset){
+      return { offset: offset, element: child };
+    } else return closest;
+  }, {offset: Number.NEGATIVE_INFINITY}).element;
+}
+
+// تحديث ترتيب القنوات وحفظه في السيرفر
+function updateChannelOrder(){
+  const newChannels = {};
+  const cards = list.querySelectorAll('.card');
+  cards.forEach(card=>{
+    const grp = card.dataset.group;
+    const idVal = card.dataset.id;
+    const ch = channels[grp].find(c=>c.id==idVal);
+    if(!newChannels[grp]) newChannels[grp]=[];
+    newChannels[grp].push(ch);
+  });
+  channels = newChannels;
+  const key=document.getElementById('adminKey').value.trim();
+  const headers={'Content-Type':'application/json'};
+  if(key) headers['X-Admin-Key']=key;
+  fetch('/api/channels',{method:'POST',headers,body:JSON.stringify(channels)});
+}
+
+// ترتيب حسب المشاهدين
+function sortByViewers(){
+  for(const grp in channels){
+    channels[grp].sort((a,b)=>{
+      const aCount = parseInt(document.getElementById(`viewers-${a.id}`)?.innerText || 0);
+      const bCount = parseInt(document.getElementById(`viewers-${b.id}`)?.innerText || 0);
+      return bCount - aCount;
+    });
+  }
+  updateChannelOrder();
+  render();
+}
+
+// ترتيب حسب الاسم أبجديًا
+function sortByName(){
+  for(const grp in channels){
+    channels[grp].sort((a,b)=>a.name.localeCompare(b.name));
+  }
+  updateChannelOrder();
+  render();
+}
+
+setInterval(loadViewers, 1000);
+load();
+</script>
+</body>
+</html>
