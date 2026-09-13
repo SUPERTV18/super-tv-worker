@@ -1,6 +1,6 @@
 // ======================================================
 // SUPER TV API - Cloudflare Worker
-// تحويل API القديم من Vercel إلى Cloudflare Worker
+// حماية User-Agent + Secret مخفي
 // ======================================================
 
 const NEW_UA = "stv2026";
@@ -27,7 +27,11 @@ function json(data, status = 200) {
   });
 }
 
-function text(data, status = 200, contentType = "text/plain; charset=utf-8") {
+function text(
+  data,
+  status = 200,
+  contentType = "text/plain; charset=utf-8"
+) {
   return new Response(data, {
     status,
     headers: {
@@ -56,6 +60,54 @@ function corsHeaders() {
 
 
 // ======================================================
+// حماية التطبيق
+//
+// يجب أن يرسل التطبيق:
+//
+// User-Agent: stv2026
+// X-App-Key: القيمة الموجودة في Cloudflare Secret
+// ======================================================
+
+function checkAppSecurity(request, env) {
+
+  const ua =
+    (
+      request.headers.get("User-Agent") || ""
+    ).toLowerCase();
+
+  const appKey =
+    request.headers.get("X-App-Key") || "";
+
+
+  // ----------------------------------------------------
+  // User-Agent
+  // ----------------------------------------------------
+
+  if (!ua.includes(NEW_UA.toLowerCase())) {
+    return false;
+  }
+
+
+  // ----------------------------------------------------
+  // Secret
+  // ----------------------------------------------------
+
+  if (!env.APP_SECRET) {
+    console.error("APP_SECRET is not configured");
+    return false;
+  }
+
+
+  if (appKey !== env.APP_SECRET) {
+    return false;
+  }
+
+
+  return true;
+}
+
+
+// ======================================================
 // قراءة channels.json
 //
 // الأولوية:
@@ -64,48 +116,70 @@ function corsHeaders() {
 // ======================================================
 
 async function loadChannels(env, request) {
-  // ------------------------------------------
-  // محاولة القراءة من KV
-  // ------------------------------------------
 
   if (env.DATA_KV) {
+
     try {
-      const saved = await env.DATA_KV.get("channels");
+
+      const saved =
+        await env.DATA_KV.get("channels");
 
       if (saved) {
         return JSON.parse(saved);
       }
+
     } catch (e) {
-      console.error("KV CHANNELS ERROR:", e);
+
+      console.error(
+        "KV CHANNELS ERROR:",
+        e
+      );
     }
   }
 
-  // ------------------------------------------
-  // fallback إلى data/channels.json
-  // ------------------------------------------
 
   try {
-    const url = new URL(request.url);
-    url.pathname = "/data/channels.json";
+
+    const url =
+      new URL(request.url);
+
+    url.pathname =
+      "/data/channels.json";
+
     url.search = "";
 
-    const response = await env.ASSETS.fetch(
-      new Request(url.toString(), {
-        method: "GET"
-      })
-    );
+
+    const response =
+      await env.ASSETS.fetch(
+        new Request(
+          url.toString(),
+          {
+            method: "GET"
+          }
+        )
+      );
+
 
     if (!response.ok) {
+
       throw new Error(
         `channels.json HTTP ${response.status}`
       );
     }
 
+
     return await response.json();
 
   } catch (e) {
-    console.error("ASSET CHANNELS ERROR:", e);
-    throw new Error("channels.json not found");
+
+    console.error(
+      "ASSET CHANNELS ERROR:",
+      e
+    );
+
+    throw new Error(
+      "channels.json not found"
+    );
   }
 }
 
@@ -115,20 +189,28 @@ async function loadChannels(env, request) {
 // ======================================================
 
 function findChannel(data, id) {
-  for (const group of Object.values(data)) {
+
+  for (
+    const group of Object.values(data)
+  ) {
 
     if (!Array.isArray(group)) {
       continue;
     }
 
-    const found = group.find(
-      ch => String(ch.id) === String(id)
-    );
+
+    const found =
+      group.find(
+        ch =>
+          String(ch.id) === String(id)
+      );
+
 
     if (found) {
       return found;
     }
   }
+
 
   return null;
 }
@@ -136,11 +218,6 @@ function findChannel(data, id) {
 
 // ======================================================
 // عداد المشاهدين
-//
-// Worker لا يستطيع تعديل viewers.json مباشرة.
-// لذلك نستخدم KV.
-//
-// نحافظ على فكرة activity لمدة 30 ثانية.
 // ======================================================
 
 async function incrementViewer(env, id) {
@@ -149,36 +226,50 @@ async function incrementViewer(env, id) {
     return;
   }
 
-  const key = `viewer:${id}`;
+
+  const key =
+    `viewer:${id}`;
+
 
   try {
 
-    const old = await env.DATA_KV.get(
-      key,
-      "json"
-    );
+    const old =
+      await env.DATA_KV.get(
+        key,
+        "json"
+      );
 
-    const now = Date.now();
+
+    const now =
+      Date.now();
+
 
     let count = 0;
 
-    if (old && typeof old === "object") {
 
-      // إذا كانت آخر Activity منذ أكثر من 30 ثانية
-      // نبدأ جلسة جديدة.
+    if (
+      old &&
+      typeof old === "object"
+    ) {
 
       if (
         old.lastActivity &&
         now - old.lastActivity <= 30000
       ) {
-        count = Number(old.count || 0) + 1;
+
+        count =
+          Number(old.count || 0) + 1;
+
       } else {
+
         count = 1;
       }
 
     } else {
+
       count = 1;
     }
+
 
     await env.DATA_KV.put(
       key,
@@ -190,6 +281,7 @@ async function incrementViewer(env, id) {
         expirationTtl: 31
       }
     );
+
 
   } catch (e) {
 
@@ -207,34 +299,47 @@ async function incrementViewer(env, id) {
 
 async function viewersApi(request, env) {
 
-  const url = new URL(request.url);
-  const id = url.searchParams.get("id");
+  const url =
+    new URL(request.url);
+
+  const id =
+    url.searchParams.get("id");
+
 
   if (!id) {
+
     return json(
-      { error: "Missing id" },
+      {
+        error: "Missing id"
+      },
       400
     );
   }
 
+
   let count = 0;
+
 
   if (env.DATA_KV) {
 
     try {
 
-      const data = await env.DATA_KV.get(
-        `viewer:${id}`,
-        "json"
-      );
+      const data =
+        await env.DATA_KV.get(
+          `viewer:${id}`,
+          "json"
+        );
+
 
       if (
         data &&
         typeof data === "object"
       ) {
-        count = Number(
-          data.count || 0
-        );
+
+        count =
+          Number(
+            data.count || 0
+          );
       }
 
     } catch (e) {
@@ -246,6 +351,7 @@ async function viewersApi(request, env) {
     }
   }
 
+
   return json({
     [id]: count
   });
@@ -256,7 +362,10 @@ async function viewersApi(request, env) {
 // API: /api/channels
 // ======================================================
 
-async function channelsApi(request, env) {
+async function channelsApi(
+  request,
+  env
+) {
 
   try {
 
@@ -265,6 +374,7 @@ async function channelsApi(request, env) {
         env,
         request
       );
+
 
     return json(data);
 
@@ -282,11 +392,17 @@ async function channelsApi(request, env) {
 
 // ======================================================
 // API: /api/save
+// حماية إضافية أيضًا
 // ======================================================
 
-async function saveApi(request, env) {
+async function saveApi(
+  request,
+  env
+) {
 
-  if (request.method !== "POST") {
+  if (
+    request.method !== "POST"
+  ) {
 
     return json(
       {
@@ -295,6 +411,22 @@ async function saveApi(request, env) {
       405
     );
   }
+
+
+  // حماية Secret
+  if (
+    !checkAppSecurity(
+      request,
+      env
+    )
+  ) {
+
+    return text(
+      "Forbidden",
+      403
+    );
+  }
+
 
   if (!env.DATA_KV) {
 
@@ -307,19 +439,23 @@ async function saveApi(request, env) {
     );
   }
 
+
   try {
 
     const body =
       await request.json();
+
 
     await env.DATA_KV.put(
       "channels",
       JSON.stringify(body)
     );
 
+
     return json({
       status: "ok"
     });
+
 
   } catch (e) {
 
@@ -327,6 +463,7 @@ async function saveApi(request, env) {
       "SAVE ERROR:",
       e
     );
+
 
     return json(
       {
@@ -342,7 +479,10 @@ async function saveApi(request, env) {
 // API: /api/playlist.m3u
 // ======================================================
 
-async function playlistApi(request, env) {
+async function playlistApi(
+  request,
+  env
+) {
 
   try {
 
@@ -352,13 +492,18 @@ async function playlistApi(request, env) {
         request
       );
 
+
     const requestUrl =
       new URL(request.url);
+
 
     const base =
       requestUrl.origin;
 
-    let m3u = "#EXTM3U\n";
+
+    let m3u =
+      "#EXTM3U\n";
+
 
     for (
       const category in data
@@ -372,6 +517,7 @@ async function playlistApi(request, env) {
         continue;
       }
 
+
       for (
         const ch of data[category]
       ) {
@@ -379,16 +525,20 @@ async function playlistApi(request, env) {
         m3u +=
           `#EXTINF:-1 tvg-id="${ch.id}" group-title="${category}",${ch.name}\n`;
 
+
         m3u +=
           `${base}/api/play.m3u8?id=${encodeURIComponent(ch.id)}\n`;
       }
     }
 
+
     return new Response(
       m3u,
       {
         status: 200,
+
         headers: {
+
           "Content-Type":
             "application/x-mpegURL",
 
@@ -401,12 +551,14 @@ async function playlistApi(request, env) {
       }
     );
 
+
   } catch (e) {
 
     console.error(
       "PLAYLIST ERROR:",
       e
     );
+
 
     return text(
       "Playlist error",
@@ -420,15 +572,20 @@ async function playlistApi(request, env) {
 // API: /api/play.m3u8
 // ======================================================
 
-async function playApi(request, env) {
+async function playApi(
+  request,
+  env
+) {
 
   try {
 
     const url =
       new URL(request.url);
 
+
     const id =
       url.searchParams.get("id");
+
 
     if (!id) {
 
@@ -438,22 +595,13 @@ async function playApi(request, env) {
       );
     }
 
+
     const ua =
       (
         request.headers.get(
           "User-Agent"
         ) || ""
       ).toLowerCase();
-
-
-    // ==================================================
-    // عداد المشاهدين
-    // ==================================================
-
-    await incrementViewer(
-      env,
-      id
-    );
 
 
     // ==================================================
@@ -477,12 +625,15 @@ async function playApi(request, env) {
 
 
     // ==================================================
-    // السماح للتطبيق فقط
+    // الحماية الجديدة
+    //
+    // User-Agent + X-App-Key
     // ==================================================
 
     if (
-      !ua.includes(
-        NEW_UA.toLowerCase()
+      !checkAppSecurity(
+        request,
+        env
       )
     ) {
 
@@ -494,10 +645,21 @@ async function playApi(request, env) {
 
 
     // ==================================================
+    // عداد المشاهدين
+    // ==================================================
+
+    await incrementViewer(
+      env,
+      id
+    );
+
+
+    // ==================================================
     // قراءة القنوات
     // ==================================================
 
     let data;
+
 
     try {
 
@@ -527,10 +689,6 @@ async function playApi(request, env) {
       );
 
 
-    // ==================================================
-    // القناة غير موجودة
-    // ==================================================
-
     if (!channel) {
 
       return text(
@@ -551,8 +709,6 @@ async function playApi(request, env) {
 
     // ==================================================
     // القنوات العادية
-    // نفس نظام Vercel القديم:
-    // Redirect مباشر للمصدر
     // ==================================================
 
     if (
@@ -581,6 +737,7 @@ async function playApi(request, env) {
         cleanUrl,
         {
           headers: {
+
             "User-Agent":
               "Mozilla/5.0",
 
@@ -615,6 +772,7 @@ async function playApi(request, env) {
       e
     );
 
+
     return text(
       "Server error: " +
         e.message,
@@ -633,11 +791,28 @@ async function proxyM3u8Api(
   env
 ) {
 
+  // حماية الـ Proxy
+  if (
+    !checkAppSecurity(
+      request,
+      env
+    )
+  ) {
+
+    return text(
+      "Forbidden",
+      403
+    );
+  }
+
+
   const url =
     new URL(request.url);
 
+
   const target =
     url.searchParams.get("url");
+
 
   if (!target) {
 
@@ -687,10 +862,6 @@ async function proxyM3u8Api(
         await upstream.text();
 
 
-      // ==================================================
-      // تعديل روابط الـM3U8
-      // ==================================================
-
       body =
         body.replace(
           /(https?:\/\/[^\s]+)/g,
@@ -702,9 +873,11 @@ async function proxyM3u8Api(
       return new Response(
         body,
         {
-          status: upstream.status,
+          status:
+            upstream.status,
 
           headers: {
+
             "Content-Type":
               "application/vnd.apple.mpegurl",
 
@@ -723,10 +896,12 @@ async function proxyM3u8Api(
     const headers =
       new Headers();
 
+
     headers.set(
       "Access-Control-Allow-Origin",
       "*"
     );
+
 
     if (contentType) {
 
@@ -755,6 +930,7 @@ async function proxyM3u8Api(
       e
     );
 
+
     return text(
       "Proxy error",
       500
@@ -772,11 +948,28 @@ async function tsApi(
   env
 ) {
 
+  // حماية الـ TS Proxy
+  if (
+    !checkAppSecurity(
+      request,
+      env
+    )
+  ) {
+
+    return text(
+      "Forbidden",
+      403
+    );
+  }
+
+
   const url =
     new URL(request.url);
 
+
   const target =
     url.searchParams.get("url");
+
 
   if (!target) {
 
@@ -794,6 +987,7 @@ async function tsApi(
         target,
         {
           headers: {
+
             "User-Agent":
               PROXY_UA
           }
@@ -815,6 +1009,7 @@ async function tsApi(
           upstream.status,
 
         headers: {
+
           "Content-Type":
             contentType,
 
@@ -831,6 +1026,7 @@ async function tsApi(
       "TS PROXY ERROR:",
       e
     );
+
 
     return text(
       "TS Proxy Error",
@@ -870,6 +1066,7 @@ export default {
 
     const url =
       new URL(request.url);
+
 
     const pathname =
       url.pathname;
@@ -1011,18 +1208,22 @@ export default {
       const adminUrl =
         new URL(request.url);
 
+
       adminUrl.pathname =
         "/admin.html";
 
+
       return env.ASSETS.fetch(
-        new Request(adminUrl, request)
+        new Request(
+          adminUrl,
+          request
+        )
       );
     }
 
 
     // ------------------------------------------
     // الملفات الثابتة
-    // admin.html / data / إلخ
     // ------------------------------------------
 
     return env.ASSETS.fetch(
