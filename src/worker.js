@@ -1,5 +1,6 @@
 // ============================================================
 // SUPER TV API - Cloudflare Worker
+// HLS SOURCE HIDDEN PROXY
 // ============================================================
 
 const NEW_UA = "stv2026";
@@ -13,24 +14,25 @@ const PROXY_UA =
   "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
 
 // ============================================================
-// RATE LIMIT SETTINGS
+// RATE LIMIT
 // ============================================================
 
-// عدد طلبات تشغيل القنوات المسموح بها لكل IP + App Key
 const PLAY_RATE_LIMIT = 30;
-
-// المدة الزمنية
 const PLAY_RATE_WINDOW = 60;
 
-// عدد محاولات الدخول الخاطئة لكل IP
 const INVALID_RATE_LIMIT = 15;
-
-// مدة حظر المحاولات الخاطئة
 const INVALID_RATE_WINDOW = 60;
 
+// ============================================================
+// HLS TOKEN
+// ============================================================
+
+// مدة صلاحية رابط HLS الداخلي
+// 30 دقيقة
+const HLS_TOKEN_TTL = 30 * 60 * 1000;
 
 // ============================================================
-// HELPERS
+// RESPONSE HELPERS
 // ============================================================
 
 function json(data, status = 200) {
@@ -39,19 +41,13 @@ function json(data, status = 200) {
     {
       status,
       headers: {
-        "Content-Type":
-          "application/json; charset=utf-8",
-
-        "Access-Control-Allow-Origin":
-          "*",
-
-        "Cache-Control":
-          "no-store"
+        "Content-Type": "application/json; charset=utf-8",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-store"
       }
     }
   );
 }
-
 
 function text(
   body,
@@ -63,52 +59,35 @@ function text(
     {
       status,
       headers: {
-        "Content-Type":
-          contentType,
-
-        "Access-Control-Allow-Origin":
-          "*",
-
-        "Cache-Control":
-          "no-store"
+        "Content-Type": contentType,
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-store"
       }
     }
   );
 }
-
 
 // ============================================================
 // GET CLIENT IP
 // ============================================================
 
 function getClientIP(request) {
-
   return (
-    request.headers.get(
-      "CF-Connecting-IP"
-    ) ||
-
-    request.headers.get(
-      "X-Forwarded-For"
-    ) ||
-
+    request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("X-Forwarded-For") ||
     "unknown"
   )
     .split(",")[0]
     .trim();
 }
 
-
 // ============================================================
-// HASH
+// SHA256
 // ============================================================
 
 async function sha256(value) {
-
   const data =
-    new TextEncoder().encode(
-      value
-    );
+    new TextEncoder().encode(value);
 
   const hash =
     await crypto.subtle.digest(
@@ -121,12 +100,222 @@ async function sha256(value) {
   )
     .map(
       b =>
-        b.toString(16)
-         .padStart(2, "0")
+        b
+          .toString(16)
+          .padStart(2, "0")
     )
     .join("");
 }
 
+// ============================================================
+// BASE64URL
+// ============================================================
+
+function base64UrlEncode(bytes) {
+  let binary = "";
+
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function base64UrlDecode(value) {
+  value = value
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+
+  while (value.length % 4) {
+    value += "=";
+  }
+
+  const binary = atob(value);
+
+  const bytes =
+    new Uint8Array(
+      binary.length
+    );
+
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] =
+      binary.charCodeAt(i);
+  }
+
+  return bytes;
+}
+
+// ============================================================
+// HMAC KEY
+// ============================================================
+
+async function getCryptoKey(env) {
+
+  if (!env.APP_SECRET) {
+    throw new Error(
+      "APP_SECRET is not configured"
+    );
+  }
+
+  return crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(
+      env.APP_SECRET
+    ),
+    {
+      name: "HMAC",
+      hash: "SHA-256"
+    },
+    false,
+    ["sign", "verify"]
+  );
+}
+
+// ============================================================
+// CREATE HLS TOKEN
+// ============================================================
+
+async function createHLSToken(
+  env,
+  target
+) {
+
+  const expires =
+    Date.now() +
+    HLS_TOKEN_TTL;
+
+  const payload =
+    JSON.stringify({
+      u: target,
+      e: expires
+    });
+
+  const payloadBytes =
+    new TextEncoder().encode(
+      payload
+    );
+
+  const payload64 =
+    base64UrlEncode(
+      payloadBytes
+    );
+
+  const key =
+    await getCryptoKey(
+      env
+    );
+
+  const signature =
+    await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder().encode(
+        payload64
+      )
+    );
+
+  const sig64 =
+    base64UrlEncode(
+      new Uint8Array(
+        signature
+      )
+    );
+
+  return `${payload64}.${sig64}`;
+}
+
+// ============================================================
+// VERIFY HLS TOKEN
+// ============================================================
+
+async function verifyHLSToken(
+  env,
+  token
+) {
+
+  try {
+
+    if (!token) {
+      return null;
+    }
+
+    const parts =
+      token.split(".");
+
+    if (
+      parts.length !== 2
+    ) {
+      return null;
+    }
+
+    const [
+      payload64,
+      sig64
+    ] = parts;
+
+    const key =
+      await getCryptoKey(
+        env
+      );
+
+    const valid =
+      await crypto.subtle.verify(
+        "HMAC",
+        key,
+        base64UrlDecode(
+          sig64
+        ),
+        new TextEncoder().encode(
+          payload64
+        )
+      );
+
+    if (!valid) {
+      return null;
+    }
+
+    const payload =
+      JSON.parse(
+        new TextDecoder().decode(
+          base64UrlDecode(
+            payload64
+          )
+        )
+      );
+
+    if (
+      !payload ||
+      !payload.u ||
+      !payload.e
+    ) {
+      return null;
+    }
+
+    if (
+      Date.now() >
+      Number(payload.e)
+    ) {
+      return null;
+    }
+
+    return {
+      url: payload.u,
+      expires: payload.e
+    };
+
+  } catch (e) {
+
+    console.error(
+      "TOKEN VERIFY ERROR:",
+      e
+    );
+
+    return null;
+  }
+}
 
 // ============================================================
 // RATE LIMIT
@@ -148,13 +337,11 @@ async function checkRateLimit(
 
   }
 
-
   const now =
     Date.now();
 
   const storageKey =
     `ratelimit:${key}`;
-
 
   try {
 
@@ -164,7 +351,6 @@ async function checkRateLimit(
         "json"
       );
 
-
     if (
       !old ||
       !old.resetAt ||
@@ -173,31 +359,28 @@ async function checkRateLimit(
 
       await env.DATA_KV.put(
         storageKey,
-
         JSON.stringify({
           count: 1,
-
           resetAt:
             now +
             windowSeconds * 1000
         }),
-
         {
           expirationTtl:
             windowSeconds + 5
         }
       );
 
-
       return {
         allowed: true,
-
         remaining:
-          limit - 1
+          Math.max(
+            0,
+            limit - 1
+          )
       };
 
     }
-
 
     if (
       old.count >=
@@ -206,9 +389,7 @@ async function checkRateLimit(
 
       return {
         allowed: false,
-
         remaining: 0,
-
         retryAfter:
           Math.ceil(
             (
@@ -220,15 +401,11 @@ async function checkRateLimit(
 
     }
 
-
     old.count += 1;
-
 
     await env.DATA_KV.put(
       storageKey,
-
       JSON.stringify(old),
-
       {
         expirationTtl:
           Math.max(
@@ -243,10 +420,8 @@ async function checkRateLimit(
       }
     );
 
-
     return {
       allowed: true,
-
       remaining:
         Math.max(
           0,
@@ -255,7 +430,6 @@ async function checkRateLimit(
         )
     };
 
-
   } catch (e) {
 
     console.error(
@@ -263,17 +437,12 @@ async function checkRateLimit(
       e
     );
 
-
-    // لا نوقف التطبيق بالكامل
-    // إذا حدث خطأ في KV
     return {
       allowed: true,
       remaining: limit
     };
-
   }
 }
-
 
 // ============================================================
 // APP SECURITY
@@ -291,16 +460,10 @@ async function checkAppSecurity(
       ) || ""
     ).toLowerCase();
 
-
   const appKey =
     request.headers.get(
       "X-App-Key"
     ) || "";
-
-
-  // ----------------------------------------
-  // User-Agent
-  // ----------------------------------------
 
   if (
     !ua.includes(
@@ -315,11 +478,6 @@ async function checkAppSecurity(
 
   }
 
-
-  // ----------------------------------------
-  // APP_SECRET
-  // ----------------------------------------
-
   if (!env.APP_SECRET) {
 
     console.error(
@@ -333,11 +491,6 @@ async function checkAppSecurity(
 
   }
 
-
-  // ----------------------------------------
-  // APP KEY
-  // ----------------------------------------
-
   if (
     appKey !==
     env.APP_SECRET
@@ -350,12 +503,10 @@ async function checkAppSecurity(
 
   }
 
-
   return {
     allowed: true
   };
 }
-
 
 // ============================================================
 // SECURITY GUARD
@@ -372,41 +523,32 @@ async function securityGuard(
       request
     );
 
-
   const security =
     await checkAppSecurity(
       request,
       env
     );
 
-
   // ==========================================================
-  // INVALID REQUEST
+  // INVALID
   // ==========================================================
 
   if (
     !security.allowed
   ) {
 
-    // نعمل Rate Limit للمحاولات
-    // الخاطئة حسب IP فقط
     const ipHash =
       await sha256(
         ip
       );
 
-
     const invalidLimit =
       await checkRateLimit(
         env,
-
         `invalid:${ipHash}`,
-
         INVALID_RATE_LIMIT,
-
         INVALID_RATE_WINDOW
       );
-
 
     if (
       !invalidLimit.allowed
@@ -440,7 +582,6 @@ async function securityGuard(
 
     }
 
-
     return {
       allowed: false,
 
@@ -452,7 +593,6 @@ async function securityGuard(
     };
 
   }
-
 
   // ==========================================================
   // PLAY RATE LIMIT
@@ -467,28 +607,21 @@ async function securityGuard(
         "X-App-Key"
       ) || "";
 
-
     const combined =
       `${ip}:${appKey}`;
-
 
     const keyHash =
       await sha256(
         combined
       );
 
-
     const rate =
       await checkRateLimit(
         env,
-
         `play:${keyHash}`,
-
         PLAY_RATE_LIMIT,
-
         PLAY_RATE_WINDOW
       );
-
 
     if (
       !rate.allowed
@@ -504,7 +637,6 @@ async function securityGuard(
               status: 429,
 
               headers: {
-
                 "Content-Type":
                   "text/plain; charset=utf-8",
 
@@ -516,7 +648,6 @@ async function securityGuard(
 
                 "Cache-Control":
                   "no-store"
-
               }
             }
           )
@@ -526,12 +657,10 @@ async function securityGuard(
 
   }
 
-
   return {
     allowed: true
   };
 }
-
 
 // ============================================================
 // LOAD CHANNELS
@@ -540,10 +669,6 @@ async function securityGuard(
 async function loadChannels(
   env
 ) {
-
-  // ----------------------------------------
-  // KV
-  // ----------------------------------------
 
   if (env.DATA_KV) {
 
@@ -555,11 +680,8 @@ async function loadChannels(
           "json"
         );
 
-
       if (kvData) {
-
         return kvData;
-
       }
 
     } catch (e) {
@@ -572,11 +694,6 @@ async function loadChannels(
     }
 
   }
-
-
-  // ----------------------------------------
-  // ASSETS
-  // ----------------------------------------
 
   if (env.ASSETS) {
 
@@ -592,11 +709,8 @@ async function loadChannels(
           )
         );
 
-
       if (response.ok) {
-
         return await response.json();
-
       }
 
     } catch (e) {
@@ -610,12 +724,10 @@ async function loadChannels(
 
   }
 
-
   throw new Error(
     "channels.json not found"
   );
 }
-
 
 // ============================================================
 // CHANNELS API
@@ -633,7 +745,6 @@ async function channelsApi(
         env
       );
 
-
     return json(
       data
     );
@@ -644,7 +755,6 @@ async function channelsApi(
       "CHANNELS ERROR:",
       e
     );
-
 
     return json(
       {
@@ -657,6 +767,560 @@ async function channelsApi(
   }
 }
 
+// ============================================================
+// BUILD UPSTREAM HEADERS
+// ============================================================
+
+function getUpstreamHeaders(
+  target
+) {
+
+  const headers = {
+    "User-Agent":
+      PROXY_UA
+  };
+
+  try {
+
+    const parsed =
+      new URL(
+        target
+      );
+
+    if (
+      parsed.hostname
+        .toLowerCase()
+        .includes("ostora")
+    ) {
+
+      headers.Referer =
+        "https://ostora.pages.dev/";
+
+    }
+
+  } catch {}
+
+  return headers;
+}
+
+// ============================================================
+// FETCH UPSTREAM
+// ============================================================
+
+async function fetchUpstream(
+  target,
+  request
+) {
+
+  const headers =
+    getUpstreamHeaders(
+      target
+    );
+
+  // مهم للفيديو/segments
+  const range =
+    request.headers.get(
+      "Range"
+    );
+
+  if (range) {
+    headers.Range =
+      range;
+  }
+
+  const referer =
+    request.headers.get(
+      "Referer"
+    );
+
+  if (
+    referer &&
+    referer.includes(
+      "super-tv-api.super-stv.workers.dev"
+    )
+  ) {
+
+    // لا نمرر Referer الخاص بالـ Worker للمصدر
+  }
+
+  return fetch(
+    target,
+    {
+      method:
+        request.method ===
+        "HEAD"
+          ? "HEAD"
+          : "GET",
+
+      redirect:
+        "follow",
+
+      headers
+    }
+  );
+}
+
+// ============================================================
+// HLS URL REWRITE
+// ============================================================
+
+function isProbablyM3U8(
+  url,
+  contentType = ""
+) {
+
+  const lowerUrl =
+    url.toLowerCase();
+
+  const lowerType =
+    contentType.toLowerCase();
+
+  return (
+    lowerType.includes(
+      "mpegurl"
+    ) ||
+    lowerType.includes(
+      "vnd.apple.mpegurl"
+    ) ||
+    lowerUrl.includes(
+      ".m3u8"
+    )
+  );
+}
+
+// ============================================================
+// REWRITE HLS MANIFEST
+// ============================================================
+
+async function rewriteHLSManifest(
+  env,
+  body,
+  sourceUrl,
+  workerOrigin
+) {
+
+  const lines =
+    body.split(/\r?\n/);
+
+  const output = [];
+
+  for (
+    let line of lines
+  ) {
+
+    const original =
+      line.trim();
+
+    // --------------------------------------------------------
+    // URI="..." داخل EXT-X-KEY / EXT-X-MAP / MEDIA ...
+    // --------------------------------------------------------
+
+    if (
+      original.startsWith(
+        "#"
+      )
+    ) {
+
+      line =
+        await rewriteURIAttributes(
+          env,
+          line,
+          sourceUrl,
+          workerOrigin
+        );
+
+      output.push(
+        line
+      );
+
+      continue;
+    }
+
+    // --------------------------------------------------------
+    // فارغ
+    // --------------------------------------------------------
+
+    if (!original) {
+
+      output.push(
+        line
+      );
+
+      continue;
+    }
+
+    // --------------------------------------------------------
+    // URL segment / child playlist
+    // --------------------------------------------------------
+
+    try {
+
+      const absolute =
+        new URL(
+          original,
+          sourceUrl
+        ).toString();
+
+      const token =
+        await createHLSToken(
+          env,
+          absolute
+        );
+
+      output.push(
+        `${workerOrigin}/api/hls?token=${encodeURIComponent(token)}`
+      );
+
+    } catch {
+
+      output.push(
+        line
+      );
+
+    }
+  }
+
+  return output.join("\n");
+}
+
+// ============================================================
+// REWRITE URI ATTRIBUTES
+// ============================================================
+
+async function rewriteURIAttributes(
+  env,
+  line,
+  sourceUrl,
+  workerOrigin
+) {
+
+  const regex =
+    /URI="([^"]+)"/gi;
+
+  const matches =
+    [
+      ...line.matchAll(
+        regex
+      )
+    ];
+
+  if (
+    !matches.length
+  ) {
+    return line;
+  }
+
+  let result =
+    line;
+
+  // نعالج من الخلف للأمام
+  for (
+    let i =
+      matches.length - 1;
+    i >= 0;
+    i--
+  ) {
+
+    const match =
+      matches[i];
+
+    const originalUri =
+      match[1];
+
+    try {
+
+      const absolute =
+        new URL(
+          originalUri,
+          sourceUrl
+        ).toString();
+
+      const token =
+        await createHLSToken(
+          env,
+          absolute
+        );
+
+      const replacement =
+        `${workerOrigin}/api/hls?token=${encodeURIComponent(token)}`;
+
+      result =
+        result.slice(
+          0,
+          match.index +
+          5
+        ) +
+        replacement +
+        result.slice(
+          match.index +
+          5 +
+          originalUri.length
+        );
+
+    } catch {}
+
+  }
+
+  return result;
+}
+
+// ============================================================
+// HLS ENTRY POINT
+// ============================================================
+
+async function hlsApi(
+  request,
+  env,
+  url
+) {
+
+  // ----------------------------------------------------------
+  // Security
+  // ----------------------------------------------------------
+
+  const security =
+    await securityGuard(
+      request,
+      env,
+      "proxy"
+    );
+
+  if (
+    !security.allowed
+  ) {
+
+    return security.response;
+
+  }
+
+  // ----------------------------------------------------------
+  // Token
+  // ----------------------------------------------------------
+
+  const token =
+    url.searchParams.get(
+      "token"
+    );
+
+  if (!token) {
+
+    return text(
+      "Missing token",
+      400
+    );
+
+  }
+
+  const decoded =
+    await verifyHLSToken(
+      env,
+      token
+    );
+
+  if (!decoded) {
+
+    return text(
+      "Invalid or expired token",
+      403
+    );
+
+  }
+
+  const target =
+    decoded.url;
+
+  // ----------------------------------------------------------
+  // URL safety
+  // ----------------------------------------------------------
+
+  let targetUrl;
+
+  try {
+
+    targetUrl =
+      new URL(
+        target
+      );
+
+    if (
+      targetUrl.protocol !==
+      "http:" &&
+      targetUrl.protocol !==
+      "https:"
+    ) {
+
+      return text(
+        "Invalid upstream protocol",
+        400
+      );
+
+    }
+
+  } catch {
+
+    return text(
+      "Invalid upstream URL",
+      400
+    );
+
+  }
+
+  // ----------------------------------------------------------
+  // Fetch
+  // ----------------------------------------------------------
+
+  try {
+
+    const upstream =
+      await fetchUpstream(
+        targetUrl.toString(),
+        request
+      );
+
+    const contentType =
+      upstream.headers.get(
+        "content-type"
+      ) || "";
+
+    // --------------------------------------------------------
+    // HLS Manifest
+    // --------------------------------------------------------
+
+    if (
+      isProbablyM3U8(
+        targetUrl.toString(),
+        contentType
+      )
+    ) {
+
+      const body =
+        await upstream.text();
+
+      const rewritten =
+        await rewriteHLSManifest(
+          env,
+          body,
+          targetUrl.toString(),
+          url.origin
+        );
+
+      return new Response(
+        rewritten,
+        {
+          status:
+            upstream.status,
+
+          headers: {
+
+            "Content-Type":
+              "application/vnd.apple.mpegurl",
+
+            "Access-Control-Allow-Origin":
+              "*",
+
+            "Cache-Control":
+              "no-store",
+
+            "X-Content-Type-Options":
+              "nosniff"
+          }
+        }
+      );
+
+    }
+
+    // --------------------------------------------------------
+    // Segment / Key / Binary
+    // --------------------------------------------------------
+
+    const headers =
+      new Headers();
+
+    if (contentType) {
+
+      headers.set(
+        "Content-Type",
+        contentType
+      );
+
+    }
+
+    const contentLength =
+      upstream.headers.get(
+        "Content-Length"
+      );
+
+    if (contentLength) {
+
+      headers.set(
+        "Content-Length",
+        contentLength
+      );
+
+    }
+
+    const contentRange =
+      upstream.headers.get(
+        "Content-Range"
+      );
+
+    if (contentRange) {
+
+      headers.set(
+        "Content-Range",
+        contentRange
+      );
+
+    }
+
+    const acceptRanges =
+      upstream.headers.get(
+        "Accept-Ranges"
+      );
+
+    if (acceptRanges) {
+
+      headers.set(
+        "Accept-Ranges",
+        acceptRanges
+      );
+
+    }
+
+    headers.set(
+      "Access-Control-Allow-Origin",
+      "*"
+    );
+
+    headers.set(
+      "Cache-Control",
+      "no-store"
+    );
+
+    return new Response(
+      upstream.body,
+      {
+        status:
+          upstream.status,
+
+        headers
+      }
+    );
+
+  } catch (e) {
+
+    console.error(
+      "HLS PROXY ERROR:",
+      e
+    );
+
+    return text(
+      "HLS Proxy Error",
+      500
+    );
+
+  }
+}
 
 // ============================================================
 // PLAY M3U8
@@ -670,15 +1334,10 @@ async function playApi(
 
   try {
 
-    // ----------------------------------------
-    // ID
-    // ----------------------------------------
-
     const id =
       url.searchParams.get(
         "id"
       );
-
 
     if (!id) {
 
@@ -689,20 +1348,17 @@ async function playApi(
 
     }
 
-
-    // ----------------------------------------
+    // --------------------------------------------------------
     // OLD UA
-    // ----------------------------------------
+    // --------------------------------------------------------
 
     const ua =
       request.headers.get(
         "User-Agent"
       ) || "";
 
-
     const lowerUA =
       ua.toLowerCase();
-
 
     if (
       lowerUA.includes(
@@ -720,10 +1376,9 @@ async function playApi(
 
     }
 
-
-    // ----------------------------------------
+    // --------------------------------------------------------
     // SECURITY
-    // ----------------------------------------
+    // --------------------------------------------------------
 
     const security =
       await securityGuard(
@@ -731,7 +1386,6 @@ async function playApi(
         env,
         "play"
       );
-
 
     if (
       !security.allowed
@@ -741,30 +1395,26 @@ async function playApi(
 
     }
 
-
-    // ----------------------------------------
+    // --------------------------------------------------------
     // VIEWER
-    // ----------------------------------------
+    // --------------------------------------------------------
 
     await incrementViewer(
       env,
       id
     );
 
-
-    // ----------------------------------------
+    // --------------------------------------------------------
     // CHANNELS
-    // ----------------------------------------
+    // --------------------------------------------------------
 
     const data =
       await loadChannels(
         env
       );
 
-
     let channel =
       null;
-
 
     for (
       const group
@@ -778,11 +1428,8 @@ async function playApi(
           group
         )
       ) {
-
         continue;
-
       }
-
 
       const found =
         group.find(
@@ -795,7 +1442,6 @@ async function playApi(
             )
         );
 
-
       if (found) {
 
         channel =
@@ -807,11 +1453,6 @@ async function playApi(
 
     }
 
-
-    // ----------------------------------------
-    // NOT FOUND
-    // ----------------------------------------
-
     if (!channel) {
 
       return text(
@@ -820,11 +1461,6 @@ async function playApi(
       );
 
     }
-
-
-    // ----------------------------------------
-    // URL MISSING
-    // ----------------------------------------
 
     if (!channel.url) {
 
@@ -835,53 +1471,38 @@ async function playApi(
 
     }
 
-
-    // ----------------------------------------
-    // NORMAL CHANNEL
-    // ----------------------------------------
-
-    if (
-      !channel.url
-        .toLowerCase()
-        .includes(
-          "ostora"
-        )
-    ) {
-
-      return Response.redirect(
-        channel.url,
-        302
-      );
-
-    }
-
-
-    // ----------------------------------------
-    // OSTORA
-    // ----------------------------------------
+    // --------------------------------------------------------
+    // SOURCE
+    // --------------------------------------------------------
 
     const cleanUrl =
       channel.url.split(
         "#"
       )[0];
 
+    // --------------------------------------------------------
+    // OSTORA REFERER
+    // --------------------------------------------------------
+
+    const headers =
+      getUpstreamHeaders(
+        cleanUrl
+      );
+
+    // --------------------------------------------------------
+    // FETCH SOURCE
+    // --------------------------------------------------------
 
     const response =
       await fetch(
         cleanUrl,
         {
-          headers: {
+          redirect:
+            "follow",
 
-            "User-Agent":
-              "Mozilla/5.0",
-
-            "Referer":
-              "https://ostora.pages.dev/"
-
-          }
+          headers
         }
       );
-
 
     if (!response.ok) {
 
@@ -892,12 +1513,87 @@ async function playApi(
 
     }
 
+    const contentType =
+      response.headers.get(
+        "content-type"
+      ) || "";
 
-    return Response.redirect(
-      response.url,
-      302
+    // --------------------------------------------------------
+    // M3U8 SOURCE
+    // --------------------------------------------------------
+
+    if (
+      isProbablyM3U8(
+        response.url ||
+        cleanUrl,
+        contentType
+      )
+    ) {
+
+      const body =
+        await response.text();
+
+      const rewritten =
+        await rewriteHLSManifest(
+          env,
+          body,
+          response.url ||
+            cleanUrl,
+          url.origin
+        );
+
+      return new Response(
+        rewritten,
+        {
+          status: 200,
+
+          headers: {
+
+            "Content-Type":
+              "application/vnd.apple.mpegurl",
+
+            "Access-Control-Allow-Origin":
+              "*",
+
+            "Cache-Control":
+              "no-store",
+
+            "X-Content-Type-Options":
+              "nosniff"
+          }
+        }
+      );
+
+    }
+
+    // --------------------------------------------------------
+    // NON M3U8 SOURCE
+    // --------------------------------------------------------
+
+    // حتى لو كان المصدر ليس M3U8
+    // لا نكشف المصدر.
+    // نعيده عبر Worker.
+
+    return new Response(
+      response.body,
+      {
+        status:
+          response.status,
+
+        headers: {
+
+          "Content-Type":
+            contentType ||
+            "application/octet-stream",
+
+          "Access-Control-Allow-Origin":
+            "*",
+
+          "Cache-Control":
+            "no-store"
+        }
+      }
     );
-
 
   } catch (e) {
 
@@ -905,7 +1601,6 @@ async function playApi(
       "PLAY ERROR:",
       e
     );
-
 
     return text(
       "Server error: " +
@@ -915,7 +1610,6 @@ async function playApi(
 
   }
 }
-
 
 // ============================================================
 // PLAYLIST M3U
@@ -934,14 +1628,11 @@ async function playlistApi(
         env
       );
 
-
     let m3u =
       "#EXTM3U\n";
 
-
     const host =
       url.origin;
-
 
     for (
       const category
@@ -951,17 +1642,13 @@ async function playlistApi(
       const channels =
         data[category];
 
-
       if (
         !Array.isArray(
           channels
         )
       ) {
-
         continue;
-
       }
-
 
       for (
         const ch
@@ -971,14 +1658,12 @@ async function playlistApi(
         m3u +=
           `#EXTINF:-1 tvg-id="${ch.id}" group-title="${category}",${ch.name}\n`;
 
-
         m3u +=
           `${host}/api/play.m3u8?id=${encodeURIComponent(ch.id)}\n`;
 
       }
 
     }
-
 
     return new Response(
       m3u,
@@ -998,11 +1683,9 @@ async function playlistApi(
 
           "Cache-Control":
             "no-store"
-
         }
       }
     );
-
 
   } catch (e) {
 
@@ -1010,7 +1693,6 @@ async function playlistApi(
       "PLAYLIST ERROR:",
       e
     );
-
 
     return text(
       "Playlist error: " +
@@ -1021,9 +1703,8 @@ async function playlistApi(
   }
 }
 
-
 // ============================================================
-// PROXY M3U8
+// OLD PROXY M3U8
 // ============================================================
 
 async function proxyM3u8Api(
@@ -1039,7 +1720,6 @@ async function proxyM3u8Api(
       "proxy"
     );
 
-
   if (
     !security.allowed
   ) {
@@ -1048,12 +1728,10 @@ async function proxyM3u8Api(
 
   }
 
-
   const target =
     url.searchParams.get(
       "url"
     );
-
 
   if (!target) {
 
@@ -1064,62 +1742,43 @@ async function proxyM3u8Api(
 
   }
 
-
   try {
 
     const upstream =
-      await fetch(
+      await fetchUpstream(
         target,
-        {
-          redirect:
-            "follow",
-
-          headers: {
-
-            "User-Agent":
-              PROXY_UA
-
-          }
-        }
+        request
       );
-
 
     const contentType =
       upstream.headers.get(
         "content-type"
       ) || "";
 
-
     if (
-      contentType.includes(
-        "mpegurl"
-      ) ||
-      target.includes(
-        ".m3u8"
+      isProbablyM3U8(
+        target,
+        contentType
       )
     ) {
 
-      let body =
+      const body =
         await upstream.text();
 
-
-      const base =
-        url.origin;
-
-
-      body =
-        body.replace(
-          /(https?:\/\/[^\s]+)/g,
-
-          u =>
-            `${base}/api/ts?url=${encodeURIComponent(u)}`
+      const rewritten =
+        await rewriteHLSManifest(
+          env,
+          body,
+          upstream.url ||
+            target,
+          url.origin
         );
 
-
       return new Response(
-        body,
+        rewritten,
         {
-          status: 200,
+          status:
+            upstream.status,
 
           headers: {
 
@@ -1131,13 +1790,11 @@ async function proxyM3u8Api(
 
             "Cache-Control":
               "no-store"
-
           }
         }
       );
 
     }
-
 
     return new Response(
       upstream.body,
@@ -1152,12 +1809,13 @@ async function proxyM3u8Api(
             "application/octet-stream",
 
           "Access-Control-Allow-Origin":
-            "*"
+            "*",
 
+          "Cache-Control":
+            "no-store"
         }
       }
     );
-
 
   } catch (e) {
 
@@ -1165,7 +1823,6 @@ async function proxyM3u8Api(
       "PROXY ERROR:",
       e
     );
-
 
     return text(
       "Proxy error",
@@ -1175,9 +1832,8 @@ async function proxyM3u8Api(
   }
 }
 
-
 // ============================================================
-// TS PROXY
+// OLD TS PROXY
 // ============================================================
 
 async function tsApi(
@@ -1193,7 +1849,6 @@ async function tsApi(
       "ts"
     );
 
-
   if (
     !security.allowed
   ) {
@@ -1202,12 +1857,10 @@ async function tsApi(
 
   }
 
-
   const target =
     url.searchParams.get(
       "url"
     );
-
 
   if (!target) {
 
@@ -1218,22 +1871,13 @@ async function tsApi(
 
   }
 
-
   try {
 
     const upstream =
-      await fetch(
+      await fetchUpstream(
         target,
-        {
-          headers: {
-
-            "User-Agent":
-              PROXY_UA
-
-          }
-        }
+        request
       );
-
 
     return new Response(
       upstream.body,
@@ -1251,11 +1895,9 @@ async function tsApi(
 
           "Access-Control-Allow-Origin":
             "*"
-
         }
       }
     );
-
 
   } catch (e) {
 
@@ -1264,7 +1906,6 @@ async function tsApi(
       e
     );
 
-
     return text(
       "TS Proxy Error",
       500
@@ -1272,7 +1913,6 @@ async function tsApi(
 
   }
 }
-
 
 // ============================================================
 // SAVE API
@@ -1290,7 +1930,6 @@ async function saveApi(
       "save"
     );
 
-
   if (
     !security.allowed
   ) {
@@ -1298,7 +1937,6 @@ async function saveApi(
     return security.response;
 
   }
-
 
   if (
     request.method !==
@@ -1315,12 +1953,10 @@ async function saveApi(
 
   }
 
-
   try {
 
     const body =
       await request.json();
-
 
     if (!env.DATA_KV) {
 
@@ -1334,14 +1970,12 @@ async function saveApi(
 
     }
 
-
     await env.DATA_KV.put(
       "channels",
       JSON.stringify(
         body
       )
     );
-
 
     return json(
       {
@@ -1350,14 +1984,12 @@ async function saveApi(
       }
     );
 
-
   } catch (e) {
 
     console.error(
       "SAVE ERROR:",
       e
     );
-
 
     return json(
       {
@@ -1370,7 +2002,6 @@ async function saveApi(
   }
 }
 
-
 // ============================================================
 // VIEWER INCREMENT
 // ============================================================
@@ -1381,15 +2012,11 @@ async function incrementViewer(
 ) {
 
   if (!env.DATA_KV) {
-
     return;
-
   }
-
 
   const key =
     `viewer:${id}`;
-
 
   try {
 
@@ -1399,30 +2026,23 @@ async function incrementViewer(
         "json"
       );
 
-
     const count =
       old?.count || 0;
 
-
     await env.DATA_KV.put(
       key,
-
       JSON.stringify({
-
         count:
           count + 1,
 
         lastActivity:
           Date.now()
-
       }),
-
       {
         expirationTtl:
           31
       }
     );
-
 
   } catch (e) {
 
@@ -1433,7 +2053,6 @@ async function incrementViewer(
 
   }
 }
-
 
 // ============================================================
 // VIEWERS API
@@ -1450,7 +2069,6 @@ async function viewersApi(
       "id"
     );
 
-
   if (!id) {
 
     return json(
@@ -1463,7 +2081,6 @@ async function viewersApi(
 
   }
 
-
   if (!env.DATA_KV) {
 
     return json({
@@ -1473,7 +2090,6 @@ async function viewersApi(
 
   }
 
-
   try {
 
     const data =
@@ -1482,27 +2098,20 @@ async function viewersApi(
         "json"
       );
 
-
     return json({
-
       [id]:
         data?.count || 0
-
     });
 
-
-  } catch (e) {
+  } catch {
 
     return json({
-
       [id]:
         0
-
     });
 
   }
 }
-
 
 // ============================================================
 // STATIC ASSETS
@@ -1522,12 +2131,10 @@ async function serveAsset(
 
   }
 
-
   return env.ASSETS.fetch(
     request
   );
 }
-
 
 // ============================================================
 // MAIN WORKER
@@ -1544,7 +2151,6 @@ export default {
       new URL(
         request.url
       );
-
 
     // ========================================================
     // CORS
@@ -1570,13 +2176,11 @@ export default {
 
             "Access-Control-Allow-Headers":
               "*"
-
           }
         }
       );
 
     }
-
 
     // ========================================================
     // CHANNELS
@@ -1593,7 +2197,6 @@ export default {
       );
 
     }
-
 
     // ========================================================
     // PLAY
@@ -1612,6 +2215,22 @@ export default {
 
     }
 
+    // ========================================================
+    // HIDDEN HLS PROXY
+    // ========================================================
+
+    if (
+      url.pathname ===
+      "/api/hls"
+    ) {
+
+      return hlsApi(
+        request,
+        env,
+        url
+      );
+
+    }
 
     // ========================================================
     // PLAYLIST
@@ -1630,7 +2249,6 @@ export default {
 
     }
 
-
     // ========================================================
     // PROXY M3U8
     // ========================================================
@@ -1647,7 +2265,6 @@ export default {
       );
 
     }
-
 
     // ========================================================
     // TS
@@ -1666,7 +2283,6 @@ export default {
 
     }
 
-
     // ========================================================
     // SAVE
     // ========================================================
@@ -1682,7 +2298,6 @@ export default {
       );
 
     }
-
 
     // ========================================================
     // VIEWERS
@@ -1701,7 +2316,6 @@ export default {
 
     }
 
-
     // ========================================================
     // ADMIN
     // ========================================================
@@ -1717,7 +2331,6 @@ export default {
           request.url
         );
 
-
       return serveAsset(
         new Request(
           adminUrl,
@@ -1727,7 +2340,6 @@ export default {
       );
 
     }
-
 
     // ========================================================
     // STATIC
