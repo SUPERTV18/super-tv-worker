@@ -24,7 +24,7 @@ const CONFIG = {
 
 
 // ============================================================
-// RESPONSE HELPERS
+// BASIC HELPERS
 // ============================================================
 
 function json(data, status = 200, extraHeaders = {}) {
@@ -215,8 +215,6 @@ function checkAppSecurity(request, env) {
 // ============================================================
 // RATE LIMIT
 // ============================================================
-// Disabled أثناء اختبار البث حتى لا يظهر 429
-// ============================================================
 
 async function checkRateLimit(request, env) {
   return true;
@@ -231,7 +229,8 @@ function normalizeChannel(channel) {
 
   if (
     !channel ||
-    typeof channel !== "object"
+    typeof channel !== "object" ||
+    Array.isArray(channel)
   ) {
     return null;
   }
@@ -298,86 +297,164 @@ function normalizeChannel(channel) {
 
 
 // ============================================================
-// EXTRACT CHANNELS
+// EXTRACT CHANNELS RECURSIVELY
+// ============================================================
+//
+// يدعم:
+// [
+//   {...},
+//   {...}
+// ]
+//
+// و:
+//
+// {
+//   "Bein Sports": [
+//      {...}
+//   ],
+//   "أفلام": [
+//      {...}
+//   ]
+// }
+//
+// و:
+//
+// {
+//   "channels": [...]
+// }
+//
 // ============================================================
 
 function extractChannels(data) {
 
-  // ------------------------------------------
-  // Array
-  // ------------------------------------------
-
-  if (
-    Array.isArray(data)
-  ) {
-
-    return data
-      .map(normalizeChannel)
-      .filter(Boolean);
-  }
+  const result = [];
 
 
-  // ------------------------------------------
-  // Object
-  // ------------------------------------------
+  function walk(value) {
 
-  if (
-    data &&
-    typeof data === "object"
-  ) {
-
-    const possibleKeys = [
-      "channels",
-      "data",
-      "results",
-      "items",
-      "list"
-    ];
+    if (!value) {
+      return;
+    }
 
 
-    for (
-      const key of possibleKeys
+    // ------------------------------------------
+    // Array
+    // ------------------------------------------
+
+    if (
+      Array.isArray(value)
     ) {
 
-      if (
-        Array.isArray(
-          data[key]
-        )
+      for (
+        const item of value
       ) {
 
-        const channels =
-          data[key]
-            .map(
-              normalizeChannel
-            )
-            .filter(Boolean);
+        const channel =
+          normalizeChannel(
+            item
+          );
 
 
-        if (
-          channels.length > 0
-        ) {
+        if (channel) {
 
-          return channels;
+          result.push(
+            channel
+          );
+
+          continue;
         }
+
+
+        // إذا كان عنصرًا يحتوي على
+        // مجموعة أخرى
+        walk(item);
       }
+
+      return;
     }
 
 
-    // ----------------------------------------
-    // Single channel object
-    // ----------------------------------------
+    // ------------------------------------------
+    // Object
+    // ------------------------------------------
 
-    const oneChannel =
-      normalizeChannel(data);
+    if (
+      typeof value === "object"
+    ) {
+
+      const channel =
+        normalizeChannel(
+          value
+        );
 
 
-    if (oneChannel) {
-      return [oneChannel];
+      if (channel) {
+
+        result.push(
+          channel
+        );
+
+        return;
+      }
+
+
+      // ----------------------------------------
+      // ليس قناة:
+      // ادخل داخل كل المفاتيح
+      // ----------------------------------------
+
+      for (
+        const key of Object.keys(value)
+      ) {
+
+        walk(
+          value[key]
+        );
+      }
     }
   }
 
 
-  return [];
+  walk(data);
+
+
+  // ------------------------------------------
+  // Remove duplicate IDs
+  // ------------------------------------------
+
+  const unique = [];
+
+
+  const seen =
+    new Set();
+
+
+  for (
+    const channel of result
+  ) {
+
+    const id =
+      normalizeId(
+        channel.id
+      );
+
+
+    if (
+      seen.has(id)
+    ) {
+      continue;
+    }
+
+
+    seen.add(id);
+
+    unique.push(
+      channel
+    );
+  }
+
+
+  return unique;
 }
 
 
@@ -442,7 +519,9 @@ async function loadChannelsFromKV(env) {
 
 
     const channels =
-      extractChannels(data);
+      extractChannels(
+        data
+      );
 
 
     console.log(
@@ -568,6 +647,7 @@ async function loadChannelsFromAssets(env) {
           "ASSETS JSON PARSE ERROR:",
           JSON.stringify({
             path,
+
             error:
               error?.message ||
               String(error)
@@ -579,15 +659,55 @@ async function loadChannelsFromAssets(env) {
 
 
       const channels =
-        extractChannels(data);
+        extractChannels(
+          data
+        );
 
 
       console.log(
         "ASSETS PARSED CHANNELS:",
         JSON.stringify({
           path,
+
           count:
             channels.length
+        })
+      );
+
+
+      // ----------------------------------------
+      // البحث عن test_http
+      // ----------------------------------------
+
+      const testHttp =
+        channels.find(
+          channel =>
+            normalizeId(
+              channel.id
+            ) ===
+            "test_http"
+        );
+
+
+      console.log(
+        "ASSETS TEST_HTTP:",
+        JSON.stringify({
+          found:
+            !!testHttp,
+
+          channel:
+            testHttp
+              ? {
+                  id:
+                    testHttp.id,
+
+                  name:
+                    testHttp.name,
+
+                  url:
+                    testHttp.url
+                }
+              : null
         })
       );
 
@@ -595,37 +715,6 @@ async function loadChannelsFromAssets(env) {
       if (
         channels.length > 0
       ) {
-
-        const testHttp =
-          channels.find(
-            c =>
-              normalizeId(c.id) ===
-              "test_http"
-          );
-
-
-        console.log(
-          "ASSETS TEST_HTTP:",
-          JSON.stringify({
-            found:
-              !!testHttp,
-
-            channel:
-              testHttp
-                ? {
-                    id:
-                      testHttp.id,
-
-                    name:
-                      testHttp.name,
-
-                    url:
-                      testHttp.url
-                  }
-                : null
-          })
-        );
-
 
         return channels;
       }
@@ -673,6 +762,7 @@ async function loadChannels(env) {
 
     console.log(
       "CHANNEL SOURCE: KV",
+
       kvChannels.length
     );
 
@@ -692,6 +782,7 @@ async function loadChannels(env) {
 
     console.log(
       "CHANNEL SOURCE: ASSETS",
+
       assetChannels.length
     );
 
@@ -718,6 +809,7 @@ async function findChannel(
 
   console.log(
     "CHANNEL LOOKUP:",
+
     JSON.stringify({
       id:
         requestedId
@@ -738,8 +830,10 @@ async function findChannel(
 
   console.log(
     "CHANNEL SEARCH:",
+
     JSON.stringify({
       requestedId,
+
       channelsCount:
         channels.length
     })
@@ -773,6 +867,7 @@ async function findChannel(
 
     console.log(
       "CHANNEL FOUND:",
+
       JSON.stringify({
         id:
           channel.id,
@@ -792,6 +887,7 @@ async function findChannel(
 
   console.warn(
     "CHANNEL NOT FOUND:",
+
     requestedId
   );
 
@@ -801,7 +897,7 @@ async function findChannel(
 
 
 // ============================================================
-// VALIDATE TARGET URL
+// URL VALIDATION
 // ============================================================
 
 function validateTargetUrl(url) {
@@ -812,6 +908,7 @@ function validateTargetUrl(url) {
 
     return {
       ok: false,
+
       reason:
         "Invalid URL"
     };
@@ -947,7 +1044,7 @@ function buildUpstreamHeaders(
 
 
 // ============================================================
-// FETCH UPSTREAM WITH MANUAL REDIRECT
+// FETCH UPSTREAM
 // ============================================================
 
 async function fetchUpstream(
@@ -971,13 +1068,16 @@ async function fetchUpstream(
 
   for (
     let redirect = 0;
+
     redirect <=
       CONFIG.MAX_REDIRECTS;
+
     redirect++
   ) {
 
     console.log(
       "UPSTREAM REQUEST:",
+
       JSON.stringify({
         redirect,
 
@@ -1003,6 +1103,7 @@ async function fetchUpstream(
         const headers =
           buildUpstreamHeaders(
             currentUrl,
+
             mode
           );
 
@@ -1063,6 +1164,7 @@ async function fetchUpstream(
 
         console.log(
           "UPSTREAM RESPONSE:",
+
           JSON.stringify({
             redirect,
 
@@ -1082,9 +1184,9 @@ async function fetchUpstream(
         );
 
 
-        // ------------------------------------
+        // ----------------------------------------
         // Redirect
-        // ------------------------------------
+        // ----------------------------------------
 
         if (
           response.status >= 300 &&
@@ -1112,12 +1214,14 @@ async function fetchUpstream(
             currentUrl =
               new URL(
                 location,
+
                 currentUrl
               );
 
 
             console.log(
               "UPSTREAM REDIRECT TO:",
+
               currentUrl.toString()
             );
 
@@ -1128,6 +1232,7 @@ async function fetchUpstream(
 
             console.error(
               "BAD REDIRECT LOCATION:",
+
               error?.message ||
                 error
             );
@@ -1137,9 +1242,9 @@ async function fetchUpstream(
         }
 
 
-        // ------------------------------------
+        // ----------------------------------------
         // Success
-        // ------------------------------------
+        // ----------------------------------------
 
         if (
           response.ok
@@ -1154,16 +1259,18 @@ async function fetchUpstream(
         }
 
 
-        // ------------------------------------
+        // ----------------------------------------
         // 403
-        // ------------------------------------
+        // ----------------------------------------
 
         if (
-          response.status === 403
+          response.status ===
+          403
         ) {
 
           console.warn(
             "UPSTREAM 403:",
+
             JSON.stringify({
               mode,
 
@@ -1177,12 +1284,13 @@ async function fetchUpstream(
         }
 
 
-        // ------------------------------------
-        // Other errors
-        // ------------------------------------
+        // ----------------------------------------
+        // Other error
+        // ----------------------------------------
 
         console.warn(
           "UPSTREAM ERROR STATUS:",
+
           JSON.stringify({
             mode,
 
@@ -1202,6 +1310,7 @@ async function fetchUpstream(
 
         console.error(
           "UPSTREAM FETCH ERROR:",
+
           JSON.stringify({
             mode,
 
@@ -1226,6 +1335,7 @@ async function fetchUpstream(
 
     console.log(
       "UPSTREAM FINAL FALLBACK:",
+
       currentUrl.toString()
     );
 
@@ -1276,6 +1386,7 @@ async function fetchUpstream(
 
     console.error(
       "UPSTREAM FINAL FALLBACK ERROR:",
+
       error?.message ||
         error
     );
@@ -1296,7 +1407,7 @@ async function fetchUpstream(
 
 
 // ============================================================
-// RESPONSE BASE URL
+// GET FINAL BASE URL
 // ============================================================
 
 function getResponseBaseURL(
@@ -1404,7 +1515,9 @@ function rewriteHLSManifest(
 
   for (
     let i = 0;
+
     i < lines.length;
+
     i++
   ) {
 
@@ -1425,11 +1538,13 @@ function rewriteHLSManifest(
       const rewritten =
         line.replace(
           /URI="([^"]+)"/i,
+
           (match, uri) => {
 
             const absolute =
               resolveHLSUrl(
                 uri,
+
                 baseUrl
               );
 
@@ -1442,6 +1557,7 @@ function rewriteHLSManifest(
             const proxy =
               buildProxyUrl(
                 absolute,
+
                 env
               );
 
@@ -1472,11 +1588,13 @@ function rewriteHLSManifest(
       const rewritten =
         line.replace(
           /URI="([^"]+)"/i,
+
           (match, uri) => {
 
             const absolute =
               resolveHLSUrl(
                 uri,
+
                 baseUrl
               );
 
@@ -1489,6 +1607,7 @@ function rewriteHLSManifest(
             const proxy =
               buildProxyUrl(
                 absolute,
+
                 env
               );
 
@@ -1507,7 +1626,7 @@ function rewriteHLSManifest(
 
 
     // ----------------------------------------
-    // Comments
+    // EXT / Comments
     // ----------------------------------------
 
     if (
@@ -1539,6 +1658,7 @@ function rewriteHLSManifest(
     const absolute =
       resolveHLSUrl(
         trimmed,
+
         baseUrl
       );
 
@@ -1556,6 +1676,7 @@ function rewriteHLSManifest(
     const proxy =
       buildProxyUrl(
         absolute,
+
         env
       );
 
@@ -1597,7 +1718,9 @@ async function registerViewer(
 
     const key =
       `viewer:${encodeURIComponent(
-        safeString(channelId)
+        safeString(
+          channelId
+        )
       )}:${encodeURIComponent(
         ip
       )}`;
@@ -1622,6 +1745,7 @@ async function registerViewer(
         expirationTtl:
           Math.max(
             60,
+
             CONFIG.VIEWER_TTL
           )
       }
@@ -1631,6 +1755,7 @@ async function registerViewer(
 
     console.error(
       "VIEWER REGISTER ERROR:",
+
       error?.message ||
         error
     );
@@ -1656,7 +1781,9 @@ async function getViewerCount(
 
     const prefix =
       `viewer:${encodeURIComponent(
-        safeString(channelId)
+        safeString(
+          channelId
+        )
       )}:`;
 
 
@@ -1701,6 +1828,7 @@ async function getViewerCount(
 
     console.error(
       "VIEWER COUNT ERROR:",
+
       error?.message ||
         error
     );
@@ -1711,7 +1839,7 @@ async function getViewerCount(
 
 
 // ============================================================
-// PLAY.M3U8
+// PLAY API
 // ============================================================
 
 async function playApi(
@@ -1738,6 +1866,7 @@ async function playApi(
         error:
           "Missing channel id"
       },
+
       400
     );
   }
@@ -1746,6 +1875,7 @@ async function playApi(
   const channel =
     await findChannel(
       env,
+
       id
     );
 
@@ -1759,6 +1889,7 @@ async function playApi(
 
         id
       },
+
       404
     );
   }
@@ -1782,6 +1913,7 @@ async function playApi(
         reason:
           validation.reason
       },
+
       400
     );
   }
@@ -1793,6 +1925,7 @@ async function playApi(
 
   console.log(
     "PLAY SOURCE:",
+
     JSON.stringify({
       id,
 
@@ -1824,6 +1957,7 @@ async function playApi(
 
         id
       },
+
       502
     );
   }
@@ -1833,6 +1967,7 @@ async function playApi(
 
     console.error(
       "PLAY UPSTREAM FAILED:",
+
       JSON.stringify({
         id,
 
@@ -1862,6 +1997,7 @@ async function playApi(
 
         id
       },
+
       502
     );
   }
@@ -1869,7 +2005,9 @@ async function playApi(
 
   await registerViewer(
     env,
+
     id,
+
     request
   );
 
@@ -1890,19 +2028,23 @@ async function playApi(
 
 
   // ----------------------------------------
-  // HLS
+  // M3U8
   // ----------------------------------------
 
   if (
     contentType.includes(
       "mpegurl"
     ) ||
+
     contentType.includes(
       "application/vnd.apple.mpegurl"
     ) ||
+
     sourceUrl.pathname
       .toLowerCase()
-      .endsWith(".m3u8")
+      .endsWith(
+        ".m3u8"
+      )
   ) {
 
     const body =
@@ -1911,6 +2053,7 @@ async function playApi(
 
     console.log(
       "HLS MANIFEST LENGTH:",
+
       body.length
     );
 
@@ -1927,6 +2070,7 @@ async function playApi(
 
     return new Response(
       rewritten,
+
       {
         status:
           200,
@@ -1952,12 +2096,9 @@ async function playApi(
   }
 
 
-  // ----------------------------------------
-  // Non HLS
-  // ----------------------------------------
-
   return new Response(
     response.body,
+
     {
       status:
         response.status,
@@ -1979,7 +2120,7 @@ async function playApi(
 
 
 // ============================================================
-// HLS
+// HLS API
 // ============================================================
 
 async function hlsApi(
@@ -2015,6 +2156,7 @@ async function hlsApi(
         error:
           "Missing url"
       },
+
       400
     );
   }
@@ -2036,6 +2178,7 @@ async function hlsApi(
         reason:
           validation.reason
       },
+
       400
     );
   }
@@ -2047,6 +2190,7 @@ async function hlsApi(
 
   console.log(
     "HLS TARGET:",
+
     targetUrl.toString()
   );
 
@@ -2068,6 +2212,7 @@ async function hlsApi(
         error:
           "Upstream failed"
       },
+
       502
     );
   }
@@ -2088,6 +2233,7 @@ async function hlsApi(
             ?.toString() ||
           ""
       },
+
       502
     );
   }
@@ -2112,12 +2258,16 @@ async function hlsApi(
     contentType.includes(
       "mpegurl"
     ) ||
+
     contentType.includes(
       "application/vnd.apple.mpegurl"
     ) ||
+
     targetUrl.pathname
       .toLowerCase()
-      .endsWith(".m3u8")
+      .endsWith(
+        ".m3u8"
+      )
   ) {
 
     const body =
@@ -2136,6 +2286,7 @@ async function hlsApi(
 
     return new Response(
       rewritten,
+
       {
         status:
           200,
@@ -2163,6 +2314,7 @@ async function hlsApi(
 
   return new Response(
     response.body,
+
     {
       status:
         response.status,
@@ -2184,7 +2336,7 @@ async function hlsApi(
 
 
 // ============================================================
-// PLAYLIST.M3U8
+// PLAYLIST API
 // ============================================================
 
 async function proxyM3u8Api(
@@ -2211,6 +2363,7 @@ async function proxyM3u8Api(
         error:
           "Missing url"
       },
+
       400
     );
   }
@@ -2232,6 +2385,7 @@ async function proxyM3u8Api(
         reason:
           validation.reason
       },
+
       400
     );
   }
@@ -2258,6 +2412,7 @@ async function proxyM3u8Api(
         error:
           "Upstream failed"
       },
+
       502
     );
   }
@@ -2273,6 +2428,7 @@ async function proxyM3u8Api(
         status:
           response.status
       },
+
       502
     );
   }
@@ -2303,6 +2459,7 @@ async function proxyM3u8Api(
 
   return new Response(
     rewritten,
+
     {
       status:
         200,
@@ -2350,6 +2507,7 @@ async function proxyApi(
         error:
           "Missing url"
       },
+
       400
     );
   }
@@ -2371,6 +2529,7 @@ async function proxyApi(
         reason:
           validation.reason
       },
+
       400
     );
   }
@@ -2393,6 +2552,7 @@ async function proxyApi(
         error:
           "Upstream failed"
       },
+
       502
     );
   }
@@ -2400,6 +2560,7 @@ async function proxyApi(
 
   return new Response(
     response.body,
+
     {
       status:
         response.status,
@@ -2481,7 +2642,7 @@ async function channelsApi(
 
 
 // ============================================================
-// VIEWERS API
+// VIEWERS
 // ============================================================
 
 async function viewersApi(
@@ -2508,6 +2669,7 @@ async function viewersApi(
         error:
           "Missing id"
       },
+
       400
     );
   }
@@ -2516,6 +2678,7 @@ async function viewersApi(
   const count =
     await getViewerCount(
       env,
+
       id
     );
 
@@ -2530,7 +2693,7 @@ async function viewersApi(
 
 
 // ============================================================
-// SAVE CHANNEL
+// SAVE
 // ============================================================
 
 async function saveApi(
@@ -2545,6 +2708,7 @@ async function saveApi(
         error:
           "KV not configured"
       },
+
       500
     );
   }
@@ -2565,6 +2729,7 @@ async function saveApi(
         error:
           "Invalid JSON"
       },
+
       400
     );
   }
@@ -2594,6 +2759,7 @@ async function saveApi(
             "https://example.com/live.m3u8"
         }
       },
+
       400
     );
   }
@@ -2617,7 +2783,9 @@ async function saveApi(
     );
 
 
-  if (index >= 0) {
+  if (
+    index >= 0
+  ) {
 
     current[index] =
       channel;
@@ -2746,6 +2914,7 @@ function optionsResponse() {
 
   return new Response(
     null,
+
     {
       status:
         204,
@@ -2769,7 +2938,7 @@ function optionsResponse() {
 
 
 // ============================================================
-// MAIN
+// MAIN FETCH
 // ============================================================
 
 export default {
@@ -2800,7 +2969,7 @@ export default {
 
 
     // ------------------------------------------
-    // Origin used for generated HLS URLs
+    // Worker origin
     // ------------------------------------------
 
     env.__REQUEST_ORIGIN =
@@ -2818,6 +2987,7 @@ export default {
 
       return healthApi(
         request,
+
         env
       );
     }
@@ -2849,6 +3019,7 @@ export default {
       const security =
         checkAppSecurity(
           request,
+
           env
         );
 
@@ -2864,6 +3035,7 @@ export default {
       const rateOk =
         await checkRateLimit(
           request,
+
           env
         );
 
@@ -2875,6 +3047,7 @@ export default {
             error:
               "Too many requests"
           },
+
           429
         );
       }
@@ -2892,6 +3065,7 @@ export default {
 
       return playApi(
         request,
+
         env
       );
     }
@@ -2908,6 +3082,7 @@ export default {
 
       return hlsApi(
         request,
+
         env
       );
     }
@@ -2924,6 +3099,7 @@ export default {
 
       return proxyM3u8Api(
         request,
+
         env
       );
     }
@@ -2940,6 +3116,7 @@ export default {
 
       return proxyApi(
         request,
+
         env
       );
     }
@@ -2956,6 +3133,7 @@ export default {
 
       return tsApi(
         request,
+
         env
       );
     }
@@ -2972,6 +3150,7 @@ export default {
 
       return channelsApi(
         request,
+
         env
       );
     }
@@ -2988,6 +3167,7 @@ export default {
 
       return viewersApi(
         request,
+
         env
       );
     }
@@ -3004,6 +3184,7 @@ export default {
 
       return saveApi(
         request,
+
         env
       );
     }
@@ -3020,13 +3201,14 @@ export default {
 
       return adminApi(
         request,
+
         env
       );
     }
 
 
     // ------------------------------------------
-    // ASSETS
+    // ASSETS FALLBACK
     // ------------------------------------------
 
     if (env.ASSETS) {
@@ -3051,6 +3233,7 @@ export default {
 
         console.error(
           "ASSET FALLBACK ERROR:",
+
           error?.message ||
             error
         );
@@ -3070,6 +3253,7 @@ export default {
         path:
           url.pathname
       },
+
       404
     );
   }
