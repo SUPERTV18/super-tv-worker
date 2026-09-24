@@ -1,722 +1,604 @@
 // ============================================================
 // SUPER TV API - Cloudflare Worker
 // ============================================================
+// Main:
+// https://super-tv-api.super-stv.workers.dev
+//
+// Play:
+// /api/play.m3u8?id=CHANNEL_ID
+//
+// HLS:
+// /api/hls?id=CHANNEL_ID&file=...
+//
+// Required bindings:
+// KV:
+//   DATA_KV
+//
+// Assets:
+//   ASSETS
+//
+// Secret:
+//   APP_SECRET
+// ============================================================
 
-const NEW_UA = "stv2026";
-const OLD_UA = "2026stv";
 
-const PROXY_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-  "AppleWebKit/537.36 (KHTML, like Gecko) " +
-  "Chrome/153.0.0.0 Safari/537.36";
+// ============================================================
+// CONFIG
+// ============================================================
 
-const FALLBACK_VIDEO =
-  "https://github.com/himasabry/video/raw/refs/heads/main/output.m3u8";
+const CONFIG = {
+  APP_UA: "stv2026",
 
-const PLAY_RATE_LIMIT = 30;
-const INVALID_RATE_LIMIT = 15;
-const PROXY_RATE_LIMIT = 60;
-const RATE_WINDOW = 60;
+  PROXY_UA:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+    "AppleWebKit/537.36 (KHTML, like Gecko) " +
+    "Chrome/153.0.0.0 Safari/537.36",
 
-const HLS_TOKEN_TTL = 30 * 60;
+  CHANNELS_ASSET_PATHS: [
+    "/data/channels.json",
+    "/channels.json"
+  ],
 
-const JSON_HEADERS = {
-  "Content-Type": "application/json; charset=utf-8",
-  "Cache-Control": "no-store",
-  "Access-Control-Allow-Origin": "*",
+  RATE_LIMIT_SECONDS: 60,
+
+  VIEWER_TTL: 60,
+
+  MAX_REDIRECTS: 8,
+
+  FETCH_TIMEOUT: 15000
 };
 
-const TEXT_HEADERS = {
-  "Content-Type": "text/plain; charset=utf-8",
-  "Cache-Control": "no-store",
-  "Access-Control-Allow-Origin": "*",
-};
 
 // ============================================================
-// MAIN
+// BASIC HELPERS
 // ============================================================
 
-export default {
-  async fetch(request, env, ctx) {
-    try {
-      if (request.method === "OPTIONS") {
-        return corsResponse();
-      }
-
-      const url = new URL(request.url);
-      const path = url.pathname;
-
-      // ======================================================
-      // API
-      // ======================================================
-
-      if (path === "/api/play.m3u8") {
-        return await playApi(request, env, ctx);
-      }
-
-      if (path === "/api/hls") {
-        return await hlsApi(request, env, ctx);
-      }
-
-      if (path === "/api/playlist.m3u8") {
-        return await playlistApi(request, env, ctx);
-      }
-
-      if (path === "/api/proxy") {
-        return await proxyM3u8Api(request, env, ctx);
-      }
-
-      if (path === "/api/ts") {
-        return await tsApi(request, env, ctx);
-      }
-
-      if (path === "/api/save") {
-        return await saveApi(request, env);
-      }
-
-      if (path === "/api/channels") {
-        return await channelsApi(request, env);
-      }
-
-      if (path === "/api/viewers") {
-        return await viewersApi(request, env);
-      }
-
-      if (path === "/api/admin") {
-        return await adminApi(request, env);
-      }
-
-      // ======================================================
-      // HEALTH
-      // ======================================================
-
-      if (path === "/") {
-        return jsonResponse({
-          ok: true,
-          service: "SUPER TV API",
-          worker: "super-tv-api",
-          status: "running",
-          time: new Date().toISOString(),
-        });
-      }
-
-      if (path === "/health") {
-        return jsonResponse({
-          ok: true,
-          status: "online",
-        });
-      }
-
-      // ======================================================
-      // ASSETS
-      // ======================================================
-
-      if (env.ASSETS) {
-        return await env.ASSETS.fetch(request);
-      }
-
-      return text("Not Found", 404);
-
-    } catch (error) {
-      console.error("WORKER ERROR:", error);
-
-      return jsonResponse(
-        {
-          ok: false,
-          error: "Internal Worker Error",
-          message: String(error?.message || error),
-        },
-        500
-      );
-    }
-  },
-};
-
-// ============================================================
-// BASIC RESPONSES
-// ============================================================
-
-function corsResponse() {
-  return new Response(null, {
-    status: 204,
+function json(data, status = 200, extraHeaders = {}) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods":
-        "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers":
-        "Content-Type, X-App-Key, Range, Authorization",
-      "Access-Control-Max-Age": "86400",
-    },
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      ...extraHeaders
+    }
   });
 }
 
-function jsonResponse(data, status = 200) {
-  return new Response(
-    JSON.stringify(data, null, 2),
-    {
-      status,
-      headers: JSON_HEADERS,
+
+function textResponse(text, status = 200, extraHeaders = {}) {
+  return new Response(text, {
+    status,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "no-store",
+      ...extraHeaders
     }
+  });
+}
+
+
+function getClientIP(request) {
+  return (
+    request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("X-Forwarded-For") ||
+    "unknown"
   );
 }
 
-function text(body, status = 200, extraHeaders = {}) {
-  return new Response(body, {
-    status,
-    headers: {
-      ...TEXT_HEADERS,
-      ...extraHeaders,
-    },
-  });
+
+function safeString(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value).trim();
 }
+
+
+function normalizeId(value) {
+  return safeString(value).toLowerCase();
+}
+
+
+function isValidHttpUrl(value) {
+  try {
+    const u = new URL(value);
+
+    return (
+      u.protocol === "http:" ||
+      u.protocol === "https:"
+    );
+  } catch {
+    return false;
+  }
+}
+
 
 // ============================================================
 // APP SECURITY
 // ============================================================
 
-async function checkAppSecurity(request, env) {
-  const ua = String(
-    request.headers.get("User-Agent") || ""
-  )
-    .trim()
-    .toLowerCase();
+function checkAppSecurity(request, env) {
+  const ua = safeString(request.headers.get("User-Agent"));
+  const appKey = safeString(request.headers.get("X-App-Key"));
+  const secret = safeString(env.APP_SECRET);
 
-  const appKey = String(
-    request.headers.get("X-App-Key") || ""
-  ).trim();
-
-  const secret = String(
-    env.APP_SECRET || ""
-  ).trim();
+  const uaOk = ua === CONFIG.APP_UA;
+  const keyReceived = !!appKey;
+  const secretConfigured = !!secret;
 
   console.log(
+    "APP_SECURITY_CHECK:",
     JSON.stringify({
-      type: "APP_SECURITY_CHECK",
-      uaOk: ua.includes(
-        NEW_UA.toLowerCase()
-      ),
-      keyReceived:
-        appKey.length > 0,
-      secretConfigured:
-        secret.length > 0,
-      keyLength:
-        appKey.length,
-      secretLength:
-        secret.length,
+      uaOk,
+      keyReceived,
+      secretConfigured,
+      keyLength: appKey.length,
+      secretLength: secret.length
     })
   );
 
-  if (!secret) {
-    console.error(
-      "APP SECURITY: APP_SECRET NOT CONFIGURED"
-    );
+  if (!uaOk) {
+    console.warn("APP SECURITY: BAD USER-AGENT");
 
     return {
       ok: false,
-      status: 500,
-      message:
-        "APP_SECRET is not configured",
+      response: json(
+        {
+          error: "Unauthorized",
+          message: "Invalid User-Agent"
+        },
+        401
+      )
     };
   }
 
-  if (
-    !ua.includes(
-      NEW_UA.toLowerCase()
-    )
-  ) {
-    console.warn(
-      "APP SECURITY: BAD USER-AGENT"
-    );
+  if (!secretConfigured) {
+    console.error("APP SECURITY: APP_SECRET NOT CONFIGURED");
 
     return {
       ok: false,
-      status: 403,
-      message:
-        "Invalid application",
+      response: json(
+        {
+          error: "Server configuration error"
+        },
+        500
+      )
     };
   }
 
-  if (!appKey) {
-    console.warn(
-      "APP SECURITY: MISSING X-App-Key"
-    );
+  if (!keyReceived) {
+    console.warn("APP SECURITY: KEY MISSING");
 
     return {
       ok: false,
-      status: 403,
-      message:
-        "Missing application key",
+      response: json(
+        {
+          error: "Unauthorized",
+          message: "X-App-Key is required"
+        },
+        401
+      )
     };
   }
 
   if (appKey !== secret) {
-    console.warn(
-      "APP SECURITY: INVALID KEY"
-    );
+    console.warn("APP SECURITY: INVALID KEY");
 
     return {
       ok: false,
-      status: 403,
-      message:
-        "Invalid application key",
+      response: json(
+        {
+          error: "Unauthorized",
+          message: "Invalid app key"
+        },
+        401
+      )
     };
   }
 
-  console.log(
-    "APP SECURITY: OK"
-  );
+  console.log("APP SECURITY: OK");
 
   return {
-    ok: true,
+    ok: true
   };
 }
+
 
 // ============================================================
 // RATE LIMIT
 // ============================================================
 
-async function checkRateLimit(
-  request,
-  env,
-  type = "play"
-) {
+async function checkRateLimit(request, env) {
   if (!env.DATA_KV) {
     return true;
   }
 
+  const ip = getClientIP(request);
+
+  const key =
+    `rate:${ip}:${Math.floor(Date.now() / 1000 / CONFIG.RATE_LIMIT_SECONDS)}`;
+
   try {
-    const ip =
-      request.headers.get(
-        "CF-Connecting-IP"
-      ) ||
-      request.headers.get(
-        "X-Real-IP"
-      ) ||
-      "unknown";
+    const exists = await env.DATA_KV.get(key);
 
-    const key =
-      `ratelimit:${type}:${ip}`;
-
-    const now = Date.now();
-
-    const raw =
-      await env.DATA_KV.get(
-        key
-      );
-
-    let limit =
-      PLAY_RATE_LIMIT;
-
-    if (type === "invalid") {
-      limit =
-        INVALID_RATE_LIMIT;
-    }
-
-    if (type === "proxy") {
-      limit =
-        PROXY_RATE_LIMIT;
-    }
-
-    if (!raw) {
-      const data = {
-        count: 1,
-        resetAt:
-          now +
-          RATE_WINDOW * 1000,
-      };
-
-      await env.DATA_KV.put(
-        key,
-        JSON.stringify(data),
-        {
-          expirationTtl:
-            Math.max(
-              60,
-              RATE_WINDOW + 5
-            ),
-        }
-      );
-
-      return true;
-    }
-
-    let old;
-
-    try {
-      old =
-        JSON.parse(raw);
-    } catch {
-      old = null;
-    }
-
-    if (
-      !old ||
-      !old.resetAt ||
-      typeof old.count !==
-        "number"
-    ) {
-      const data = {
-        count: 1,
-        resetAt:
-          now +
-          RATE_WINDOW * 1000,
-      };
-
-      await env.DATA_KV.put(
-        key,
-        JSON.stringify(data),
-        {
-          expirationTtl:
-            Math.max(
-              60,
-              RATE_WINDOW + 5
-            ),
-        }
-      );
-
-      return true;
-    }
-
-    if (
-      now >= old.resetAt
-    ) {
-      const data = {
-        count: 1,
-        resetAt:
-          now +
-          RATE_WINDOW * 1000,
-      };
-
-      await env.DATA_KV.put(
-        key,
-        JSON.stringify(data),
-        {
-          expirationTtl:
-            Math.max(
-              60,
-              RATE_WINDOW + 5
-            ),
-        }
-      );
-
-      return true;
-    }
-
-    if (old.count >= limit) {
-      console.warn(
-        "RATE LIMIT:",
-        JSON.stringify({
-          type,
-          ip,
-          count:
-            old.count,
-          limit,
-        })
-      );
-
+    if (exists) {
+      console.warn("RATE LIMIT:", ip);
       return false;
     }
 
-    old.count++;
-
-    const remaining =
-      Math.ceil(
-        (old.resetAt - now) /
-          1000
-      ) + 5;
-
     await env.DATA_KV.put(
       key,
-      JSON.stringify(old),
+      "1",
       {
-        expirationTtl:
-          Math.max(
-            60,
-            remaining
-          ),
+        expirationTtl: Math.max(
+          60,
+          CONFIG.RATE_LIMIT_SECONDS
+        )
       }
     );
 
     return true;
-
   } catch (error) {
     console.error(
       "RATE LIMIT ERROR:",
-      error
+      error?.message || error
     );
 
     return true;
   }
 }
 
+
 // ============================================================
-// SECURITY GUARD
+// NORMALIZE CHANNEL
 // ============================================================
 
-async function securityGuard(
-  request,
-  env,
-  type = "play"
-) {
-  const security =
-    await checkAppSecurity(
-      request,
-      env
-    );
-
-  if (!security.ok) {
-    return {
-      ok: false,
-      response: text(
-        security.message,
-        security.status
-      ),
-    };
+function normalizeChannel(channel) {
+  if (!channel || typeof channel !== "object") {
+    return null;
   }
 
-  const allowed =
-    await checkRateLimit(
-      request,
-      env,
-      type
-    );
+  const id =
+    channel.id ??
+    channel.ID ??
+    channel.channel_id ??
+    channel.channelId;
 
-  if (!allowed) {
-    return {
-      ok: false,
-      response: text(
-        "Too Many Requests",
-        429,
-        {
-          "Retry-After": "60",
-        }
-      ),
-    };
+  const name =
+    channel.name ??
+    channel.title ??
+    channel.channel_name ??
+    channel.channelName ??
+    "";
+
+  const url =
+    channel.url ??
+    channel.URL ??
+    channel.stream_url ??
+    channel.streamUrl ??
+    channel.play_url ??
+    channel.playUrl ??
+    channel.source ??
+    channel.link ??
+    channel.body ??
+    "";
+
+  if (
+    id === undefined ||
+    id === null ||
+    safeString(id) === ""
+  ) {
+    return null;
+  }
+
+  if (!isValidHttpUrl(url)) {
+    return null;
   }
 
   return {
-    ok: true,
+    ...channel,
+
+    id: safeString(id),
+
+    name:
+      safeString(name) ||
+      safeString(id),
+
+    url: safeString(url)
   };
 }
 
+
 // ============================================================
-// CHANNELS - KV
+// EXTRACT CHANNEL ARRAY
+// Supports:
+//
+// [
+//   {...},
+//   {...}
+// ]
+//
+// {
+//   "channels": [...]
+// }
+//
+// {
+//   "data": [...]
+// }
+//
+// {
+//   "results": [...]
+// }
+//
+// {
+//   "items": [...]
+// }
 // ============================================================
 
-async function loadChannelsFromKV(
-  env
-) {
+function extractChannels(data) {
+  // ------------------------------------------
+  // Direct array
+  // ------------------------------------------
+
+  if (Array.isArray(data)) {
+    return data
+      .map(normalizeChannel)
+      .filter(Boolean);
+  }
+
+
+  // ------------------------------------------
+  // Object
+  // ------------------------------------------
+
+  if (
+    data &&
+    typeof data === "object" &&
+    !Array.isArray(data)
+  ) {
+
+    const possibleKeys = [
+      "channels",
+      "data",
+      "results",
+      "items",
+      "list"
+    ];
+
+    for (const key of possibleKeys) {
+      if (Array.isArray(data[key])) {
+
+        const channels = data[key]
+          .map(normalizeChannel)
+          .filter(Boolean);
+
+        if (channels.length > 0) {
+          return channels;
+        }
+      }
+    }
+
+
+    // ----------------------------------------
+    // Sometimes data itself is one channel
+    // ----------------------------------------
+
+    const oneChannel = normalizeChannel(data);
+
+    if (oneChannel) {
+      return [oneChannel];
+    }
+  }
+
+
+  return [];
+}
+
+
+// ============================================================
+// LOAD CHANNELS FROM KV
+// ============================================================
+
+async function loadChannelsFromKV(env) {
   if (!env.DATA_KV) {
-    console.log(
-      "KV CHANNELS: NO DATA_KV"
-    );
-
+    console.log("KV: NOT CONFIGURED");
     return [];
   }
 
   try {
-    const value =
-      await env.DATA_KV.get(
-        "channels"
-      );
+    const raw = await env.DATA_KV.get("channels");
 
-    if (!value) {
-      console.log(
-        "KV CHANNELS: EMPTY"
+    if (!raw) {
+      console.log("KV CHANNELS: EMPTY");
+      return [];
+    }
+
+    console.log(
+      "KV CHANNELS RAW LENGTH:",
+      raw.length
+    );
+
+    let data;
+
+    try {
+      data = JSON.parse(raw);
+    } catch (error) {
+      console.error(
+        "KV CHANNELS JSON ERROR:",
+        error?.message || error
       );
 
       return [];
     }
 
-    const parsed =
-      JSON.parse(value);
+    const channels = extractChannels(data);
 
-    if (
-      Array.isArray(parsed)
-    ) {
-      console.log(
-        "KV CHANNELS FOUND:",
-        parsed.length
-      );
-
-      return parsed;
-    }
-
-    if (
-      parsed &&
-      Array.isArray(
-        parsed.channels
-      )
-    ) {
-      console.log(
-        "KV CHANNELS FOUND:",
-        parsed.channels.length
-      );
-
-      return parsed.channels;
-    }
-
-    console.warn(
-      "KV CHANNELS: INVALID FORMAT"
+    console.log(
+      "KV CHANNELS PARSED:",
+      channels.length
     );
+
+    return channels;
 
   } catch (error) {
+
     console.error(
       "KV CHANNELS ERROR:",
-      error
-    );
-  }
-
-  return [];
-}
-
-// ============================================================
-// CHANNELS - ASSETS
-// ============================================================
-
-async function loadChannelsFromAssets(
-  env
-) {
-  console.log(
-    "ASSETS CHECK:",
-    JSON.stringify({
-      configured:
-        Boolean(env.ASSETS),
-    })
-  );
-
-  if (!env.ASSETS) {
-    console.error(
-      "ASSETS ERROR: ASSETS binding is NOT configured"
+      error?.message || error
     );
 
     return [];
   }
+}
 
-  const paths = [
-    "/data/channels.json",
-    "/channels.json",
-  ];
 
-  for (
-    const path of paths
-  ) {
+// ============================================================
+// LOAD CHANNELS FROM ASSETS
+// ============================================================
+
+async function loadChannelsFromAssets(env) {
+
+  console.log(
+    "ASSETS CHECK:",
+    JSON.stringify({
+      configured: !!env.ASSETS
+    })
+  );
+
+
+  if (!env.ASSETS) {
+    console.error("ASSETS BINDING: MISSING");
+    return [];
+  }
+
+
+  for (const path of CONFIG.CHANNELS_ASSET_PATHS) {
+
     try {
-      const req =
-        new Request(
-          `https://assets.super-tv.local${path}`
-        );
+
+      const request = new Request(
+        `https://assets.local${path}`,
+        {
+          method: "GET"
+        }
+      );
 
       const response =
-        await env.ASSETS.fetch(
-          req
-        );
+        await env.ASSETS.fetch(request);
+
 
       console.log(
         "ASSETS RESPONSE:",
         JSON.stringify({
           path,
-          status:
-            response.status,
-          ok:
-            response.ok,
+          status: response.status,
+          ok: response.ok,
           contentType:
-            response.headers.get(
-              "content-type"
-            ) || "",
+            response.headers.get("content-type") || ""
         })
       );
+
 
       if (!response.ok) {
         continue;
       }
 
-      const textBody =
-        await response.text();
 
-      if (
-        !textBody.trim()
-      ) {
-        console.warn(
-          "ASSETS EMPTY FILE:",
-          path
-        );
+      const raw = await response.text();
 
-        continue;
-      }
+
+      console.log(
+        "ASSETS BODY LENGTH:",
+        JSON.stringify({
+          path,
+          length: raw.length
+        })
+      );
+
+
+      // --------------------------------------
+      // Debug first 500 chars
+      // --------------------------------------
+
+      console.log(
+        "ASSETS BODY PREVIEW:",
+        raw.substring(0, 500)
+      );
+
 
       let data;
 
       try {
-        data =
-          JSON.parse(
-            textBody
-          );
+
+        data = JSON.parse(raw);
+
       } catch (error) {
+
         console.error(
-          "ASSETS JSON ERROR:",
+          "ASSETS JSON PARSE ERROR:",
           JSON.stringify({
             path,
-            message:
-              error?.message ||
-              String(error),
-            preview:
-              textBody.substring(
-                0,
-                500
-              ),
+            error: error?.message || String(error)
           })
         );
 
         continue;
       }
 
-      if (
-        Array.isArray(data)
-      ) {
-        console.log(
-          "ASSETS CHANNELS FOUND:",
-          path,
-          "COUNT:",
-          data.length
-        );
 
-        return data;
-      }
+      const channels =
+        extractChannels(data);
 
-      if (
-        data &&
-        Array.isArray(
-          data.channels
-        )
-      ) {
-        console.log(
-          "ASSETS CHANNELS FOUND:",
-          path,
-          "COUNT:",
-          data.channels.length
-        );
 
-        return data.channels;
-      }
-
-      console.warn(
-        "ASSETS INVALID CHANNEL FORMAT:",
-        path
-      );
-
-    } catch (error) {
-      console.error(
-        "ASSETS FETCH ERROR:",
+      console.log(
+        "ASSETS PARSED CHANNELS:",
         JSON.stringify({
           path,
-          message:
-            error?.message ||
-            String(error),
+          count: channels.length
+        })
+      );
+
+
+      if (channels.length > 0) {
+
+        const testHttp =
+          channels.find(
+            c =>
+              normalizeId(c.id) ===
+              "test_http"
+          );
+
+        console.log(
+          "ASSETS TEST_HTTP:",
+          JSON.stringify({
+            found: !!testHttp,
+            channel: testHttp
+              ? {
+                  id: testHttp.id,
+                  name: testHttp.name,
+                  url: testHttp.url
+                }
+              : null
+          })
+        );
+
+
+        return channels;
+      }
+
+    } catch (error) {
+
+      console.error(
+        "ASSETS LOAD ERROR:",
+        JSON.stringify({
+          path,
+          error: error?.message || String(error)
         })
       );
     }
   }
+
 
   console.error(
     "ASSETS CHANNELS: NOT FOUND"
@@ -725,1374 +607,965 @@ async function loadChannelsFromAssets(
   return [];
 }
 
+
 // ============================================================
-// LOAD CHANNELS
+// LOAD ALL CHANNELS
 // ============================================================
 
-async function loadChannels(
-  env
-) {
+async function loadChannels(env) {
+
+  // ------------------------------------------
+  // KV first
+  // ------------------------------------------
+
   const kvChannels =
-    await loadChannelsFromKV(
-      env
-    );
+    await loadChannelsFromKV(env);
 
-  if (
-    Array.isArray(
-      kvChannels
-    ) &&
-    kvChannels.length > 0
-  ) {
+
+  if (kvChannels.length > 0) {
+
     console.log(
-      "LOAD CHANNELS SOURCE: KV",
+      "CHANNEL SOURCE: KV",
       kvChannels.length
     );
 
     return kvChannels;
   }
 
+
+  // ------------------------------------------
+  // Assets fallback
+  // ------------------------------------------
+
   const assetChannels =
-    await loadChannelsFromAssets(
-      env
+    await loadChannelsFromAssets(env);
+
+
+  if (assetChannels.length > 0) {
+
+    console.log(
+      "CHANNEL SOURCE: ASSETS",
+      assetChannels.length
     );
 
-  console.log(
-    "LOAD CHANNELS SOURCE: ASSETS",
-    assetChannels.length
-  );
+    return assetChannels;
+  }
 
-  return assetChannels;
+
+  return [];
 }
+
 
 // ============================================================
 // FIND CHANNEL
 // ============================================================
 
-async function findChannel(
-  env,
-  id
-) {
-  const channelId =
-    String(id).trim();
+async function findChannel(env, id) {
+
+  const requestedId =
+    safeString(id);
+
 
   console.log(
     "CHANNEL LOOKUP:",
     JSON.stringify({
-      id:
-        channelId,
+      id: requestedId
     })
   );
 
-  // ==========================================================
-  // KV
-  // ==========================================================
 
-  const kvChannels =
-    await loadChannelsFromKV(
-      env
-    );
-
-  if (
-    kvChannels.length > 0
-  ) {
-    const kvChannel =
-      kvChannels.find(
-        channel =>
-          String(
-            channel?.id
-          ).trim() ===
-          channelId
-      );
-
-    if (kvChannel) {
-      console.log(
-        "CHANNEL_FOUND source: KV",
-        channelId
-      );
-
-      console.log(
-        "PLAY CHANNEL:",
-        JSON.stringify({
-          id:
-            String(
-              kvChannel.id
-            ),
-          source:
-            "KV",
-          name:
-            kvChannel.name ||
-            kvChannel.title ||
-            kvChannel.channel_name ||
-            "",
-          hasUrl:
-            Boolean(
-              kvChannel.url ||
-              kvChannel.stream ||
-              kvChannel.source ||
-              kvChannel.body ||
-              kvChannel.link
-            ),
-        })
-      );
-
-      return kvChannel;
-    }
+  if (!requestedId) {
+    return null;
   }
 
-  // ==========================================================
-  // ASSETS
-  // ==========================================================
 
-  const assetChannels =
-    await loadChannelsFromAssets(
-      env
-    );
+  const channels =
+    await loadChannels(env);
+
 
   console.log(
-    "CHANNEL SEARCH ASSETS:",
+    "CHANNEL SEARCH:",
     JSON.stringify({
-      requestedId:
-        channelId,
-      channelsCount:
-        assetChannels.length,
+      requestedId,
+      channelsCount: channels.length
     })
   );
 
-  if (
-    assetChannels.length > 0
-  ) {
-    const assetChannel =
-      assetChannels.find(
-        channel =>
-          String(
-            channel?.id
-          ).trim() ===
-          channelId
-      );
 
-    if (assetChannel) {
-      console.log(
-        "CHANNEL_FOUND source: ASSETS",
-        channelId
-      );
+  const normalizedRequested =
+    normalizeId(requestedId);
 
-      console.log(
-        "PLAY CHANNEL:",
-        JSON.stringify({
-          id:
-            String(
-              assetChannel.id
-            ),
-          source:
-            "ASSETS",
-          name:
-            assetChannel.name ||
-            assetChannel.title ||
-            assetChannel.channel_name ||
-            "",
-          hasUrl:
-            Boolean(
-              assetChannel.url ||
-              assetChannel.stream ||
-              assetChannel.source ||
-              assetChannel.body ||
-              assetChannel.link
-            ),
-        })
-      );
 
-      return assetChannel;
-    }
+  const channel =
+    channels.find(
+      item =>
+        normalizeId(item.id) ===
+          normalizedRequested
+    ) ||
+    channels.find(
+      item =>
+        normalizeId(item.name) ===
+          normalizedRequested
+    );
+
+
+  if (channel) {
+
+    console.log(
+      "CHANNEL FOUND:",
+      JSON.stringify({
+        id: channel.id,
+        name: channel.name,
+        url: channel.url
+      })
+    );
+
+    return channel;
   }
 
-  // ==========================================================
-  // NOT FOUND
-  // ==========================================================
 
   console.warn(
     "CHANNEL NOT FOUND:",
-    channelId
+    requestedId
   );
+
 
   return null;
 }
+
 
 // ============================================================
 // URL VALIDATION
 // ============================================================
 
-function validateUpstreamURL(
-  value
-) {
+function validateTargetUrl(url) {
+
+  if (!isValidHttpUrl(url)) {
+    return {
+      ok: false,
+      reason: "Invalid URL"
+    };
+  }
+
+
   try {
-    const url =
-      new URL(value);
+
+    const parsed =
+      new URL(url);
+
+
+    // Block dangerous local/private targets
+
+    const hostname =
+      parsed.hostname.toLowerCase();
+
+
+    const blockedHosts = [
+      "localhost",
+      "127.0.0.1",
+      "0.0.0.0",
+      "::1"
+    ];
+
 
     if (
-      url.protocol !==
-        "http:" &&
-      url.protocol !==
-        "https:"
+      blockedHosts.includes(hostname)
     ) {
-      return null;
+      return {
+        ok: false,
+        reason: "Blocked host"
+      };
     }
 
-    return url;
+
+    return {
+      ok: true,
+      url: parsed
+    };
 
   } catch {
-    return null;
+
+    return {
+      ok: false,
+      reason: "Invalid URL"
+    };
   }
 }
+
 
 // ============================================================
 // UPSTREAM HEADERS
 // ============================================================
 
-function getUpstreamHeaders(
-  request,
-  sourceUrl
+function buildUpstreamHeaders(
+  target,
+  mode = "normal"
 ) {
+
   const headers =
     new Headers();
 
+
   headers.set(
     "User-Agent",
-    PROXY_UA
+    CONFIG.PROXY_UA
   );
+
 
   headers.set(
     "Accept",
     "*/*"
   );
 
+
   headers.set(
     "Accept-Language",
     "en-US,en;q=0.9"
   );
 
-  const range =
-    request.headers.get(
-      "Range"
-    );
 
-  if (range) {
-    headers.set(
-      "Range",
-      range
-    );
-  }
+  headers.set(
+    "Connection",
+    "keep-alive"
+  );
 
-  if (
-    sourceUrl.hostname
-      .toLowerCase()
-      .includes("ostora")
-  ) {
+
+  if (mode === "normal") {
+
     headers.set(
       "Referer",
-      "https://ostora.pages.dev/"
+      `${target.origin}/`
     );
 
     headers.set(
       "Origin",
-      "https://ostora.pages.dev"
+      target.origin
+    );
+
+  }
+
+
+  if (mode === "no-referer") {
+
+    // intentionally no Referer
+    // intentionally no Origin
+
+  }
+
+
+  if (mode === "origin-referer") {
+
+    headers.set(
+      "Referer",
+      target.origin + "/"
+    );
+
+    headers.set(
+      "Origin",
+      target.origin
     );
   }
+
 
   return headers;
 }
 
-// ============================================================
-// UPSTREAM ERROR DIAGNOSTICS
-// ============================================================
-
-async function logUpstreamError(
-  prefix,
-  response,
-  sourceUrl
-) {
-  let body = "";
-
-  try {
-    body =
-      (
-        await response
-          .clone()
-          .text()
-      ).slice(0, 2000);
-  } catch {
-    body =
-      "Unable to read upstream response body";
-  }
-
-  const headers = {};
-
-  for (
-    const [name, value]
-    of response.headers
-  ) {
-    headers[name] = value;
-  }
-
-  console.error(
-    prefix,
-    JSON.stringify({
-      status:
-        response.status,
-
-      statusText:
-        response.statusText,
-
-      sourceUrl:
-        sourceUrl.toString(),
-
-      responseUrl:
-        response.url ||
-        sourceUrl.toString(),
-
-      responseHeaders:
-        headers,
-
-      responseBody:
-        body,
-    })
-  );
-}
 
 // ============================================================
-// UPSTREAM FETCH
-// MANUAL REDIRECT + MULTIPLE HEADER ATTEMPTS
+// MANUAL UPSTREAM FETCH
 // ============================================================
 
 async function fetchUpstream(
-  request,
-  sourceUrl
+  initialUrl,
+  options = {}
 ) {
-  const MAX_REDIRECTS = 5;
 
   let currentUrl =
-    sourceUrl.toString();
+    new URL(initialUrl);
 
-  let redirectCount = 0;
 
-  const range =
-    request.headers.get(
-      "Range"
-    );
+  let lastResponse = null;
 
-  while (
-    redirectCount <=
-    MAX_REDIRECTS
+  let lastError = null;
+
+
+  for (
+    let redirect = 0;
+    redirect <= CONFIG.MAX_REDIRECTS;
+    redirect++
   ) {
-    let parsed;
-
-    try {
-      parsed =
-        new URL(
-          currentUrl
-        );
-    } catch {
-      throw new Error(
-        "Invalid upstream URL: " +
-        currentUrl
-      );
-    }
-
-    // ========================================================
-    // BASE HEADERS
-    // ========================================================
-
-    const baseHeaders = {
-      "User-Agent":
-        PROXY_UA,
-
-      "Accept":
-        "*/*",
-
-      "Accept-Language":
-        "en-US,en;q=0.9",
-    };
-
-    if (range) {
-      baseHeaders["Range"] =
-        range;
-    }
-
-    // ========================================================
-    // ATTEMPTS
-    // ========================================================
-
-    const attempts = [
-      {
-        name:
-          "NORMAL",
-
-        headers: {
-          ...baseHeaders,
-
-          "Referer":
-            `${parsed.protocol}//${parsed.hostname}/`,
-        },
-      },
-
-      {
-        name:
-          "NO_REFERER",
-
-        headers: {
-          ...baseHeaders,
-        },
-      },
-
-      {
-        name:
-          "ORIGIN_REFERER",
-
-        headers: {
-          ...baseHeaders,
-
-          "Referer":
-            `${parsed.protocol}//${parsed.hostname}/`,
-
-          "Origin":
-            `${parsed.protocol}//${parsed.hostname}`,
-        },
-      },
-    ];
-
-    // ========================================================
-    // OSTORA
-    // ========================================================
-
-    if (
-      parsed.hostname
-        .toLowerCase()
-        .includes("ostora")
-    ) {
-      attempts[0].headers[
-        "Referer"
-      ] =
-        "https://ostora.pages.dev/";
-
-      attempts[2].headers[
-        "Referer"
-      ] =
-        "https://ostora.pages.dev/";
-
-      attempts[2].headers[
-        "Origin"
-      ] =
-        "https://ostora.pages.dev";
-    }
 
     console.log(
-      "UPSTREAM FETCH:",
+      "UPSTREAM REQUEST:",
       JSON.stringify({
-        redirectCount,
-
-        url:
-          currentUrl.substring(
-            0,
-            1000
-          ),
-
-        host:
-          parsed.hostname,
-
-        port:
-          parsed.port || "",
-
-        protocol:
-          parsed.protocol,
-
-        path:
-          parsed.pathname
-            .substring(
-              0,
-              500
-            ),
+        redirect,
+        url: currentUrl.toString()
       })
     );
 
-    // ========================================================
-    // TRY REQUESTS
-    // ========================================================
 
-    let redirectFound =
-      false;
+    const modes = [
+      "normal",
+      "no-referer",
+      "origin-referer"
+    ];
 
-    for (
-      const attempt of attempts
-    ) {
-      console.log(
-        "UPSTREAM ATTEMPT:",
-        JSON.stringify({
-          attempt:
-            attempt.name,
 
-          host:
-            parsed.hostname,
-
-          port:
-            parsed.port || "",
-
-          redirectCount,
-        })
-      );
-
-      let response;
+    for (const mode of modes) {
 
       try {
-        response =
-          await fetch(
+
+        const headers =
+          buildUpstreamHeaders(
             currentUrl,
-            {
-              method:
-                request.method ===
-                "HEAD"
-                  ? "HEAD"
-                  : "GET",
-
-              redirect:
-                "manual",
-
-              headers:
-                attempt.headers,
-            }
+            mode
           );
 
-      } catch (error) {
-        console.error(
-          "UPSTREAM FETCH ERROR:",
-          JSON.stringify({
-            attempt:
-              attempt.name,
 
-            url:
-              currentUrl.substring(
-                0,
-                1000
-              ),
+        const controller =
+          new AbortController();
 
-            message:
-              error?.message ||
-              String(error),
-          })
-        );
 
-        continue;
-      }
-
-      console.log(
-        "UPSTREAM ATTEMPT RESPONSE:",
-        JSON.stringify({
-          attempt:
-            attempt.name,
-
-          status:
-            response.status,
-
-          statusText:
-            response.statusText,
-
-          responseUrl:
-            response.url ||
-            currentUrl,
-        })
-      );
-
-      // ======================================================
-      // SUCCESS
-      // ======================================================
-
-      if (
-        response.status >=
-          200 &&
-        response.status <
-          300
-      ) {
-        console.log(
-          "UPSTREAM SUCCESS:",
-          JSON.stringify({
-            attempt:
-              attempt.name,
-
-            status:
-              response.status,
-
-            contentType:
-              response.headers.get(
-                "content-type"
-              ) || "",
-
-            finalUrl:
-              response.url ||
-              currentUrl,
-          })
-        );
-
-        return response;
-      }
-
-      // ======================================================
-      // REDIRECT
-      // ======================================================
-
-      if (
-        response.status >=
-          300 &&
-        response.status <
-          400
-      ) {
-        const location =
-          response.headers.get(
-            "Location"
+        const timeout =
+          setTimeout(
+            () =>
+              controller.abort(),
+            options.timeout ||
+              CONFIG.FETCH_TIMEOUT
           );
 
-        console.log(
-          "UPSTREAM REDIRECT:",
-          JSON.stringify({
-            attempt:
-              attempt.name,
 
-            status:
-              response.status,
+        let response;
 
-            hasLocation:
-              Boolean(
-                location
-              ),
-
-            locationPreview:
-              location
-                ? location.substring(
-                    0,
-                    1000
-                  )
-                : null,
-          })
-        );
-
-        if (!location) {
-          return response;
-        }
 
         try {
-          const nextUrl =
-            new URL(
-              location,
-              currentUrl
+
+          response =
+            await fetch(
+              currentUrl.toString(),
+              {
+                method:
+                  options.method || "GET",
+
+                headers,
+
+                redirect: "manual",
+
+                signal:
+                  controller.signal,
+
+                cf: {
+                  cacheEverything: false
+                }
+              }
             );
 
-          currentUrl =
-            nextUrl.toString();
+        } finally {
 
-          redirectCount++;
+          clearTimeout(timeout);
+        }
 
-          console.log(
-            "UPSTREAM REDIRECT TARGET:",
+
+        lastResponse =
+          response;
+
+
+        console.log(
+          "UPSTREAM RESPONSE:",
+          JSON.stringify({
+            redirect,
+            mode,
+            status: response.status,
+            url: currentUrl.toString(),
+            location:
+              response.headers.get(
+                "location"
+              ) || ""
+          })
+        );
+
+
+        // ----------------------------------
+        // Redirect
+        // ----------------------------------
+
+        if (
+          response.status >= 300 &&
+          response.status < 400
+        ) {
+
+          const location =
+            response.headers.get(
+              "Location"
+            );
+
+
+          if (!location) {
+
+            console.warn(
+              "REDIRECT WITHOUT LOCATION"
+            );
+
+            continue;
+          }
+
+
+          try {
+
+            currentUrl =
+              new URL(
+                location,
+                currentUrl
+              );
+
+
+            console.log(
+              "UPSTREAM REDIRECT TO:",
+              currentUrl.toString()
+            );
+
+
+            break;
+
+          } catch (error) {
+
+            console.error(
+              "BAD REDIRECT LOCATION:",
+              error?.message ||
+                error
+            );
+
+            continue;
+          }
+        }
+
+
+        // ----------------------------------
+        // Success
+        // ----------------------------------
+
+        if (response.ok) {
+
+          return {
+            response,
+            finalUrl: currentUrl
+          };
+        }
+
+
+        // ----------------------------------
+        // 403
+        // ----------------------------------
+
+        if (response.status === 403) {
+
+          console.warn(
+            "UPSTREAM 403:",
             JSON.stringify({
-              redirectCount,
-
-              protocol:
-                nextUrl.protocol,
-
-              host:
-                nextUrl.hostname,
-
-              port:
-                nextUrl.port || "",
-
-              path:
-                nextUrl.pathname
-                  .substring(
-                    0,
-                    500
-                  ),
+              mode,
+              url:
+                currentUrl.toString()
             })
           );
 
-          redirectFound =
-            true;
-
-          break;
-
-        } catch (error) {
-          console.error(
-            "REDIRECT URL ERROR:",
-            error?.message ||
-              String(error)
-          );
-
-          return response;
+          continue;
         }
-      }
 
-      // ======================================================
-      // 403
-      // ======================================================
 
-      if (
-        response.status ===
-        403
-      ) {
+        // ----------------------------------
+        // Other error
+        // ----------------------------------
+
         console.warn(
-          "UPSTREAM 403:",
+          "UPSTREAM ERROR STATUS:",
           JSON.stringify({
-            attempt:
-              attempt.name,
-
-            host:
-              parsed.hostname,
-
-            port:
-              parsed.port || "",
-
-            redirectCount,
+            mode,
+            status:
+              response.status,
+            url:
+              currentUrl.toString()
           })
         );
 
-        continue;
-      }
+      } catch (error) {
 
-      // ======================================================
-      // OTHER ERROR
-      // ======================================================
+        lastError = error;
 
-      console.warn(
-        "UPSTREAM OTHER ERROR:",
-        JSON.stringify({
-          attempt:
-            attempt.name,
-
-          status:
-            response.status,
-
-          host:
-            parsed.hostname,
-
-          port:
-            parsed.port || "",
-        })
-      );
-
-      return response;
-    }
-
-    // ========================================================
-    // REDIRECT FOUND
-    // ========================================================
-
-    if (redirectFound) {
-      continue;
-    }
-
-    // ========================================================
-    // ALL ATTEMPTS FAILED
-    // ========================================================
-
-    console.error(
-      "UPSTREAM ALL ATTEMPTS FAILED:",
-      JSON.stringify({
-        host:
-          parsed.hostname,
-
-        port:
-          parsed.port || "",
-
-        redirectCount,
-
-        url:
-          currentUrl.substring(
-            0,
-            1000
-          ),
-      })
-    );
-
-    // ========================================================
-    // FINAL REQUEST
-    // ========================================================
-
-    try {
-      const finalHeaders =
-        new Headers();
-
-      finalHeaders.set(
-        "User-Agent",
-        PROXY_UA
-      );
-
-      finalHeaders.set(
-        "Accept",
-        "*/*"
-      );
-
-      finalHeaders.set(
-        "Accept-Language",
-        "en-US,en;q=0.9"
-      );
-
-      if (range) {
-        finalHeaders.set(
-          "Range",
-          range
+        console.error(
+          "UPSTREAM FETCH ERROR:",
+          JSON.stringify({
+            mode,
+            url:
+              currentUrl.toString(),
+            error:
+              error?.message ||
+              String(error)
+          })
         );
       }
-
-      finalHeaders.set(
-        "Referer",
-        `${parsed.protocol}//${parsed.hostname}/`
-      );
-
-      return await fetch(
-        currentUrl,
-        {
-          method:
-            request.method ===
-            "HEAD"
-              ? "HEAD"
-              : "GET",
-
-          redirect:
-            "manual",
-
-          headers:
-            finalHeaders,
-        }
-      );
-
-    } catch (error) {
-      console.error(
-        "FINAL UPSTREAM ERROR:",
-        error?.message ||
-          String(error)
-      );
-
-      throw error;
     }
   }
 
-  console.error(
-    "UPSTREAM TOO MANY REDIRECTS:",
-    JSON.stringify({
-      target:
-        sourceUrl.toString(),
 
-      maxRedirects:
-        MAX_REDIRECTS,
-    })
-  );
+  // ----------------------------------------
+  // Final fallback request
+  // ----------------------------------------
 
-  throw new Error(
-    "Too many upstream redirects"
-  );
+  try {
+
+    console.log(
+      "UPSTREAM FINAL FALLBACK:",
+      currentUrl.toString()
+    );
+
+
+    const response =
+      await fetch(
+        currentUrl.toString(),
+        {
+          method:
+            options.method || "GET",
+
+          headers: {
+            "User-Agent":
+              CONFIG.PROXY_UA,
+
+            "Accept":
+              "*/*"
+          },
+
+          redirect: "manual"
+        }
+      );
+
+
+    lastResponse =
+      response;
+
+
+    if (response.ok) {
+
+      return {
+        response,
+        finalUrl: currentUrl
+      };
+    }
+
+
+  } catch (error) {
+
+    lastError = error;
+
+    console.error(
+      "UPSTREAM FINAL FALLBACK ERROR:",
+      error?.message ||
+        error
+    );
+  }
+
+
+  return {
+    response: lastResponse,
+    finalUrl: currentUrl,
+    error: lastError
+  };
 }
 
+
 // ============================================================
-// RESPONSE BASE URL
+// GET RESPONSE BASE URL
 // ============================================================
 
 function getResponseBaseURL(
   response,
-  fallback
+  fallbackUrl
 ) {
+
   try {
+
+    if (
+      response &&
+      response.url
+    ) {
+      return new URL(
+        response.url
+      );
+    }
+
+  } catch {}
+
+  try {
+
     return new URL(
-      response.url ||
-      fallback.toString()
+      fallbackUrl
     );
-  } catch {
-    return fallback;
-  }
-}
-
-// ============================================================
-// M3U8 DETECTION
-// ============================================================
-
-function isProbablyM3U8(
-  response,
-  body = ""
-) {
-  const contentType =
-    String(
-      response.headers.get(
-        "Content-Type"
-      ) || ""
-    ).toLowerCase();
-
-  if (
-    contentType.includes(
-      "mpegurl"
-    ) ||
-    contentType.includes(
-      "vnd.apple.mpegurl"
-    )
-  ) {
-    return true;
-  }
-
-  const trimmed =
-    body.trim();
-
-  return (
-    trimmed.startsWith(
-      "#EXTM3U"
-    ) ||
-    trimmed.includes(
-      "#EXTINF"
-    ) ||
-    trimmed.includes(
-      "#EXT-X-"
-    )
-  );
-}
-
-// ============================================================
-// BASE64
-// ============================================================
-
-function bytesToBase64Url(
-  bytes
-) {
-  let binary = "";
-
-  for (
-    let i = 0;
-    i < bytes.length;
-    i++
-  ) {
-    binary += String.fromCharCode(
-      bytes[i]
-    );
-  }
-
-  return btoa(binary)
-    .replace(
-      /\+/g,
-      "-"
-    )
-    .replace(
-      /\//g,
-      "_"
-    )
-    .replace(
-      /=+$/g,
-      ""
-    );
-}
-
-function base64UrlToBytes(
-  value
-) {
-  const base64 =
-    value
-      .replace(
-        /-/g,
-        "+"
-      )
-      .replace(
-        /_/g,
-        "/"
-      );
-
-  const padded =
-    base64 +
-    "=".repeat(
-      (
-        4 -
-        (
-          base64.length %
-          4
-        )
-      ) % 4
-    );
-
-  const binary =
-    atob(padded);
-
-  const bytes =
-    new Uint8Array(
-      binary.length
-    );
-
-  for (
-    let i = 0;
-    i < binary.length;
-    i++
-  ) {
-    bytes[i] =
-      binary.charCodeAt(i);
-  }
-
-  return bytes;
-}
-
-// ============================================================
-// HMAC
-// ============================================================
-
-async function hmacSign(
-  value,
-  secret
-) {
-  const key =
-    await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(
-        secret
-      ),
-      {
-        name: "HMAC",
-        hash: "SHA-256",
-      },
-      false,
-      ["sign"]
-    );
-
-  const signature =
-    await crypto.subtle.sign(
-      "HMAC",
-      key,
-      new TextEncoder().encode(
-        value
-      )
-    );
-
-  return bytesToBase64Url(
-    new Uint8Array(
-      signature
-    )
-  );
-}
-
-async function hmacVerify(
-  value,
-  signature,
-  secret
-) {
-  const expected =
-    await hmacSign(
-      value,
-      secret
-    );
-
-  if (
-    expected.length !==
-    signature.length
-  ) {
-    return false;
-  }
-
-  let result = 0;
-
-  for (
-    let i = 0;
-    i < expected.length;
-    i++
-  ) {
-    result |=
-      expected.charCodeAt(i) ^
-      signature.charCodeAt(i);
-  }
-
-  return result === 0;
-}
-
-// ============================================================
-// HLS TOKEN
-// ============================================================
-
-async function createHLSToken(
-  target,
-  env
-) {
-  const secret =
-    String(
-      env.APP_SECRET || ""
-    ).trim();
-
-  if (!secret) {
-    throw new Error(
-      "APP_SECRET missing"
-    );
-  }
-
-  const exp =
-    Math.floor(
-      Date.now() / 1000
-    ) +
-    HLS_TOKEN_TTL;
-
-  const payload = {
-    u:
-      target,
-    e:
-      exp,
-  };
-
-  const encoded =
-    bytesToBase64Url(
-      new TextEncoder().encode(
-        JSON.stringify(
-          payload
-        )
-      )
-    );
-
-  const signature =
-    await hmacSign(
-      encoded,
-      secret
-    );
-
-  return (
-    encoded +
-    "." +
-    signature
-  );
-}
-
-async function verifyHLSToken(
-  token,
-  env
-) {
-  try {
-    const parts =
-      String(token).split(
-        "."
-      );
-
-    if (
-      parts.length !== 2
-    ) {
-      return null;
-    }
-
-    const encoded =
-      parts[0];
-
-    const signature =
-      parts[1];
-
-    const secret =
-      String(
-        env.APP_SECRET || ""
-      ).trim();
-
-    if (!secret) {
-      return null;
-    }
-
-    const valid =
-      await hmacVerify(
-        encoded,
-        signature,
-        secret
-      );
-
-    if (!valid) {
-      return null;
-    }
-
-    const bytes =
-      base64UrlToBytes(
-        encoded
-      );
-
-    const payload =
-      JSON.parse(
-        new TextDecoder().decode(
-          bytes
-        )
-      );
-
-    if (
-      !payload ||
-      !payload.u ||
-      !payload.e
-    ) {
-      return null;
-    }
-
-    const now =
-      Math.floor(
-        Date.now() / 1000
-      );
-
-    if (
-      Number(payload.e) <
-      now
-    ) {
-      return null;
-    }
-
-    return payload;
 
   } catch {
+
     return null;
   }
 }
 
+
 // ============================================================
-// RESOLVE URL
+// HLS URL RESOLUTION
 // ============================================================
 
-function resolveURL(
+function resolveHLSUrl(
   value,
   baseUrl
 ) {
+
   try {
+
     return new URL(
       value,
       baseUrl
     ).toString();
+
   } catch {
-    return value;
+
+    return null;
   }
 }
 
+
 // ============================================================
-// REWRITE URI
+// REWRITE HLS MANIFEST
 // ============================================================
 
-async function rewriteURIAttributes(
-  line,
+function rewriteHLSManifest(
+  manifest,
   baseUrl,
   env
 ) {
-  const regex =
-    /URI="([^"]+)"/gi;
 
-  let output = line;
+  const lines =
+    manifest.split(/\r?\n/);
 
-  const matches = [
-    ...line.matchAll(regex),
-  ];
 
-  for (
-    const match of matches
-  ) {
-    const original =
-      match[1];
+  const output = [];
+
+
+  for (let i = 0; i < lines.length; i++) {
+
+    const line =
+      lines[i];
+
+
+    // --------------------------------------
+    // EXT-X-KEY URI
+    // --------------------------------------
 
     if (
-      !original ||
-      original.startsWith(
-        "data:"
+      line.startsWith(
+        "#EXT-X-KEY:"
       )
     ) {
+
+      const rewritten =
+        line.replace(
+          /URI="([^"]+)"/i,
+          (match, uri) => {
+
+            const absolute =
+              resolveHLSUrl(
+                uri,
+                baseUrl
+              );
+
+
+            if (!absolute) {
+              return match;
+            }
+
+
+            const proxy =
+              buildProxyUrl(
+                absolute,
+                env
+              );
+
+
+            return `URI="${proxy}"`;
+          }
+        );
+
+
+      output.push(
+        rewritten
+      );
+
       continue;
     }
 
-    const absolute =
-      resolveURL(
-        original,
-        baseUrl
+
+    // --------------------------------------
+    // EXT-X-MAP URI
+    // --------------------------------------
+
+    if (
+      line.startsWith(
+        "#EXT-X-MAP:"
+      )
+    ) {
+
+      const rewritten =
+        line.replace(
+          /URI="([^"]+)"/i,
+          (match, uri) => {
+
+            const absolute =
+              resolveHLSUrl(
+                uri,
+                baseUrl
+              );
+
+
+            if (!absolute) {
+              return match;
+            }
+
+
+            const proxy =
+              buildProxyUrl(
+                absolute,
+                env
+              );
+
+
+            return `URI="${proxy}"`;
+          }
+        );
+
+
+      output.push(
+        rewritten
       );
 
-    const token =
-      await createHLSToken(
-        absolute,
-        env
-      );
+      continue;
+    }
 
-    const proxied =
-      `/api/hls?token=${encodeURIComponent(
-        token
-      )}`;
 
-    output =
-      output.replace(
-        match[0],
-        `URI="${proxied}"`
-      );
-  }
+    // --------------------------------------
+    // Comment / EXT tags
+    // --------------------------------------
 
-  return output;
-}
+    if (
+      line.startsWith("#")
+    ) {
 
-// ============================================================
-// REWRITE MANIFEST
-// ============================================================
+      output.push(line);
 
-async function rewriteHLSManifest(
-  body,
-  sourceUrl,
-  env
-) {
-  const lines =
-    body.split(/\r?\n/);
+      continue;
+    }
 
-  const result = [];
 
-  for (
-    const line of lines
-  ) {
+    // --------------------------------------
+    // URI
+    // --------------------------------------
+
     const trimmed =
       line.trim();
 
+
     if (!trimmed) {
-      result.push(line);
-      continue;
-    }
 
-    if (
-      trimmed.startsWith("#") &&
-      trimmed.includes(
-        "URI="
-      )
-    ) {
-      result.push(
-        await rewriteURIAttributes(
-          line,
-          sourceUrl,
-          env
-        )
-      );
+      output.push("");
 
       continue;
     }
 
-    if (
-      trimmed.startsWith("#")
-    ) {
-      result.push(line);
-      continue;
-    }
 
     const absolute =
-      resolveURL(
+      resolveHLSUrl(
         trimmed,
-        sourceUrl
+        baseUrl
       );
 
-    const token =
-      await createHLSToken(
+
+    if (!absolute) {
+
+      output.push(line);
+
+      continue;
+    }
+
+
+    const proxy =
+      buildProxyUrl(
         absolute,
         env
       );
 
-    const proxied =
-      `/api/hls?token=${encodeURIComponent(
-        token
-      )}`;
 
-    const indent =
-      line.match(
-        /^\s*/
-      )?.[0] || "";
-
-    result.push(
-      indent +
-      proxied
+    output.push(
+      proxy
     );
   }
 
-  return result.join(
-    "\n"
+
+  return output.join("\n");
+}
+
+
+// ============================================================
+// BUILD INTERNAL PROXY URL
+// ============================================================
+
+function buildProxyUrl(
+  targetUrl,
+  env
+) {
+
+  const origin =
+    env.__REQUEST_ORIGIN ||
+    "";
+
+
+  if (!origin) {
+    return targetUrl;
+  }
+
+
+  return (
+    `${origin}/api/hls?url=` +
+    encodeURIComponent(targetUrl)
   );
 }
+
+
+// ============================================================
+// VIEWERS
+// ============================================================
+
+async function registerViewer(
+  env,
+  channelId,
+  request
+) {
+
+  if (!env.DATA_KV) {
+    return;
+  }
+
+
+  try {
+
+    const ip =
+      getClientIP(request);
+
+
+    const safeChannel =
+      encodeURIComponent(
+        safeString(channelId)
+      );
+
+
+    const safeIP =
+      encodeURIComponent(ip);
+
+
+    const key =
+      `viewer:${safeChannel}:${safeIP}`;
+
+
+    await env.DATA_KV.put(
+      key,
+      JSON.stringify({
+        channelId:
+          safeString(channelId),
+
+        ip,
+
+        timestamp:
+          Date.now()
+      }),
+      {
+        expirationTtl:
+          Math.max(
+            60,
+            CONFIG.VIEWER_TTL
+          )
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      "VIEWER REGISTER ERROR:",
+      error?.message ||
+        error
+    );
+  }
+}
+
+
+// ============================================================
+// GET VIEWERS
+// ============================================================
+
+async function getViewerCount(
+  env,
+  channelId
+) {
+
+  if (!env.DATA_KV) {
+    return 0;
+  }
+
+
+  try {
+
+    const prefix =
+      `viewer:${encodeURIComponent(
+        safeString(channelId)
+      )}:`;
+
+
+    let cursor =
+      undefined;
+
+
+    let count = 0;
+
+
+    do {
+
+      const result =
+        await env.DATA_KV.list({
+          prefix,
+          cursor,
+          limit: 1000
+        });
+
+
+      count +=
+        result.keys.length;
+
+
+      cursor =
+        result.list_complete
+          ? undefined
+          : result.cursor;
+
+    } while (cursor);
+
+
+    return count;
+
+  } catch (error) {
+
+    console.error(
+      "VIEWER COUNT ERROR:",
+      error?.message ||
+        error
+    );
+
+    return 0;
+  }
+}
+
 
 // ============================================================
 // PLAY API
@@ -2100,36 +1573,28 @@ async function rewriteHLSManifest(
 
 async function playApi(
   request,
-  env,
-  ctx
+  env
 ) {
-  const security =
-    await securityGuard(
-      request,
-      env,
-      "play"
-    );
-
-  if (!security.ok) {
-    return security.response;
-  }
 
   const url =
-    new URL(
-      request.url
-    );
+    new URL(request.url);
+
 
   const id =
-    url.searchParams.get(
-      "id"
-    );
+    url.searchParams.get("id");
+
 
   if (!id) {
-    return text(
-      "Missing id",
+
+    return json(
+      {
+        error:
+          "Missing channel id"
+      },
       400
     );
   }
+
 
   const channel =
     await findChannel(
@@ -2137,215 +1602,169 @@ async function playApi(
       id
     );
 
-  if (!channel) {
-    console.warn(
-      "CHANNEL NOT FOUND:",
-      id
-    );
 
-    return text(
-      "Channel not found",
+  if (!channel) {
+
+    return json(
+      {
+        error:
+          "Channel not found",
+
+        id
+      },
       404
     );
   }
 
-  let source =
-    channel.url ||
-    channel.stream ||
-    channel.source ||
-    channel.body ||
-    channel.link;
 
-  if (!source) {
-    source =
-      FALLBACK_VIDEO;
-  }
-
-  const sourceUrl =
-    validateUpstreamURL(
-      source
+  const validation =
+    validateTargetUrl(
+      channel.url
     );
 
-  if (!sourceUrl) {
-    console.error(
-      "INVALID UPSTREAM URL:",
-      source
-    );
 
-    return text(
-      "Invalid upstream URL",
+  if (!validation.ok) {
+
+    return json(
+      {
+        error:
+          "Invalid channel URL",
+
+        id,
+
+        reason:
+          validation.reason
+      },
       400
     );
   }
 
+
+  const sourceUrl =
+    validation.url;
+
+
   console.log(
-    "PLAY CHANNEL:",
+    "PLAY SOURCE:",
     JSON.stringify({
-      id:
-        String(channel.id),
-
-      source:
-        "CHANNEL",
-
+      id,
       name:
-        channel.name ||
-        channel.title ||
-        channel.channel_name ||
-        "",
-
-      hasUrl:
-        Boolean(source),
+        channel.name,
+      url:
+        sourceUrl.toString()
     })
   );
 
-  console.log(
-    "UPSTREAM REQUEST:",
-    JSON.stringify({
-      channel:
-        String(id),
 
-      protocol:
-        sourceUrl.protocol,
+  const upstream =
+    await fetchUpstream(
+      sourceUrl
+    );
 
-      host:
-        sourceUrl.hostname,
 
-      port:
-        sourceUrl.port ||
-        (
-          sourceUrl.protocol ===
-          "https:"
-            ? "443"
-            : "80"
-        ),
-    })
-  );
+  const response =
+    upstream.response;
 
-  try {
-    const response =
-      await fetchUpstream(
-        request,
-        sourceUrl
-      );
 
-    console.log(
-      "UPSTREAM RESPONSE:",
+  if (!response) {
+
+    return json(
+      {
+        error:
+          "Upstream request failed",
+
+        id
+      },
+      502
+    );
+  }
+
+
+  if (!response.ok) {
+
+    console.error(
+      "PLAY UPSTREAM FAILED:",
       JSON.stringify({
-        channel:
-          String(id),
+        id,
 
         status:
           response.status,
 
         finalUrl:
-          response.url ||
-          sourceUrl.toString(),
+          upstream.finalUrl
+            ?.toString() || "",
 
-        contentType:
-          response.headers.get(
-            "content-type"
-          ) || "",
+        error:
+          upstream.error
+            ?.message ||
+          ""
       })
     );
 
-    if (!response.ok) {
-      await logUpstreamError(
-        "PLAY UPSTREAM ERROR:",
-        response,
+
+    return json(
+      {
+        error:
+          "Upstream error",
+
+        status:
+          response.status,
+
+        id
+      },
+      502
+    );
+  }
+
+
+  await registerViewer(
+    env,
+    id,
+    request
+  );
+
+
+  const contentType =
+    response.headers.get(
+      "content-type"
+    ) || "";
+
+
+  const finalBase =
+    getResponseBaseURL(
+      response,
+      upstream.finalUrl ||
         sourceUrl
-      );
+    );
 
-      return text(
-        `Upstream error: ${response.status}`,
-        response.status
-      );
-    }
 
-    const contentType =
-      response.headers.get(
-        "Content-Type"
-      ) || "";
+  // ----------------------------------------
+  // HLS manifest
+  // ----------------------------------------
+
+  if (
+    contentType.includes(
+      "mpegurl"
+    ) ||
+    contentType.includes(
+      "application/vnd.apple.mpegurl"
+    ) ||
+    sourceUrl.pathname
+      .toLowerCase()
+      .endsWith(".m3u8")
+  ) {
 
     const body =
       await response.text();
 
-    const isM3U8 =
-      isProbablyM3U8(
-        new Response(
-          body,
-          {
-            headers: {
-              "Content-Type":
-                contentType,
-            },
-          }
-        ),
-        body
-      );
-
-    // ========================================================
-    // NOT M3U8
-    // ========================================================
-
-    if (!isM3U8) {
-      return new Response(
-        body,
-        {
-          status: 200,
-
-          headers: {
-            "Content-Type":
-              contentType ||
-              "application/octet-stream",
-
-            "Cache-Control":
-              "no-store",
-
-            "Access-Control-Allow-Origin":
-              "*",
-          },
-        }
-      );
-    }
-
-    // ========================================================
-    // FINAL MANIFEST BASE URL
-    // ========================================================
-
-    const manifestBase =
-      getResponseBaseURL(
-        response,
-        sourceUrl
-      );
-
-    console.log(
-      "MANIFEST BASE URL:",
-      manifestBase.toString()
-    );
-
-    // ========================================================
-    // M3U8
-    // ========================================================
 
     const rewritten =
-      await rewriteHLSManifest(
+      rewriteHLSManifest(
         body,
-        manifestBase,
+        finalBase,
         env
       );
 
-    // ========================================================
-    // VIEWER
-    // ========================================================
-
-    if (ctx) {
-      ctx.waitUntil(
-        incrementViewer(
-          env,
-          String(id)
-        )
-      );
-    }
 
     return new Response(
       rewritten,
@@ -2353,33 +1772,51 @@ async function playApi(
         status: 200,
 
         headers: {
-          "Content-Type":
+          "content-type":
             "application/vnd.apple.mpegurl",
 
-          "Cache-Control":
+          "cache-control":
             "no-store, no-cache, must-revalidate",
 
-          "Pragma":
-            "no-cache",
-
-          "Access-Control-Allow-Origin":
+          "access-control-allow-origin":
             "*",
-        },
+
+          "access-control-allow-methods":
+            "GET, HEAD, OPTIONS",
+
+          "access-control-allow-headers":
+            "*"
+        }
       }
     );
-
-  } catch (error) {
-    console.error(
-      "PLAY FETCH ERROR:",
-      error
-    );
-
-    return text(
-      "Unable to fetch upstream",
-      502
-    );
   }
+
+
+  // ----------------------------------------
+  // Non HLS
+  // ----------------------------------------
+
+  return new Response(
+    response.body,
+    {
+      status:
+        response.status,
+
+      headers: {
+        "content-type":
+          contentType ||
+          "application/octet-stream",
+
+        "cache-control":
+          "no-store",
+
+        "access-control-allow-origin":
+          "*"
+      }
+    }
+  );
 }
+
 
 // ============================================================
 // HLS API
@@ -2387,540 +1824,455 @@ async function playApi(
 
 async function hlsApi(
   request,
-  env,
-  ctx
+  env
 ) {
+
   const url =
-    new URL(
-      request.url
-    );
+    new URL(request.url);
 
-  const token =
+
+  let target =
     url.searchParams.get(
-      "token"
+      "url"
     );
 
-  if (!token) {
-    return text(
-      "Missing token",
-      400
-    );
-  }
-
-  const payload =
-    await verifyHLSToken(
-      token,
-      env
-    );
-
-  if (!payload) {
-    return text(
-      "Invalid or expired token",
-      403
-    );
-  }
-
-  const target =
-    validateUpstreamURL(
-      payload.u
-    );
 
   if (!target) {
-    return text(
-      "Invalid target",
+
+    const file =
+      url.searchParams.get(
+        "file"
+      );
+
+
+    if (file) {
+      target = file;
+    }
+  }
+
+
+  if (!target) {
+
+    return json(
+      {
+        error:
+          "Missing url"
+      },
       400
     );
   }
 
-  try {
-    const response =
-      await fetchUpstream(
-        request,
-        target
-      );
 
-    if (!response.ok) {
-      await logUpstreamError(
-        "HLS UPSTREAM ERROR:",
-        response,
-        target
-      );
-
-      return text(
-        `Upstream error: ${response.status}`,
-        response.status
-      );
-    }
-
-    const contentType =
-      response.headers.get(
-        "Content-Type"
-      ) || "";
-
-    const looksLikePlaylist =
-      contentType
-        .toLowerCase()
-        .includes(
-          "mpegurl"
-        ) ||
-      contentType
-        .toLowerCase()
-        .includes(
-          "vnd.apple.mpegurl"
-        );
-
-    if (
-      looksLikePlaylist
-    ) {
-      const body =
-        await response.text();
-
-      const manifestBase =
-        getResponseBaseURL(
-          response,
-          target
-        );
-
-      const rewritten =
-        await rewriteHLSManifest(
-          body,
-          manifestBase,
-          env
-        );
-
-      return new Response(
-        rewritten,
-        {
-          status: 200,
-
-          headers: {
-            "Content-Type":
-              "application/vnd.apple.mpegurl",
-
-            "Cache-Control":
-              "no-store",
-
-            "Access-Control-Allow-Origin":
-              "*",
-          },
-        }
-      );
-    }
-
-    const headers =
-      new Headers();
-
-    headers.set(
-      "Content-Type",
-      contentType ||
-        "application/octet-stream"
+  const validation =
+    validateTargetUrl(
+      target
     );
 
-    headers.set(
-      "Cache-Control",
-      "no-store"
-    );
 
-    headers.set(
-      "Access-Control-Allow-Origin",
-      "*"
-    );
+  if (!validation.ok) {
 
-    const contentLength =
-      response.headers.get(
-        "Content-Length"
-      );
-
-    if (contentLength) {
-      headers.set(
-        "Content-Length",
-        contentLength
-      );
-    }
-
-    return new Response(
-      response.body,
+    return json(
       {
-        status:
-          response.status,
+        error:
+          "Invalid URL",
 
-        headers,
-      }
+        reason:
+          validation.reason
+      },
+      400
+    );
+  }
+
+
+  const targetUrl =
+    validation.url;
+
+
+  console.log(
+    "HLS TARGET:",
+    targetUrl.toString()
+  );
+
+
+  const upstream =
+    await fetchUpstream(
+      targetUrl
     );
 
-  } catch (error) {
-    console.error(
-      "HLS ERROR:",
-      error
-    );
 
-    return text(
-      "HLS proxy error",
+  const response =
+    upstream.response;
+
+
+  if (!response) {
+
+    return json(
+      {
+        error:
+          "Upstream failed"
+      },
       502
     );
   }
-}
 
-// ============================================================
-// PLAYLIST API
-// ============================================================
 
-async function playlistApi(
-  request,
-  env
-) {
-  const security =
-    await securityGuard(
-      request,
-      env,
-      "play"
+  if (!response.ok) {
+
+    return json(
+      {
+        error:
+          "Upstream error",
+
+        status:
+          response.status,
+
+        url:
+          upstream.finalUrl
+            ?.toString() || ""
+      },
+      502
     );
-
-  if (!security.ok) {
-    return security.response;
   }
 
-  const channels =
-    await loadChannels(
-      env
+
+  const contentType =
+    response.headers.get(
+      "content-type"
+    ) || "";
+
+
+  const finalBase =
+    getResponseBaseURL(
+      response,
+      upstream.finalUrl ||
+        targetUrl
     );
 
-  const origin =
-    new URL(
-      request.url
-    ).origin;
 
-  const lines = [
-    "#EXTM3U",
-  ];
-
-  for (
-    const channel of channels
+  if (
+    contentType.includes(
+      "mpegurl"
+    ) ||
+    contentType.includes(
+      "application/vnd.apple.mpegurl"
+    ) ||
+    targetUrl.pathname
+      .toLowerCase()
+      .endsWith(".m3u8")
   ) {
-    const id =
-      channel.id;
 
-    const name =
-      channel.name ||
-      channel.title ||
-      channel.channel_name ||
-      `Channel ${id}`;
+    const body =
+      await response.text();
 
-    const logo =
-      channel.logo ||
-      channel.image ||
-      "";
 
-    const group =
-      channel.category ||
-      "SUPER TV";
+    const rewritten =
+      rewriteHLSManifest(
+        body,
+        finalBase,
+        env
+      );
 
-    let info =
-      "#EXTINF:-1";
 
-    if (logo) {
-      info +=
-        ` tvg-logo="${logo}"`;
-    }
+    return new Response(
+      rewritten,
+      {
+        status: 200,
 
-    info +=
-      ` group-title="${group}",${name}`;
+        headers: {
+          "content-type":
+            "application/vnd.apple.mpegurl",
 
-    lines.push(info);
+          "cache-control":
+            "no-store",
 
-    lines.push(
-      `${origin}/api/play.m3u8?id=${encodeURIComponent(
-        id
-      )}`
+          "access-control-allow-origin":
+            "*",
+
+          "access-control-allow-methods":
+            "GET, HEAD, OPTIONS",
+
+          "access-control-allow-headers":
+            "*"
+        }
+      }
     );
   }
+
 
   return new Response(
-    lines.join("\n") +
-      "\n",
+    response.body,
     {
-      status: 200,
+      status:
+        response.status,
 
       headers: {
-        "Content-Type":
-          "application/vnd.apple.mpegurl",
+        "content-type":
+          contentType ||
+          "application/octet-stream",
 
-        "Cache-Control":
+        "cache-control":
           "no-store",
 
-        "Access-Control-Allow-Origin":
-          "*",
-      },
+        "access-control-allow-origin":
+          "*"
+      }
     }
   );
 }
 
+
 // ============================================================
-// GENERIC M3U8 PROXY
+// PROXY M3U8 API
 // ============================================================
 
 async function proxyM3u8Api(
   request,
   env
 ) {
-  const security =
-    await securityGuard(
-      request,
-      env,
-      "proxy"
-    );
-
-  if (!security.ok) {
-    return security.response;
-  }
 
   const url =
-    new URL(
-      request.url
-    );
+    new URL(request.url);
 
-  const targetValue =
+
+  const target =
     url.searchParams.get(
       "url"
     );
 
-  if (!targetValue) {
-    return text(
-      "Missing url",
-      400
-    );
-  }
-
-  const target =
-    validateUpstreamURL(
-      targetValue
-    );
 
   if (!target) {
-    return text(
-      "Invalid url",
+
+    return json(
+      {
+        error:
+          "Missing url"
+      },
       400
     );
   }
 
-  try {
-    const response =
-      await fetchUpstream(
-        request,
-        target
-      );
 
-    if (!response.ok) {
-      await logUpstreamError(
-        "PROXY UPSTREAM ERROR:",
-        response,
-        target
-      );
+  const validation =
+    validateTargetUrl(
+      target
+    );
 
-      return text(
-        `Upstream error: ${response.status}`,
-        response.status
-      );
-    }
 
-    const body =
-      await response.text();
+  if (!validation.ok) {
 
-    if (
-      isProbablyM3U8(
-        response,
-        body
-      )
-    ) {
-      const manifestBase =
-        getResponseBaseURL(
-          response,
-          target
-        );
-
-      const rewritten =
-        await rewriteHLSManifest(
-          body,
-          manifestBase,
-          env
-        );
-
-      return new Response(
-        rewritten,
-        {
-          status: 200,
-
-          headers: {
-            "Content-Type":
-              "application/vnd.apple.mpegurl",
-
-            "Cache-Control":
-              "no-store",
-
-            "Access-Control-Allow-Origin":
-              "*",
-          },
-        }
-      );
-    }
-
-    return new Response(
-      body,
+    return json(
       {
-        status: 200,
+        error:
+          "Invalid URL",
 
-        headers: {
-          "Content-Type":
-            response.headers.get(
-              "Content-Type"
-            ) ||
-            "application/octet-stream",
+        reason:
+          validation.reason
+      },
+      400
+    );
+  }
 
-          "Cache-Control":
-            "no-store",
 
-          "Access-Control-Allow-Origin":
-            "*",
-        },
-      }
+  const targetUrl =
+    validation.url;
+
+
+  const upstream =
+    await fetchUpstream(
+      targetUrl
     );
 
-  } catch (error) {
-    console.error(
-      "PROXY ERROR:",
-      error
-    );
 
-    return text(
-      "Proxy error",
+  const response =
+    upstream.response;
+
+
+  if (!response) {
+
+    return json(
+      {
+        error:
+          "Upstream failed"
+      },
       502
     );
   }
+
+
+  if (!response.ok) {
+
+    return json(
+      {
+        error:
+          "Upstream error",
+
+        status:
+          response.status
+      },
+      502
+    );
+  }
+
+
+  const body =
+    await response.text();
+
+
+  const finalBase =
+    getResponseBaseURL(
+      response,
+      upstream.finalUrl ||
+        targetUrl
+    );
+
+
+  const rewritten =
+    rewriteHLSManifest(
+      body,
+      finalBase,
+      env
+    );
+
+
+  return new Response(
+    rewritten,
+    {
+      status: 200,
+
+      headers: {
+        "content-type":
+          "application/vnd.apple.mpegurl",
+
+        "cache-control":
+          "no-store",
+
+        "access-control-allow-origin":
+          "*"
+      }
+    }
+  );
 }
 
+
 // ============================================================
-// TS / VIDEO PROXY
+// GENERIC PROXY
+// ============================================================
+
+async function proxyApi(
+  request,
+  env
+) {
+
+  const url =
+    new URL(request.url);
+
+
+  const target =
+    url.searchParams.get(
+      "url"
+    );
+
+
+  if (!target) {
+
+    return json(
+      {
+        error:
+          "Missing url"
+      },
+      400
+    );
+  }
+
+
+  const validation =
+    validateTargetUrl(
+      target
+    );
+
+
+  if (!validation.ok) {
+
+    return json(
+      {
+        error:
+          "Invalid URL",
+
+        reason:
+          validation.reason
+      },
+      400
+    );
+  }
+
+
+  const upstream =
+    await fetchUpstream(
+      validation.url
+    );
+
+
+  const response =
+    upstream.response;
+
+
+  if (!response) {
+
+    return json(
+      {
+        error:
+          "Upstream failed"
+      },
+      502
+    );
+  }
+
+
+  return new Response(
+    response.body,
+    {
+      status:
+        response.status,
+
+      headers: {
+        "content-type":
+          response.headers.get(
+            "content-type"
+          ) ||
+          "application/octet-stream",
+
+        "cache-control":
+          "no-store",
+
+        "access-control-allow-origin":
+          "*",
+
+        "access-control-allow-methods":
+          "GET, HEAD, OPTIONS",
+
+        "access-control-allow-headers":
+          "*"
+      }
+    }
+  );
+}
+
+
+// ============================================================
+// TS / SEGMENT API
 // ============================================================
 
 async function tsApi(
   request,
   env
 ) {
-  const security =
-    await securityGuard(
-      request,
-      env,
-      "proxy"
-    );
 
-  if (!security.ok) {
-    return security.response;
-  }
-
-  const url =
-    new URL(
-      request.url
-    );
-
-  const targetValue =
-    url.searchParams.get(
-      "url"
-    );
-
-  if (!targetValue) {
-    return text(
-      "Missing url",
-      400
-    );
-  }
-
-  const target =
-    validateUpstreamURL(
-      targetValue
-    );
-
-  if (!target) {
-    return text(
-      "Invalid url",
-      400
-    );
-  }
-
-  try {
-    const response =
-      await fetchUpstream(
-        request,
-        target
-      );
-
-    if (!response.ok) {
-      await logUpstreamError(
-        "TS UPSTREAM ERROR:",
-        response,
-        target
-      );
-
-      return text(
-        `Upstream error: ${response.status}`,
-        response.status
-      );
-    }
-
-    const headers =
-      new Headers();
-
-    headers.set(
-      "Content-Type",
-      response.headers.get(
-        "Content-Type"
-      ) ||
-        "video/mp2t"
-    );
-
-    headers.set(
-      "Cache-Control",
-      "no-store"
-    );
-
-    headers.set(
-      "Access-Control-Allow-Origin",
-      "*"
-    );
-
-    const length =
-      response.headers.get(
-        "Content-Length"
-      );
-
-    if (length) {
-      headers.set(
-        "Content-Length",
-        length
-      );
-    }
-
-    return new Response(
-      response.body,
-      {
-        status:
-          response.status,
-
-        headers,
-      }
-    );
-
-  } catch (error) {
-    console.error(
-      "TS ERROR:",
-      error
-    );
-
-    return text(
-      "TS proxy error",
-      502
-    );
-  }
+  return proxyApi(
+    request,
+    env
+  );
 }
+
 
 // ============================================================
 // CHANNELS API
@@ -2930,283 +2282,33 @@ async function channelsApi(
   request,
   env
 ) {
-  const security =
-    await securityGuard(
-      request,
-      env,
-      "play"
-    );
-
-  if (!security.ok) {
-    return security.response;
-  }
 
   const channels =
     await loadChannels(
       env
     );
 
-  const safeChannels =
-    channels.map(
-      channel => {
-        const copy = {
-          ...channel,
-        };
 
-        delete copy.url;
-        delete copy.stream;
-        delete copy.source;
-        delete copy.body;
-        delete copy.link;
-
-        return copy;
-      }
-    );
-
-  return jsonResponse({
-    ok: true,
-
+  return json({
     count:
-      safeChannels.length,
+      channels.length,
 
     channels:
-      safeChannels,
+      channels.map(
+        channel => ({
+          id:
+            channel.id,
+
+          name:
+            channel.name,
+
+          url:
+            channel.url
+        })
+      )
   });
 }
 
-// ============================================================
-// SAVE
-// ============================================================
-
-async function saveApi(
-  request,
-  env
-) {
-  const security =
-    await checkAppSecurity(
-      request,
-      env
-    );
-
-  if (!security.ok) {
-    return text(
-      security.message,
-      security.status
-    );
-  }
-
-  if (
-    request.method !==
-    "POST"
-  ) {
-    return text(
-      "POST required",
-      405
-    );
-  }
-
-  if (!env.DATA_KV) {
-    return text(
-      "DATA_KV is not configured",
-      500
-    );
-  }
-
-  try {
-    const body =
-      await request.json();
-
-    let channels;
-
-    if (
-      Array.isArray(body)
-    ) {
-      channels =
-        body;
-
-    } else if (
-      body &&
-      Array.isArray(
-        body.channels
-      )
-    ) {
-      channels =
-        body.channels;
-
-    } else {
-      return text(
-        "Invalid channels data",
-        400
-      );
-    }
-
-    await env.DATA_KV.put(
-      "channels",
-      JSON.stringify(
-        channels
-      )
-    );
-
-    return jsonResponse({
-      ok: true,
-
-      saved:
-        channels.length,
-    });
-
-  } catch (error) {
-    console.error(
-      "SAVE ERROR:",
-      error
-    );
-
-    return jsonResponse(
-      {
-        ok: false,
-
-        error:
-          String(
-            error?.message ||
-              error
-          ),
-      },
-      500
-    );
-  }
-}
-
-// ============================================================
-// VIEWERS
-// ============================================================
-
-async function incrementViewer(
-  env,
-  channelId
-) {
-  if (!env.DATA_KV) {
-    return;
-  }
-
-  const key =
-    `viewer:${channelId}`;
-
-  const now =
-    Date.now();
-
-  try {
-    const raw =
-      await env.DATA_KV.get(
-        key
-      );
-
-    let viewers = [];
-
-    if (raw) {
-      try {
-        viewers =
-          JSON.parse(raw);
-      } catch {
-        viewers = [];
-      }
-    }
-
-    if (
-      !Array.isArray(
-        viewers
-      )
-    ) {
-      viewers = [];
-    }
-
-    viewers =
-      viewers.filter(
-        timestamp =>
-          now -
-            Number(timestamp) <
-          30000
-      );
-
-    viewers.push(now);
-
-    await env.DATA_KV.put(
-      key,
-      JSON.stringify(
-        viewers
-      ),
-      {
-        expirationTtl:
-          60,
-      }
-    );
-
-  } catch (error) {
-    console.error(
-      "VIEWER INCREMENT ERROR:",
-      error
-    );
-  }
-}
-
-async function getViewerCount(
-  env,
-  channelId
-) {
-  if (!env.DATA_KV) {
-    return 0;
-  }
-
-  const key =
-    `viewer:${channelId}`;
-
-  try {
-    const raw =
-      await env.DATA_KV.get(
-        key
-      );
-
-    if (!raw) {
-      return 0;
-    }
-
-    let viewers;
-
-    try {
-      viewers =
-        JSON.parse(raw);
-    } catch {
-      return 0;
-    }
-
-    if (
-      !Array.isArray(
-        viewers
-      )
-    ) {
-      return 0;
-    }
-
-    const now =
-      Date.now();
-
-    viewers =
-      viewers.filter(
-        timestamp =>
-          now -
-            Number(timestamp) <
-          30000
-      );
-
-    return viewers.length;
-
-  } catch (error) {
-    console.error(
-      "GET VIEWERS ERROR:",
-      error
-    );
-
-    return 0;
-  }
-}
 
 // ============================================================
 // VIEWERS API
@@ -3216,70 +2318,155 @@ async function viewersApi(
   request,
   env
 ) {
-  const security =
-    await securityGuard(
-      request,
-      env,
-      "play"
-    );
-
-  if (!security.ok) {
-    return security.response;
-  }
 
   const url =
-    new URL(
-      request.url
-    );
+    new URL(request.url);
+
 
   const id =
     url.searchParams.get(
       "id"
     );
 
-  if (id) {
-    const count =
-      await getViewerCount(
-        env,
-        id
-      );
 
-    return jsonResponse({
-      ok: true,
+  if (!id) {
 
-      id,
-
-      viewers:
-        count,
-    });
+    return json(
+      {
+        error:
+          "Missing id"
+      },
+      400
+    );
   }
 
-  const channels =
-    await loadChannels(
+
+  const count =
+    await getViewerCount(
+      env,
+      id
+    );
+
+
+  return json({
+    id,
+    viewers:
+      count
+  });
+}
+
+
+// ============================================================
+// SAVE CHANNEL
+// ============================================================
+
+async function saveApi(
+  request,
+  env
+) {
+
+  if (!env.DATA_KV) {
+
+    return json(
+      {
+        error:
+          "KV not configured"
+      },
+      500
+    );
+  }
+
+
+  let body;
+
+  try {
+
+    body =
+      await request.json();
+
+  } catch {
+
+    return json(
+      {
+        error:
+          "Invalid JSON"
+      },
+      400
+    );
+  }
+
+
+  const channel =
+    normalizeChannel(
+      body
+    );
+
+
+  if (!channel) {
+
+    return json(
+      {
+        error:
+          "Invalid channel format",
+
+        expected: {
+          id:
+            "channel_id",
+
+          name:
+            "Channel name",
+
+          url:
+            "https://example.com/live.m3u8"
+        }
+      },
+      400
+    );
+  }
+
+
+  const current =
+    await loadChannelsFromKV(
       env
     );
 
-  const result = {};
 
-  for (
-    const channel of channels
-  ) {
-    result[
-      String(channel.id)
-    ] =
-      await getViewerCount(
-        env,
-        String(channel.id)
-      );
+  const index =
+    current.findIndex(
+      item =>
+        normalizeId(item.id) ===
+        normalizeId(channel.id)
+    );
+
+
+  if (index >= 0) {
+
+    current[index] =
+      channel;
+
+  } else {
+
+    current.push(
+      channel
+    );
   }
 
-  return jsonResponse({
-    ok: true,
 
-    viewers:
-      result,
+  await env.DATA_KV.put(
+    "channels",
+    JSON.stringify(
+      current
+    )
+  );
+
+
+  return json({
+    success: true,
+
+    channel
   });
 }
+
 
 // ============================================================
 // ADMIN
@@ -3289,44 +2476,377 @@ async function adminApi(
   request,
   env
 ) {
-  const security =
-    await checkAppSecurity(
-      request,
-      env
-    );
-
-  if (!security.ok) {
-    return text(
-      security.message,
-      security.status
-    );
-  }
 
   const channels =
     await loadChannels(
       env
     );
 
-  return jsonResponse({
-    ok: true,
 
-    worker:
-      "super-tv-api",
+  return json({
+    success: true,
 
-    channels:
+    channelsCount:
       channels.length,
 
-    kv:
-      Boolean(
-        env.DATA_KV
-      ),
+    kvConfigured:
+      !!env.DATA_KV,
 
-    assets:
-      Boolean(
-        env.ASSETS
-      ),
+    assetsConfigured:
+      !!env.ASSETS,
+
+    secretConfigured:
+      !!env.APP_SECRET
+  });
+}
+
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+async function healthApi(
+  request,
+  env
+) {
+
+  return json({
+    ok: true,
+
+    service:
+      "super-tv-api",
 
     time:
       new Date().toISOString(),
+
+    kv:
+      !!env.DATA_KV,
+
+    assets:
+      !!env.ASSETS,
+
+    secret:
+      !!env.APP_SECRET
   });
 }
+
+
+// ============================================================
+// ROOT
+// ============================================================
+
+function rootApi() {
+
+  return json({
+    name:
+      "SUPER TV API",
+
+    status:
+      "online",
+
+    endpoints: [
+      "/health",
+      "/api/channels",
+      "/api/play.m3u8?id=CHANNEL_ID",
+      "/api/hls?url=URL",
+      "/api/proxy?url=URL",
+      "/api/viewers?id=CHANNEL_ID"
+    ]
+  });
+}
+
+
+// ============================================================
+// OPTIONS / CORS
+// ============================================================
+
+function optionsResponse() {
+
+  return new Response(
+    null,
+    {
+      status: 204,
+
+      headers: {
+        "access-control-allow-origin":
+          "*",
+
+        "access-control-allow-methods":
+          "GET, POST, OPTIONS",
+
+        "access-control-allow-headers":
+          "*",
+
+        "access-control-max-age":
+          "86400"
+      }
+    }
+  );
+}
+
+
+// ============================================================
+// MAIN FETCH
+// ============================================================
+
+export default {
+
+  async fetch(
+    request,
+    env,
+    ctx
+  ) {
+
+    const url =
+      new URL(request.url);
+
+
+    // --------------------------------------
+    // CORS preflight
+    // --------------------------------------
+
+    if (
+      request.method ===
+      "OPTIONS"
+    ) {
+
+      return optionsResponse();
+    }
+
+
+    // --------------------------------------
+    // Store request origin
+    // --------------------------------------
+
+    env.__REQUEST_ORIGIN =
+      url.origin;
+
+
+    // --------------------------------------
+    // Public routes
+    // --------------------------------------
+
+    if (
+      url.pathname ===
+      "/health"
+    ) {
+
+      return healthApi(
+        request,
+        env
+      );
+    }
+
+
+    if (
+      url.pathname ===
+      "/"
+    ) {
+
+      return rootApi();
+    }
+
+
+    // --------------------------------------
+    // Security for API
+    // --------------------------------------
+
+    if (
+      url.pathname.startsWith(
+        "/api/"
+      )
+    ) {
+
+      const security =
+        checkAppSecurity(
+          request,
+          env
+        );
+
+
+      if (!security.ok) {
+        return security.response;
+      }
+
+
+      const rateOk =
+        await checkRateLimit(
+          request,
+          env
+        );
+
+
+      if (!rateOk) {
+
+        return json(
+          {
+            error:
+              "Too many requests"
+          },
+          429
+        );
+      }
+    }
+
+
+    // --------------------------------------
+    // Routes
+    // --------------------------------------
+
+    if (
+      url.pathname ===
+      "/api/play.m3u8"
+    ) {
+
+      return playApi(
+        request,
+        env
+      );
+    }
+
+
+    if (
+      url.pathname ===
+      "/api/hls"
+    ) {
+
+      return hlsApi(
+        request,
+        env
+      );
+    }
+
+
+    if (
+      url.pathname ===
+      "/api/playlist.m3u8"
+    ) {
+
+      return proxyM3u8Api(
+        request,
+        env
+      );
+    }
+
+
+    if (
+      url.pathname ===
+      "/api/proxy"
+    ) {
+
+      return proxyApi(
+        request,
+        env
+      );
+    }
+
+
+    if (
+      url.pathname ===
+      "/api/ts"
+    ) {
+
+      return tsApi(
+        request,
+        env
+      );
+    }
+
+
+    if (
+      url.pathname ===
+      "/api/channels"
+    ) {
+
+      return channelsApi(
+        request,
+        env
+      );
+    }
+
+
+    if (
+      url.pathname ===
+      "/api/viewers"
+    ) {
+
+      return viewersApi(
+        request,
+        env
+      );
+    }
+
+
+    if (
+      url.pathname ===
+      "/api/save"
+    ) {
+
+      return saveApi(
+        request,
+        env
+      );
+    }
+
+
+    if (
+      url.pathname ===
+      "/api/admin"
+    ) {
+
+      return adminApi(
+        request,
+        env
+      );
+    }
+
+
+    // --------------------------------------
+    // Static assets fallback
+    // --------------------------------------
+
+    if (env.ASSETS) {
+
+      try {
+
+        const assetResponse =
+          await env.ASSETS.fetch(
+            request
+          );
+
+
+        if (
+          assetResponse.status !==
+          404
+        ) {
+
+          return assetResponse;
+        }
+
+      } catch (error) {
+
+        console.error(
+          "ASSET FALLBACK ERROR:",
+          error?.message ||
+            error
+        );
+      }
+    }
+
+
+    // --------------------------------------
+    // 404
+    // --------------------------------------
+
+    return json(
+      {
+        error:
+          "Not Found",
+
+        path:
+          url.pathname
+      },
+      404
+    );
+  }
+};
