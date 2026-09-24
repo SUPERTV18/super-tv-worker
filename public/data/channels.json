@@ -199,9 +199,10 @@
     {
       "id": "b1_SD",
       "name": "Bein Sports 1 SD",
-      "url": "http://bein.kianezidi.workers.dev/bein_sports1&q=SD.m3u8",
+      "url": 
+      "http://194.76.0.163/live/8zpo3GsVY7/beneficial2concern/652372.m3u8?token=ShJdY2ZmQQNHCmMZCDZXUh9GSHAWGFMD.ZDsGQVN.WGBFNX013GR9YV1QbGBp0QE9SWmpcXlQXXlUHWlcbRxFACmcDY1tXEVkbVAoAAQJUFxUbRFldAxdeUAdaVAFcUwcHAhwWQlpXQQMLTFhUG0FQQU1VQl4HWTsFVBQLVABGCVxEXFgeEVwNZgFcWVlZBxcDGwESHERcFxETWAxCCQgfEFNZQEBSRwYbX1dBVFtPF1pWRV5EFExGWxMmJxVJRlZKRVVaQVpcDRtfG0BLFU8XUEpvQlUVQRYEUA8HRUdeEQITHBZfUks8WgpXWl1UF1xWV0MSCkQERk0TDw1ZDBBcQG5AXVYRCQ1MCVVJ",
       "headers": {
-        "User-Agent": "OSCARTV2020",
+        "User-Agent": "",
         "Referer": "",
         "Origin": "" }
     },
