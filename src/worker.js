@@ -1,6 +1,7 @@
 // ============================================================
 // SUPER TV API - Cloudflare Worker
 // HLS SOURCE HIDDEN PROXY
+// HTTP + HTTPS SOURCE SUPPORT
 // ============================================================
 
 const NEW_UA = "stv2026";
@@ -9,6 +10,7 @@ const OLD_UA = "2026stv";
 const FALLBACK_VIDEO =
   "https://github.com/himasabry/video/raw/refs/heads/main/output.m3u8";
 
+// User-Agent المرسل إلى السيرفرات الأصلية
 const PROXY_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
@@ -27,8 +29,6 @@ const INVALID_RATE_WINDOW = 60;
 // HLS TOKEN
 // ============================================================
 
-// مدة صلاحية رابط HLS الداخلي
-// 30 دقيقة
 const HLS_TOKEN_TTL = 30 * 60 * 1000;
 
 // ============================================================
@@ -140,7 +140,11 @@ function base64UrlDecode(value) {
       binary.length
     );
 
-  for (let i = 0; i < binary.length; i++) {
+  for (
+    let i = 0;
+    i < binary.length;
+    i++
+  ) {
     bytes[i] =
       binary.charCodeAt(i);
   }
@@ -153,7 +157,6 @@ function base64UrlDecode(value) {
 // ============================================================
 
 async function getCryptoKey(env) {
-
   if (!env.APP_SECRET) {
     throw new Error(
       "APP_SECRET is not configured"
@@ -182,7 +185,6 @@ async function createHLSToken(
   env,
   target
 ) {
-
   const expires =
     Date.now() +
     HLS_TOKEN_TTL;
@@ -204,9 +206,7 @@ async function createHLSToken(
     );
 
   const key =
-    await getCryptoKey(
-      env
-    );
+    await getCryptoKey(env);
 
   const signature =
     await crypto.subtle.sign(
@@ -235,9 +235,7 @@ async function verifyHLSToken(
   env,
   token
 ) {
-
   try {
-
     if (!token) {
       return null;
     }
@@ -257,9 +255,7 @@ async function verifyHLSToken(
     ] = parts;
 
     const key =
-      await getCryptoKey(
-        env
-      );
+      await getCryptoKey(env);
 
     const valid =
       await crypto.subtle.verify(
@@ -307,7 +303,6 @@ async function verifyHLSToken(
     };
 
   } catch (e) {
-
     console.error(
       "TOKEN VERIFY ERROR:",
       e
@@ -327,14 +322,11 @@ async function checkRateLimit(
   limit,
   windowSeconds
 ) {
-
   if (!env.DATA_KV) {
-
     return {
       allowed: true,
       remaining: limit
     };
-
   }
 
   const now =
@@ -344,7 +336,6 @@ async function checkRateLimit(
     `ratelimit:${key}`;
 
   try {
-
     const old =
       await env.DATA_KV.get(
         storageKey,
@@ -356,7 +347,6 @@ async function checkRateLimit(
       !old.resetAt ||
       old.resetAt <= now
     ) {
-
       await env.DATA_KV.put(
         storageKey,
         JSON.stringify({
@@ -379,14 +369,12 @@ async function checkRateLimit(
             limit - 1
           )
       };
-
     }
 
     if (
       old.count >=
       limit
     ) {
-
       return {
         allowed: false,
         remaining: 0,
@@ -398,7 +386,6 @@ async function checkRateLimit(
             ) / 1000
           )
       };
-
     }
 
     old.count += 1;
@@ -431,7 +418,6 @@ async function checkRateLimit(
     };
 
   } catch (e) {
-
     console.error(
       "RATE LIMIT ERROR:",
       e
@@ -452,7 +438,6 @@ async function checkAppSecurity(
   request,
   env
 ) {
-
   const ua =
     (
       request.headers.get(
@@ -470,16 +455,13 @@ async function checkAppSecurity(
       NEW_UA.toLowerCase()
     )
   ) {
-
     return {
       allowed: false,
       reason: "ua"
     };
-
   }
 
   if (!env.APP_SECRET) {
-
     console.error(
       "APP_SECRET is not configured"
     );
@@ -488,19 +470,16 @@ async function checkAppSecurity(
       allowed: false,
       reason: "server"
     };
-
   }
 
   if (
     appKey !==
     env.APP_SECRET
   ) {
-
     return {
       allowed: false,
       reason: "key"
     };
-
   }
 
   return {
@@ -517,7 +496,6 @@ async function securityGuard(
   env,
   type = "play"
 ) {
-
   const ip =
     getClientIP(
       request
@@ -536,7 +514,6 @@ async function securityGuard(
   if (
     !security.allowed
   ) {
-
     const ipHash =
       await sha256(
         ip
@@ -553,16 +530,13 @@ async function securityGuard(
     if (
       !invalidLimit.allowed
     ) {
-
       return {
         allowed: false,
-
         response:
           new Response(
             "Too Many Requests",
             {
               status: 429,
-
               headers: {
                 "Content-Type":
                   "text/plain; charset=utf-8",
@@ -579,19 +553,16 @@ async function securityGuard(
             }
           )
       };
-
     }
 
     return {
       allowed: false,
-
       response:
         text(
           "Forbidden",
           403
         )
     };
-
   }
 
   // ==========================================================
@@ -601,7 +572,6 @@ async function securityGuard(
   if (
     type === "play"
   ) {
-
     const appKey =
       request.headers.get(
         "X-App-Key"
@@ -626,16 +596,13 @@ async function securityGuard(
     if (
       !rate.allowed
     ) {
-
       return {
         allowed: false,
-
         response:
           new Response(
             "Too Many Requests",
             {
               status: 429,
-
               headers: {
                 "Content-Type":
                   "text/plain; charset=utf-8",
@@ -652,9 +619,7 @@ async function securityGuard(
             }
           )
       };
-
     }
-
   }
 
   return {
@@ -669,11 +634,8 @@ async function securityGuard(
 async function loadChannels(
   env
 ) {
-
   if (env.DATA_KV) {
-
     try {
-
       const kvData =
         await env.DATA_KV.get(
           "channels",
@@ -685,20 +647,15 @@ async function loadChannels(
       }
 
     } catch (e) {
-
       console.error(
         "KV CHANNELS ERROR:",
         e
       );
-
     }
-
   }
 
   if (env.ASSETS) {
-
     try {
-
       const response =
         await env.ASSETS.fetch(
           new Request(
@@ -714,14 +671,11 @@ async function loadChannels(
       }
 
     } catch (e) {
-
       console.error(
         "ASSETS CHANNELS ERROR:",
         e
       );
-
     }
-
   }
 
   throw new Error(
@@ -737,9 +691,7 @@ async function channelsApi(
   request,
   env
 ) {
-
   try {
-
     const data =
       await loadChannels(
         env
@@ -750,7 +702,6 @@ async function channelsApi(
     );
 
   } catch (e) {
-
     console.error(
       "CHANNELS ERROR:",
       e
@@ -763,7 +714,31 @@ async function channelsApi(
       },
       500
     );
+  }
+}
 
+// ============================================================
+// VALIDATE UPSTREAM URL
+// ============================================================
+
+function validateUpstreamURL(
+  target
+) {
+  try {
+    const parsed =
+      new URL(target);
+
+    if (
+      parsed.protocol !== "http:" &&
+      parsed.protocol !== "https:"
+    ) {
+      return null;
+    }
+
+    return parsed;
+
+  } catch {
+    return null;
   }
 }
 
@@ -774,28 +749,33 @@ async function channelsApi(
 function getUpstreamHeaders(
   target
 ) {
+  const headers =
+    new Headers();
 
-  const headers = {
-    "User-Agent":
-      PROXY_UA
-  };
+  headers.set(
+    "User-Agent",
+    PROXY_UA
+  );
+
+  // مهم لمصادر IPTV / HLS
+  headers.set(
+    "Accept",
+    "*/*"
+  );
 
   try {
-
     const parsed =
-      new URL(
-        target
-      );
+      new URL(target);
 
     if (
       parsed.hostname
         .toLowerCase()
         .includes("ostora")
     ) {
-
-      headers.Referer =
-        "https://ostora.pages.dev/";
-
+      headers.set(
+        "Referer",
+        "https://ostora.pages.dev/"
+      );
     }
 
   } catch {}
@@ -811,40 +791,42 @@ async function fetchUpstream(
   target,
   request
 ) {
-
-  const headers =
-    getUpstreamHeaders(
+  const parsed =
+    validateUpstreamURL(
       target
     );
 
-  // مهم للفيديو/segments
+  if (!parsed) {
+    throw new Error(
+      "Invalid HTTP/HTTPS upstream URL"
+    );
+  }
+
+  const headers =
+    getUpstreamHeaders(
+      parsed.toString()
+    );
+
+  // مهم للفيديو والـ segments
   const range =
     request.headers.get(
       "Range"
     );
 
   if (range) {
-    headers.Range =
-      range;
-  }
-
-  const referer =
-    request.headers.get(
-      "Referer"
+    headers.set(
+      "Range",
+      range
     );
-
-  if (
-    referer &&
-    referer.includes(
-      "super-tv-api.super-stv.workers.dev"
-    )
-  ) {
-
-    // لا نمرر Referer الخاص بالـ Worker للمصدر
   }
+
+  /*
+    لا نرسل Referer الخاص بالـ Worker
+    إلى السيرفر الأصلي.
+  */
 
   return fetch(
-    target,
+    parsed.toString(),
     {
       method:
         request.method ===
@@ -861,19 +843,20 @@ async function fetchUpstream(
 }
 
 // ============================================================
-// HLS URL REWRITE
+// HLS DETECTION
 // ============================================================
 
 function isProbablyM3U8(
   url,
   contentType = ""
 ) {
-
   const lowerUrl =
-    url.toLowerCase();
+    String(url || "")
+      .toLowerCase();
 
   const lowerType =
-    contentType.toLowerCase();
+    String(contentType || "")
+      .toLowerCase();
 
   return (
     lowerType.includes(
@@ -884,6 +867,9 @@ function isProbablyM3U8(
     ) ||
     lowerUrl.includes(
       ".m3u8"
+    ) ||
+    lowerUrl.includes(
+      "m3u8?"
     )
   );
 }
@@ -898,7 +884,6 @@ async function rewriteHLSManifest(
   sourceUrl,
   workerOrigin
 ) {
-
   const lines =
     body.split(/\r?\n/);
 
@@ -907,7 +892,6 @@ async function rewriteHLSManifest(
   for (
     let line of lines
   ) {
-
     const original =
       line.trim();
 
@@ -916,11 +900,8 @@ async function rewriteHLSManifest(
     // --------------------------------------------------------
 
     if (
-      original.startsWith(
-        "#"
-      )
+      original.startsWith("#")
     ) {
-
       line =
         await rewriteURIAttributes(
           env,
@@ -941,7 +922,6 @@ async function rewriteHLSManifest(
     // --------------------------------------------------------
 
     if (!original) {
-
       output.push(
         line
       );
@@ -954,7 +934,6 @@ async function rewriteHLSManifest(
     // --------------------------------------------------------
 
     try {
-
       const absolute =
         new URL(
           original,
@@ -972,11 +951,9 @@ async function rewriteHLSManifest(
       );
 
     } catch {
-
       output.push(
         line
       );
-
     }
   }
 
@@ -993,7 +970,6 @@ async function rewriteURIAttributes(
   sourceUrl,
   workerOrigin
 ) {
-
   const regex =
     /URI="([^"]+)"/gi;
 
@@ -1020,7 +996,6 @@ async function rewriteURIAttributes(
     i >= 0;
     i--
   ) {
-
     const match =
       matches[i];
 
@@ -1028,7 +1003,6 @@ async function rewriteURIAttributes(
       match[1];
 
     try {
-
       const absolute =
         new URL(
           originalUri,
@@ -1047,8 +1021,7 @@ async function rewriteURIAttributes(
       result =
         result.slice(
           0,
-          match.index +
-          5
+          match.index + 5
         ) +
         replacement +
         result.slice(
@@ -1058,7 +1031,6 @@ async function rewriteURIAttributes(
         );
 
     } catch {}
-
   }
 
   return result;
@@ -1073,7 +1045,6 @@ async function hlsApi(
   env,
   url
 ) {
-
   // ----------------------------------------------------------
   // Security
   // ----------------------------------------------------------
@@ -1088,9 +1059,7 @@ async function hlsApi(
   if (
     !security.allowed
   ) {
-
     return security.response;
-
   }
 
   // ----------------------------------------------------------
@@ -1103,12 +1072,10 @@ async function hlsApi(
     );
 
   if (!token) {
-
     return text(
       "Missing token",
       400
     );
-
   }
 
   const decoded =
@@ -1118,51 +1085,29 @@ async function hlsApi(
     );
 
   if (!decoded) {
-
     return text(
       "Invalid or expired token",
       403
     );
-
   }
 
   const target =
     decoded.url;
 
   // ----------------------------------------------------------
-  // URL safety
+  // Validate HTTP / HTTPS
   // ----------------------------------------------------------
 
-  let targetUrl;
+  const targetUrl =
+    validateUpstreamURL(
+      target
+    );
 
-  try {
-
-    targetUrl =
-      new URL(
-        target
-      );
-
-    if (
-      targetUrl.protocol !==
-      "http:" &&
-      targetUrl.protocol !==
-      "https:"
-    ) {
-
-      return text(
-        "Invalid upstream protocol",
-        400
-      );
-
-    }
-
-  } catch {
-
+  if (!targetUrl) {
     return text(
       "Invalid upstream URL",
       400
     );
-
   }
 
   // ----------------------------------------------------------
@@ -1170,7 +1115,6 @@ async function hlsApi(
   // ----------------------------------------------------------
 
   try {
-
     const upstream =
       await fetchUpstream(
         targetUrl.toString(),
@@ -1192,7 +1136,6 @@ async function hlsApi(
         contentType
       )
     ) {
-
       const body =
         await upstream.text();
 
@@ -1200,7 +1143,8 @@ async function hlsApi(
         await rewriteHLSManifest(
           env,
           body,
-          targetUrl.toString(),
+          upstream.url ||
+            targetUrl.toString(),
           url.origin
         );
 
@@ -1211,7 +1155,6 @@ async function hlsApi(
             upstream.status,
 
           headers: {
-
             "Content-Type":
               "application/vnd.apple.mpegurl",
 
@@ -1226,7 +1169,6 @@ async function hlsApi(
           }
         }
       );
-
     }
 
     // --------------------------------------------------------
@@ -1237,12 +1179,10 @@ async function hlsApi(
       new Headers();
 
     if (contentType) {
-
       headers.set(
         "Content-Type",
         contentType
       );
-
     }
 
     const contentLength =
@@ -1251,12 +1191,10 @@ async function hlsApi(
       );
 
     if (contentLength) {
-
       headers.set(
         "Content-Length",
         contentLength
       );
-
     }
 
     const contentRange =
@@ -1265,12 +1203,10 @@ async function hlsApi(
       );
 
     if (contentRange) {
-
       headers.set(
         "Content-Range",
         contentRange
       );
-
     }
 
     const acceptRanges =
@@ -1279,12 +1215,10 @@ async function hlsApi(
       );
 
     if (acceptRanges) {
-
       headers.set(
         "Accept-Ranges",
         acceptRanges
       );
-
     }
 
     headers.set(
@@ -1308,17 +1242,16 @@ async function hlsApi(
     );
 
   } catch (e) {
-
     console.error(
       "HLS PROXY ERROR:",
       e
     );
 
     return text(
-      "HLS Proxy Error",
-      500
+      "HLS Proxy Error: " +
+        e.message,
+      502
     );
-
   }
 }
 
@@ -1331,21 +1264,17 @@ async function playApi(
   env,
   url
 ) {
-
   try {
-
     const id =
       url.searchParams.get(
         "id"
       );
 
     if (!id) {
-
       return text(
         "Missing id",
         400
       );
-
     }
 
     // --------------------------------------------------------
@@ -1368,12 +1297,10 @@ async function playApi(
         "superlivetv"
       )
     ) {
-
       return Response.redirect(
         FALLBACK_VIDEO,
         302
       );
-
     }
 
     // --------------------------------------------------------
@@ -1390,9 +1317,7 @@ async function playApi(
     if (
       !security.allowed
     ) {
-
       return security.response;
-
     }
 
     // --------------------------------------------------------
@@ -1422,7 +1347,6 @@ async function playApi(
         data
       )
     ) {
-
       if (
         !Array.isArray(
           group
@@ -1443,32 +1367,25 @@ async function playApi(
         );
 
       if (found) {
-
         channel =
           found;
 
         break;
-
       }
-
     }
 
     if (!channel) {
-
       return text(
         "Channel not found",
         404
       );
-
     }
 
     if (!channel.url) {
-
       return text(
         "Channel URL missing",
         404
       );
-
     }
 
     // --------------------------------------------------------
@@ -1476,27 +1393,43 @@ async function playApi(
     // --------------------------------------------------------
 
     const cleanUrl =
-      channel.url.split(
-        "#"
-      )[0];
+      channel.url
+        .split("#")[0]
+        .trim();
 
     // --------------------------------------------------------
-    // OSTORA REFERER
+    // IMPORTANT:
+    // دعم HTTP و HTTPS
+    // بما في ذلك :8080
     // --------------------------------------------------------
 
-    const headers =
-      getUpstreamHeaders(
+    const sourceUrl =
+      validateUpstreamURL(
         cleanUrl
       );
+
+    if (!sourceUrl) {
+      return text(
+        "Invalid channel URL. Only HTTP and HTTPS are supported.",
+        400
+      );
+    }
 
     // --------------------------------------------------------
     // FETCH SOURCE
     // --------------------------------------------------------
 
+    const headers =
+      getUpstreamHeaders(
+        sourceUrl.toString()
+      );
+
     const response =
       await fetch(
-        cleanUrl,
+        sourceUrl.toString(),
         {
+          method: "GET",
+
           redirect:
             "follow",
 
@@ -1504,13 +1437,15 @@ async function playApi(
         }
       );
 
-    if (!response.ok) {
+    // --------------------------------------------------------
+    // UPSTREAM ERROR
+    // --------------------------------------------------------
 
+    if (!response.ok) {
       return text(
         `Upstream error: ${response.status}`,
         response.status
       );
-
     }
 
     const contentType =
@@ -1525,11 +1460,10 @@ async function playApi(
     if (
       isProbablyM3U8(
         response.url ||
-        cleanUrl,
+          sourceUrl.toString(),
         contentType
       )
     ) {
-
       const body =
         await response.text();
 
@@ -1538,7 +1472,7 @@ async function playApi(
           env,
           body,
           response.url ||
-            cleanUrl,
+            sourceUrl.toString(),
           url.origin
         );
 
@@ -1548,7 +1482,6 @@ async function playApi(
           status: 200,
 
           headers: {
-
             "Content-Type":
               "application/vnd.apple.mpegurl",
 
@@ -1563,16 +1496,11 @@ async function playApi(
           }
         }
       );
-
     }
 
     // --------------------------------------------------------
     // NON M3U8 SOURCE
     // --------------------------------------------------------
-
-    // حتى لو كان المصدر ليس M3U8
-    // لا نكشف المصدر.
-    // نعيده عبر Worker.
 
     return new Response(
       response.body,
@@ -1581,7 +1509,6 @@ async function playApi(
           response.status,
 
         headers: {
-
           "Content-Type":
             contentType ||
             "application/octet-stream",
@@ -1596,7 +1523,6 @@ async function playApi(
     );
 
   } catch (e) {
-
     console.error(
       "PLAY ERROR:",
       e
@@ -1604,10 +1530,9 @@ async function playApi(
 
     return text(
       "Server error: " +
-      e.message,
-      500
+        e.message,
+      502
     );
-
   }
 }
 
@@ -1620,9 +1545,7 @@ async function playlistApi(
   env,
   url
 ) {
-
   try {
-
     const data =
       await loadChannels(
         env
@@ -1638,7 +1561,6 @@ async function playlistApi(
       const category
       in data
     ) {
-
       const channels =
         data[category];
 
@@ -1654,15 +1576,12 @@ async function playlistApi(
         const ch
         of channels
       ) {
-
         m3u +=
           `#EXTINF:-1 tvg-id="${ch.id}" group-title="${category}",${ch.name}\n`;
 
         m3u +=
           `${host}/api/play.m3u8?id=${encodeURIComponent(ch.id)}\n`;
-
       }
-
     }
 
     return new Response(
@@ -1671,7 +1590,6 @@ async function playlistApi(
         status: 200,
 
         headers: {
-
           "Content-Type":
             "application/x-mpegURL",
 
@@ -1688,7 +1606,6 @@ async function playlistApi(
     );
 
   } catch (e) {
-
     console.error(
       "PLAYLIST ERROR:",
       e
@@ -1696,10 +1613,9 @@ async function playlistApi(
 
     return text(
       "Playlist error: " +
-      e.message,
+        e.message,
       500
     );
-
   }
 }
 
@@ -1712,7 +1628,6 @@ async function proxyM3u8Api(
   env,
   url
 ) {
-
   const security =
     await securityGuard(
       request,
@@ -1723,9 +1638,7 @@ async function proxyM3u8Api(
   if (
     !security.allowed
   ) {
-
     return security.response;
-
   }
 
   const target =
@@ -1734,16 +1647,24 @@ async function proxyM3u8Api(
     );
 
   if (!target) {
-
     return text(
       "Missing url",
       400
     );
+  }
 
+  if (
+    !validateUpstreamURL(
+      target
+    )
+  ) {
+    return text(
+      "Invalid upstream URL",
+      400
+    );
   }
 
   try {
-
     const upstream =
       await fetchUpstream(
         target,
@@ -1761,7 +1682,6 @@ async function proxyM3u8Api(
         contentType
       )
     ) {
-
       const body =
         await upstream.text();
 
@@ -1781,7 +1701,6 @@ async function proxyM3u8Api(
             upstream.status,
 
           headers: {
-
             "Content-Type":
               "application/vnd.apple.mpegurl",
 
@@ -1793,7 +1712,6 @@ async function proxyM3u8Api(
           }
         }
       );
-
     }
 
     return new Response(
@@ -1803,7 +1721,6 @@ async function proxyM3u8Api(
           upstream.status,
 
         headers: {
-
           "Content-Type":
             contentType ||
             "application/octet-stream",
@@ -1818,17 +1735,16 @@ async function proxyM3u8Api(
     );
 
   } catch (e) {
-
     console.error(
       "PROXY ERROR:",
       e
     );
 
     return text(
-      "Proxy error",
-      500
+      "Proxy error: " +
+        e.message,
+      502
     );
-
   }
 }
 
@@ -1841,7 +1757,6 @@ async function tsApi(
   env,
   url
 ) {
-
   const security =
     await securityGuard(
       request,
@@ -1852,9 +1767,7 @@ async function tsApi(
   if (
     !security.allowed
   ) {
-
     return security.response;
-
   }
 
   const target =
@@ -1863,16 +1776,24 @@ async function tsApi(
     );
 
   if (!target) {
-
     return text(
       "Missing url",
       400
     );
+  }
 
+  if (
+    !validateUpstreamURL(
+      target
+    )
+  ) {
+    return text(
+      "Invalid upstream URL",
+      400
+    );
   }
 
   try {
-
     const upstream =
       await fetchUpstream(
         target,
@@ -1886,7 +1807,6 @@ async function tsApi(
           upstream.status,
 
         headers: {
-
           "Content-Type":
             upstream.headers.get(
               "content-type"
@@ -1900,17 +1820,16 @@ async function tsApi(
     );
 
   } catch (e) {
-
     console.error(
       "TS ERROR:",
       e
     );
 
     return text(
-      "TS Proxy Error",
-      500
+      "TS Proxy Error: " +
+        e.message,
+      502
     );
-
   }
 }
 
@@ -1922,7 +1841,6 @@ async function saveApi(
   request,
   env
 ) {
-
   const security =
     await securityGuard(
       request,
@@ -1933,16 +1851,13 @@ async function saveApi(
   if (
     !security.allowed
   ) {
-
     return security.response;
-
   }
 
   if (
     request.method !==
     "POST"
   ) {
-
     return json(
       {
         error:
@@ -1950,16 +1865,13 @@ async function saveApi(
       },
       405
     );
-
   }
 
   try {
-
     const body =
       await request.json();
 
     if (!env.DATA_KV) {
-
       return json(
         {
           error:
@@ -1967,7 +1879,6 @@ async function saveApi(
         },
         500
       );
-
     }
 
     await env.DATA_KV.put(
@@ -1985,7 +1896,6 @@ async function saveApi(
     );
 
   } catch (e) {
-
     console.error(
       "SAVE ERROR:",
       e
@@ -1998,7 +1908,6 @@ async function saveApi(
       },
       500
     );
-
   }
 }
 
@@ -2010,7 +1919,6 @@ async function incrementViewer(
   env,
   id
 ) {
-
   if (!env.DATA_KV) {
     return;
   }
@@ -2019,7 +1927,6 @@ async function incrementViewer(
     `viewer:${id}`;
 
   try {
-
     const old =
       await env.DATA_KV.get(
         key,
@@ -2045,12 +1952,10 @@ async function incrementViewer(
     );
 
   } catch (e) {
-
     console.error(
       "VIEWER INCREMENT ERROR:",
       e
     );
-
   }
 }
 
@@ -2063,14 +1968,12 @@ async function viewersApi(
   env,
   url
 ) {
-
   const id =
     url.searchParams.get(
       "id"
     );
 
   if (!id) {
-
     return json(
       {
         error:
@@ -2078,20 +1981,15 @@ async function viewersApi(
       },
       400
     );
-
   }
 
   if (!env.DATA_KV) {
-
     return json({
-      [id]:
-        0
+      [id]: 0
     });
-
   }
 
   try {
-
     const data =
       await env.DATA_KV.get(
         `viewer:${id}`,
@@ -2104,12 +2002,9 @@ async function viewersApi(
     });
 
   } catch {
-
     return json({
-      [id]:
-        0
+      [id]: 0
     });
-
   }
 }
 
@@ -2121,14 +2016,11 @@ async function serveAsset(
   request,
   env
 ) {
-
   if (!env.ASSETS) {
-
     return text(
       "Assets binding not configured",
       500
     );
-
   }
 
   return env.ASSETS.fetch(
@@ -2146,7 +2038,6 @@ export default {
     request,
     env
   ) {
-
     const url =
       new URL(
         request.url
@@ -2160,14 +2051,12 @@ export default {
       request.method ===
       "OPTIONS"
     ) {
-
       return new Response(
         null,
         {
           status: 204,
 
           headers: {
-
             "Access-Control-Allow-Origin":
               "*",
 
@@ -2179,7 +2068,6 @@ export default {
           }
         }
       );
-
     }
 
     // ========================================================
@@ -2190,12 +2078,10 @@ export default {
       url.pathname ===
       "/api/channels"
     ) {
-
       return channelsApi(
         request,
         env
       );
-
     }
 
     // ========================================================
@@ -2206,13 +2092,11 @@ export default {
       url.pathname ===
       "/api/play.m3u8"
     ) {
-
       return playApi(
         request,
         env,
         url
       );
-
     }
 
     // ========================================================
@@ -2223,13 +2107,11 @@ export default {
       url.pathname ===
       "/api/hls"
     ) {
-
       return hlsApi(
         request,
         env,
         url
       );
-
     }
 
     // ========================================================
@@ -2240,13 +2122,11 @@ export default {
       url.pathname ===
       "/api/playlist.m3u"
     ) {
-
       return playlistApi(
         request,
         env,
         url
       );
-
     }
 
     // ========================================================
@@ -2257,13 +2137,11 @@ export default {
       url.pathname ===
       "/api/proxy.m3u8"
     ) {
-
       return proxyM3u8Api(
         request,
         env,
         url
       );
-
     }
 
     // ========================================================
@@ -2274,13 +2152,11 @@ export default {
       url.pathname ===
       "/api/ts"
     ) {
-
       return tsApi(
         request,
         env,
         url
       );
-
     }
 
     // ========================================================
@@ -2291,12 +2167,10 @@ export default {
       url.pathname ===
       "/api/save"
     ) {
-
       return saveApi(
         request,
         env
       );
-
     }
 
     // ========================================================
@@ -2307,13 +2181,11 @@ export default {
       url.pathname ===
       "/api/viewers"
     ) {
-
       return viewersApi(
         request,
         env,
         url
       );
-
     }
 
     // ========================================================
@@ -2324,7 +2196,6 @@ export default {
       url.pathname ===
       "/admin"
     ) {
-
       const adminUrl =
         new URL(
           "/admin.html",
@@ -2338,7 +2209,6 @@ export default {
         ),
         env
       );
-
     }
 
     // ========================================================
@@ -2349,7 +2219,5 @@ export default {
       request,
       env
     );
-
   }
-
 };
