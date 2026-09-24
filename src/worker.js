@@ -416,7 +416,6 @@ async function checkRateLimit(
       error
     );
 
-    // لا نوقف التشغيل لو حصلت مشكلة في KV
     return true;
   }
 }
@@ -472,78 +471,93 @@ async function securityGuard(
 }
 
 // ============================================================
-// CHANNELS
+// CHANNELS - KV
 // ============================================================
 
-async function loadChannels(env) {
-  // ========================================================
-  // KV
-  // ========================================================
-
-  if (env.DATA_KV) {
-    try {
-      const value =
-        await env.DATA_KV.get(
-          "channels"
-        );
-
-      if (value) {
-        const parsed =
-          JSON.parse(value);
-
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-
-        if (
-          parsed &&
-          Array.isArray(
-            parsed.channels
-          )
-        ) {
-          return parsed.channels;
-        }
-      }
-    } catch (error) {
-      console.error(
-        "KV CHANNELS ERROR:",
-        error
-      );
-    }
+async function loadChannelsFromKV(env) {
+  if (!env.DATA_KV) {
+    return [];
   }
 
-  // ========================================================
-  // ASSETS
-  // ========================================================
-
   try {
-    if (env.ASSETS) {
-      const req =
-        new Request(
-          "https://internal.local/data/channels.json"
-        );
+    const value =
+      await env.DATA_KV.get(
+        "channels"
+      );
 
-      const response =
-        await env.ASSETS.fetch(req);
-
-      if (response.ok) {
-        const data =
-          await response.json();
-
-        if (Array.isArray(data)) {
-          return data;
-        }
-
-        if (
-          data &&
-          Array.isArray(
-            data.channels
-          )
-        ) {
-          return data.channels;
-        }
-      }
+    if (!value) {
+      return [];
     }
+
+    const parsed =
+      JSON.parse(value);
+
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+
+    if (
+      parsed &&
+      Array.isArray(
+        parsed.channels
+      )
+    ) {
+      return parsed.channels;
+    }
+
+  } catch (error) {
+    console.error(
+      "KV CHANNELS ERROR:",
+      error
+    );
+  }
+
+  return [];
+}
+
+// ============================================================
+// CHANNELS - ASSETS
+// ============================================================
+
+async function loadChannelsFromAssets(env) {
+  try {
+    if (!env.ASSETS) {
+      return [];
+    }
+
+    const req =
+      new Request(
+        "https://internal.local/data/channels.json"
+      );
+
+    const response =
+      await env.ASSETS.fetch(req);
+
+    if (!response.ok) {
+      console.warn(
+        "ASSETS CHANNELS RESPONSE:",
+        response.status
+      );
+
+      return [];
+    }
+
+    const data =
+      await response.json();
+
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    if (
+      data &&
+      Array.isArray(
+        data.channels
+      )
+    ) {
+      return data.channels;
+    }
+
   } catch (error) {
     console.error(
       "ASSETS CHANNELS ERROR:",
@@ -554,27 +568,97 @@ async function loadChannels(env) {
   return [];
 }
 
+// ============================================================
+// LOAD CHANNELS
+// ============================================================
+
+async function loadChannels(env) {
+  const kvChannels =
+    await loadChannelsFromKV(env);
+
+  if (kvChannels.length > 0) {
+    return kvChannels;
+  }
+
+  return await loadChannelsFromAssets(env);
+}
+
+// ============================================================
+// FIND CHANNEL
+// ============================================================
+
 async function findChannel(
   env,
   id
 ) {
-  const channels =
-    await loadChannels(env);
+  const channelId =
+    String(id);
 
-  return channels.find(
-    channel =>
-      String(channel.id) ===
-      String(id)
+  // ========================================================
+  // 1. البحث في KV
+  // ========================================================
+
+  const kvChannels =
+    await loadChannelsFromKV(env);
+
+  const kvChannel =
+    kvChannels.find(
+      channel =>
+        String(channel.id) ===
+        channelId
+    );
+
+  if (kvChannel) {
+    console.log(
+      JSON.stringify({
+        type: "CHANNEL_FOUND",
+        source: "KV",
+        id: channelId,
+      })
+    );
+
+    return kvChannel;
+  }
+
+  // ========================================================
+  // 2. البحث في Assets
+  // ========================================================
+
+  const assetChannels =
+    await loadChannelsFromAssets(env);
+
+  const assetChannel =
+    assetChannels.find(
+      channel =>
+        String(channel.id) ===
+        channelId
+    );
+
+  if (assetChannel) {
+    console.log(
+      JSON.stringify({
+        type: "CHANNEL_FOUND",
+        source: "ASSETS",
+        id: channelId,
+      })
+    );
+
+    return assetChannel;
+  }
+
+  console.warn(
+    "CHANNEL NOT FOUND:",
+    channelId
   );
+
+  return null;
 }
 
 // ============================================================
 // URL VALIDATION
 // ============================================================
 
-function validateUpstreamURL(
-  value
-) {
+function validateUpstreamURL(value) {
   try {
     const url =
       new URL(value);
@@ -619,10 +703,6 @@ function getUpstreamHeaders(
     "en-US,en;q=0.9"
   );
 
-  // --------------------------------------------------------
-  // Range
-  // --------------------------------------------------------
-
   const range =
     request.headers.get(
       "Range"
@@ -634,10 +714,6 @@ function getUpstreamHeaders(
       range
     );
   }
-
-  // --------------------------------------------------------
-  // OSTORA
-  // --------------------------------------------------------
 
   if (
     sourceUrl.hostname
@@ -777,9 +853,7 @@ function isProbablyM3U8(
 // BASE64
 // ============================================================
 
-function bytesToBase64Url(
-  bytes
-) {
+function bytesToBase64Url(bytes) {
   let binary = "";
 
   for (
@@ -798,9 +872,7 @@ function bytesToBase64Url(
     .replace(/=+$/g, "");
 }
 
-function base64UrlToBytes(
-  value
-) {
+function base64UrlToBytes(value) {
   const base64 =
     value
       .replace(/-/g, "+")
@@ -2313,6 +2385,7 @@ async function adminApi(
 
   return jsonResponse({
     ok: true,
+
     worker:
       "super-tv-api",
 
