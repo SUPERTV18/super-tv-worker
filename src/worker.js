@@ -15,6 +15,7 @@ const FALLBACK_VIDEO =
 
 const PLAY_RATE_LIMIT = 30;
 const INVALID_RATE_LIMIT = 15;
+const PROXY_RATE_LIMIT = 60;
 const RATE_WINDOW = 60;
 
 const HLS_TOKEN_TTL = 30 * 60;
@@ -45,9 +46,9 @@ export default {
       const url = new URL(request.url);
       const path = url.pathname;
 
-      // --------------------------------------------------------
-      // API ROUTES
-      // --------------------------------------------------------
+      // ======================================================
+      // API
+      // ======================================================
 
       if (path === "/api/play.m3u8") {
         return await playApi(request, env, ctx);
@@ -85,9 +86,9 @@ export default {
         return await adminApi(request, env);
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // HEALTH
-      // --------------------------------------------------------
+      // ======================================================
 
       if (path === "/") {
         return jsonResponse({
@@ -106,9 +107,9 @@ export default {
         });
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // ASSETS
-      // --------------------------------------------------------
+      // ======================================================
 
       if (env.ASSETS) {
         return await env.ASSETS.fetch(request);
@@ -166,26 +167,6 @@ function text(body, status = 200, extraHeaders = {}) {
   });
 }
 
-function withCors(response) {
-  const headers = new Headers(response.headers);
-
-  headers.set("Access-Control-Allow-Origin", "*");
-  headers.set(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS"
-  );
-  headers.set(
-    "Access-Control-Allow-Headers",
-    "Content-Type, X-App-Key, Range, Authorization"
-  );
-
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
-
 // ============================================================
 // APP SECURITY
 // ============================================================
@@ -217,7 +198,9 @@ async function checkAppSecurity(request, env) {
   );
 
   if (!secret) {
-    console.error("APP SECURITY: APP_SECRET NOT CONFIGURED");
+    console.error(
+      "APP SECURITY: APP_SECRET NOT CONFIGURED"
+    );
 
     return {
       ok: false,
@@ -227,7 +210,9 @@ async function checkAppSecurity(request, env) {
   }
 
   if (!ua.includes(NEW_UA.toLowerCase())) {
-    console.warn("APP SECURITY: BAD USER-AGENT");
+    console.warn(
+      "APP SECURITY: BAD USER-AGENT"
+    );
 
     return {
       ok: false,
@@ -237,7 +222,9 @@ async function checkAppSecurity(request, env) {
   }
 
   if (!appKey) {
-    console.warn("APP SECURITY: MISSING X-App-Key");
+    console.warn(
+      "APP SECURITY: MISSING X-App-Key"
+    );
 
     return {
       ok: false,
@@ -247,7 +234,9 @@ async function checkAppSecurity(request, env) {
   }
 
   if (appKey !== secret) {
-    console.warn("APP SECURITY: INVALID KEY");
+    console.warn(
+      "APP SECURITY: INVALID KEY"
+    );
 
     return {
       ok: false,
@@ -287,12 +276,28 @@ async function checkRateLimit(
 
     const now = Date.now();
 
-    const raw = await env.DATA_KV.get(key);
+    const raw =
+      await env.DATA_KV.get(key);
+
+    let limit = PLAY_RATE_LIMIT;
+
+    if (type === "invalid") {
+      limit = INVALID_RATE_LIMIT;
+    }
+
+    if (type === "proxy") {
+      limit = PROXY_RATE_LIMIT;
+    }
+
+    // ========================================================
+    // NEW LIMIT
+    // ========================================================
 
     if (!raw) {
       const data = {
         count: 1,
-        resetAt: now + RATE_WINDOW * 1000,
+        resetAt:
+          now + RATE_WINDOW * 1000,
       };
 
       await env.DATA_KV.put(
@@ -317,28 +322,15 @@ async function checkRateLimit(
       old = null;
     }
 
-    if (!old || !old.resetAt) {
-      await env.DATA_KV.put(
-        key,
-        JSON.stringify({
-          count: 1,
-          resetAt: now + RATE_WINDOW * 1000,
-        }),
-        {
-          expirationTtl: Math.max(
-            60,
-            RATE_WINDOW + 5
-          ),
-        }
-      );
-
-      return true;
-    }
-
-    if (now >= old.resetAt) {
+    if (
+      !old ||
+      !old.resetAt ||
+      typeof old.count !== "number"
+    ) {
       const data = {
         count: 1,
-        resetAt: now + RATE_WINDOW * 1000,
+        resetAt:
+          now + RATE_WINDOW * 1000,
       };
 
       await env.DATA_KV.put(
@@ -355,16 +347,44 @@ async function checkRateLimit(
       return true;
     }
 
-    const limit =
-      type === "invalid"
-        ? INVALID_RATE_LIMIT
-        : PLAY_RATE_LIMIT;
+    // ========================================================
+    // RESET
+    // ========================================================
+
+    if (now >= old.resetAt) {
+      const data = {
+        count: 1,
+        resetAt:
+          now + RATE_WINDOW * 1000,
+      };
+
+      await env.DATA_KV.put(
+        key,
+        JSON.stringify(data),
+        {
+          expirationTtl: Math.max(
+            60,
+            RATE_WINDOW + 5
+          ),
+        }
+      );
+
+      return true;
+    }
+
+    // ========================================================
+    // LIMIT
+    // ========================================================
 
     if (old.count >= limit) {
       console.warn(
         "RATE LIMIT:",
-        type,
-        ip
+        JSON.stringify({
+          type,
+          ip,
+          count: old.count,
+          limit,
+        })
       );
 
       return false;
@@ -372,7 +392,7 @@ async function checkRateLimit(
 
     old.count++;
 
-    const remainingTtl =
+    const remaining =
       Math.ceil(
         (old.resetAt - now) / 1000
       ) + 5;
@@ -383,7 +403,7 @@ async function checkRateLimit(
       {
         expirationTtl: Math.max(
           60,
-          remainingTtl
+          remaining
         ),
       }
     );
@@ -396,7 +416,7 @@ async function checkRateLimit(
       error
     );
 
-    // لا نوقف البث بسبب مشكلة KV
+    // لا نوقف التشغيل لو حصلت مشكلة في KV
     return true;
   }
 }
@@ -456,7 +476,10 @@ async function securityGuard(
 // ============================================================
 
 async function loadChannels(env) {
-  // KV أولاً
+  // ========================================================
+  // KV
+  // ========================================================
+
   if (env.DATA_KV) {
     try {
       const value =
@@ -474,7 +497,9 @@ async function loadChannels(env) {
 
         if (
           parsed &&
-          Array.isArray(parsed.channels)
+          Array.isArray(
+            parsed.channels
+          )
         ) {
           return parsed.channels;
         }
@@ -487,13 +512,17 @@ async function loadChannels(env) {
     }
   }
 
-  // ملف JSON
-  try {
-    const req = new Request(
-      "https://internal.local/data/channels.json"
-    );
+  // ========================================================
+  // ASSETS
+  // ========================================================
 
+  try {
     if (env.ASSETS) {
+      const req =
+        new Request(
+          "https://internal.local/data/channels.json"
+        );
+
       const response =
         await env.ASSETS.fetch(req);
 
@@ -507,7 +536,9 @@ async function loadChannels(env) {
 
         if (
           data &&
-          Array.isArray(data.channels)
+          Array.isArray(
+            data.channels
+          )
         ) {
           return data.channels;
         }
@@ -541,7 +572,9 @@ async function findChannel(
 // URL VALIDATION
 // ============================================================
 
-function validateUpstreamURL(value) {
+function validateUpstreamURL(
+  value
+) {
   try {
     const url =
       new URL(value);
@@ -586,9 +619,14 @@ function getUpstreamHeaders(
     "en-US,en;q=0.9"
   );
 
+  // --------------------------------------------------------
   // Range
+  // --------------------------------------------------------
+
   const range =
-    request.headers.get("Range");
+    request.headers.get(
+      "Range"
+    );
 
   if (range) {
     headers.set(
@@ -597,7 +635,10 @@ function getUpstreamHeaders(
     );
   }
 
-  // بعض السيرفرات القديمة الخاصة بـ OSTORA
+  // --------------------------------------------------------
+  // OSTORA
+  // --------------------------------------------------------
+
   if (
     sourceUrl.hostname
       .toLowerCase()
@@ -624,64 +665,50 @@ async function logUpstreamError(
   let body = "";
 
   try {
-    body =
-      (
-        await response
-          .clone()
-          .text()
-      ).slice(0, 1500);
+    body = (
+      await response
+        .clone()
+        .text()
+    ).slice(0, 2000);
   } catch {
-    body = "";
+    body =
+      "Unable to read upstream response body";
   }
 
-  const importantHeaders = {};
+  const headers = {};
 
   for (
-    const name of [
-      "content-type",
-      "server",
-      "location",
-      "www-authenticate",
-      "via",
-      "cf-ray",
-      "access-control-allow-origin",
-    ]
+    const [name, value]
+    of response.headers
   ) {
-    const value =
-      response.headers.get(
-        name
-      );
-
-    if (value) {
-      importantHeaders[name] =
-        value;
-    }
+    headers[name] = value;
   }
 
   console.error(
     prefix,
     JSON.stringify({
-      status: response.status,
+      status:
+        response.status,
+
       statusText:
         response.statusText,
-      host: sourceUrl.hostname,
-      port:
-        sourceUrl.port ||
-        (
-          sourceUrl.protocol ===
-          "https:"
-            ? "443"
-            : "80"
-        ),
-      headers:
-        importantHeaders,
-      body,
+
+      url:
+        `${sourceUrl.protocol}//` +
+        `${sourceUrl.hostname}` +
+        `${sourceUrl.port ? ":" + sourceUrl.port : ""}`,
+
+      responseHeaders:
+        headers,
+
+      responseBody:
+        body,
     })
   );
 }
 
 // ============================================================
-// FETCH UPSTREAM
+// UPSTREAM FETCH
 // ============================================================
 
 async function fetchUpstream(
@@ -747,7 +774,7 @@ function isProbablyM3U8(
 }
 
 // ============================================================
-// TOKEN HELPERS
+// BASE64
 // ============================================================
 
 function bytesToBase64Url(
@@ -806,6 +833,10 @@ function base64UrlToBytes(
 
   return bytes;
 }
+
+// ============================================================
+// HMAC
+// ============================================================
 
 async function hmacSign(
   value,
@@ -874,6 +905,10 @@ async function hmacVerify(
   return result === 0;
 }
 
+// ============================================================
+// HLS TOKEN
+// ============================================================
+
 async function createHLSToken(
   target,
   env
@@ -892,7 +927,8 @@ async function createHLSToken(
   const exp =
     Math.floor(
       Date.now() / 1000
-    ) + HLS_TOKEN_TTL;
+    ) +
+    HLS_TOKEN_TTL;
 
   const payload = {
     u: target,
@@ -999,7 +1035,7 @@ async function verifyHLSToken(
 }
 
 // ============================================================
-// HLS URL RESOLUTION
+// RESOLVE URL
 // ============================================================
 
 function resolveURL(
@@ -1017,7 +1053,7 @@ function resolveURL(
 }
 
 // ============================================================
-// REWRITE HLS URI ATTRIBUTES
+// REWRITE URI
 // ============================================================
 
 async function rewriteURIAttributes(
@@ -1077,7 +1113,7 @@ async function rewriteURIAttributes(
 }
 
 // ============================================================
-// REWRITE HLS MANIFEST
+// REWRITE MANIFEST
 // ============================================================
 
 async function rewriteHLSManifest(
@@ -1101,9 +1137,9 @@ async function rewriteHLSManifest(
       continue;
     }
 
-    // --------------------------------------------------------
-    // EXT-X-KEY / MAP / MEDIA / I-FRAME / وغيرها
-    // --------------------------------------------------------
+    // ========================================================
+    // URI داخل EXT-X
+    // ========================================================
 
     if (
       trimmed.startsWith("#") &&
@@ -1120,9 +1156,9 @@ async function rewriteHLSManifest(
       continue;
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // Comments
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
       trimmed.startsWith("#")
@@ -1131,9 +1167,9 @@ async function rewriteHLSManifest(
       continue;
     }
 
-    // --------------------------------------------------------
-    // Segment / Child Playlist
-    // --------------------------------------------------------
+    // ========================================================
+    // Segment / Playlist
+    // ========================================================
 
     const absolute =
       resolveURL(
@@ -1152,10 +1188,10 @@ async function rewriteHLSManifest(
         token
       )}`;
 
-    // preserve indentation
     const indent =
-      line.match(/^\s*/)?.[0] ||
-      "";
+      line.match(
+        /^\s*/
+      )?.[0] || "";
 
     result.push(
       indent + proxied
@@ -1189,7 +1225,9 @@ async function playApi(
     new URL(request.url);
 
   const id =
-    url.searchParams.get("id");
+    url.searchParams.get(
+      "id"
+    );
 
   if (!id) {
     return text(
@@ -1249,12 +1287,16 @@ async function playApi(
     JSON.stringify({
       type:
         "UPSTREAM_REQUEST",
+
       channel:
         String(id),
+
       protocol:
         sourceUrl.protocol,
+
       host:
         sourceUrl.hostname,
+
       port:
         sourceUrl.port ||
         (
@@ -1291,7 +1333,6 @@ async function playApi(
         "Content-Type"
       ) || "";
 
-    // نقرأه مرة واحدة
     const body =
       await response.text();
 
@@ -1306,6 +1347,10 @@ async function playApi(
         body
       );
 
+    // ========================================================
+    // NOT M3U8
+    // ========================================================
+
     if (!isM3U8) {
       return new Response(
         body,
@@ -1315,14 +1360,20 @@ async function playApi(
             "Content-Type":
               contentType ||
               "application/octet-stream",
+
             "Cache-Control":
               "no-store",
+
             "Access-Control-Allow-Origin":
               "*",
           },
         }
       );
     }
+
+    // ========================================================
+    // M3U8
+    // ========================================================
 
     const rewritten =
       await rewriteHLSManifest(
@@ -1331,18 +1382,16 @@ async function playApi(
         env
       );
 
-    // viewer
+    // ========================================================
+    // VIEWER
+    // ========================================================
+
     if (ctx) {
       ctx.waitUntil(
         incrementViewer(
           env,
           String(id)
-        ).catch(error => {
-          console.error(
-            "VIEWER INCREMENT ERROR:",
-            error
-          );
-        })
+        )
       );
     }
 
@@ -1353,10 +1402,13 @@ async function playApi(
         headers: {
           "Content-Type":
             "application/vnd.apple.mpegurl",
+
           "Cache-Control":
             "no-store, no-cache, must-revalidate",
+
           "Pragma":
             "no-cache",
+
           "Access-Control-Allow-Origin":
             "*",
         },
@@ -1450,19 +1502,21 @@ async function hlsApi(
         "Content-Type"
       ) || "";
 
-    // --------------------------------------------------------
-    // HLS playlist
-    // --------------------------------------------------------
-
     const looksLikePlaylist =
       contentType
         .toLowerCase()
-        .includes("mpegurl") ||
+        .includes(
+          "mpegurl"
+        ) ||
       contentType
         .toLowerCase()
         .includes(
           "vnd.apple.mpegurl"
         );
+
+    // ========================================================
+    // PLAYLIST
+    // ========================================================
 
     if (looksLikePlaylist) {
       const body =
@@ -1482,8 +1536,10 @@ async function hlsApi(
           headers: {
             "Content-Type":
               "application/vnd.apple.mpegurl",
+
             "Cache-Control":
               "no-store",
+
             "Access-Control-Allow-Origin":
               "*",
           },
@@ -1491,9 +1547,9 @@ async function hlsApi(
       );
     }
 
-    // --------------------------------------------------------
-    // Segment / binary
-    // --------------------------------------------------------
+    // ========================================================
+    // SEGMENT
+    // ========================================================
 
     const headers =
       new Headers();
@@ -1529,7 +1585,9 @@ async function hlsApi(
     return new Response(
       response.body,
       {
-        status: response.status,
+        status:
+          response.status,
+
         headers,
       }
     );
@@ -1569,6 +1627,11 @@ async function playlistApi(
   const channels =
     await loadChannels(env);
 
+  const origin =
+    new URL(
+      request.url
+    ).origin;
+
   const lines = [
     "#EXTM3U",
   ];
@@ -1595,7 +1658,7 @@ async function playlistApi(
       "SUPER TV";
 
     let info =
-      `#EXTINF:-1`;
+      "#EXTINF:-1";
 
     if (logo) {
       info +=
@@ -1608,24 +1671,24 @@ async function playlistApi(
     lines.push(info);
 
     lines.push(
-      `${new URL(
-        "/api/play.m3u8",
-        request.url
-      ).origin}/api/play.m3u8?id=${encodeURIComponent(
+      `${origin}/api/play.m3u8?id=${encodeURIComponent(
         id
       )}`
     );
   }
 
   return new Response(
-    lines.join("\n") + "\n",
+    lines.join("\n") +
+      "\n",
     {
       status: 200,
       headers: {
         "Content-Type":
           "application/vnd.apple.mpegurl",
+
         "Cache-Control":
           "no-store",
+
         "Access-Control-Allow-Origin":
           "*",
       },
@@ -1722,8 +1785,10 @@ async function proxyM3u8Api(
           headers: {
             "Content-Type":
               "application/vnd.apple.mpegurl",
+
             "Cache-Control":
               "no-store",
+
             "Access-Control-Allow-Origin":
               "*",
           },
@@ -1741,8 +1806,10 @@ async function proxyM3u8Api(
               "Content-Type"
             ) ||
             "application/octet-stream",
+
           "Cache-Control":
             "no-store",
+
           "Access-Control-Allow-Origin":
             "*",
         },
@@ -1864,7 +1931,9 @@ async function tsApi(
     return new Response(
       response.body,
       {
-        status: response.status,
+        status:
+          response.status,
+
         headers,
       }
     );
@@ -1904,7 +1973,6 @@ async function channelsApi(
   const channels =
     await loadChannels(env);
 
-  // نخفي روابط السيرفر الأصلية
   const safeChannels =
     channels.map(
       channel => {
@@ -1932,7 +2000,7 @@ async function channelsApi(
 }
 
 // ============================================================
-// SAVE CHANNELS
+// SAVE
 // ============================================================
 
 async function saveApi(
@@ -2068,7 +2136,6 @@ async function incrementViewer(
       viewers = [];
     }
 
-    // نحافظ فقط على آخر 30 ثانية
     viewers =
       viewers.filter(
         timestamp =>
@@ -2118,8 +2185,14 @@ async function getViewerCount(
       return 0;
     }
 
-    let viewers =
-      JSON.parse(raw);
+    let viewers;
+
+    try {
+      viewers =
+        JSON.parse(raw);
+    } catch {
+      return 0;
+    }
 
     if (
       !Array.isArray(viewers)
@@ -2149,6 +2222,10 @@ async function getViewerCount(
     return 0;
   }
 }
+
+// ============================================================
+// VIEWERS API
+// ============================================================
 
 async function viewersApi(
   request,
@@ -2238,12 +2315,16 @@ async function adminApi(
     ok: true,
     worker:
       "super-tv-api",
+
     channels:
       channels.length,
+
     kv:
       Boolean(env.DATA_KV),
+
     assets:
       Boolean(env.ASSETS),
+
     time:
       new Date().toISOString(),
   });
