@@ -1,6 +1,5 @@
-```javascript
 // ============================================================
-// SUPER TV API - Cloudflare Worker
+// SUPER TV API - CLOUDFLARE WORKER
 // HLS SOURCE HIDDEN PROXY
 // ============================================================
 
@@ -11,8 +10,9 @@ const FALLBACK_VIDEO =
   "https://github.com/himasabry/video/raw/refs/heads/main/output.m3u8";
 
 const PROXY_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-  "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+  "AppleWebKit/537.36 (KHTML, like Gecko) " +
+  "Chrome/148.0.0.0 Safari/537.36";
 
 // ============================================================
 // RATE LIMIT
@@ -67,7 +67,7 @@ function text(
 }
 
 // ============================================================
-// GET CLIENT IP
+// CLIENT IP
 // ============================================================
 
 function getClientIP(request) {
@@ -85,18 +85,14 @@ function getClientIP(request) {
 // ============================================================
 
 async function sha256(value) {
-  const data =
-    new TextEncoder().encode(value);
+  const data = new TextEncoder().encode(value);
 
-  const hash =
-    await crypto.subtle.digest(
-      "SHA-256",
-      data
-    );
+  const hash = await crypto.subtle.digest(
+    "SHA-256",
+    data
+  );
 
-  return Array.from(
-    new Uint8Array(hash)
-  )
+  return Array.from(new Uint8Array(hash))
     .map(
       b =>
         b
@@ -107,7 +103,7 @@ async function sha256(value) {
 }
 
 // ============================================================
-// BASE64URL
+// BASE64 URL
 // ============================================================
 
 function base64UrlEncode(bytes) {
@@ -134,14 +130,12 @@ function base64UrlDecode(value) {
 
   const binary = atob(value);
 
-  const bytes =
-    new Uint8Array(
-      binary.length
-    );
+  const bytes = new Uint8Array(
+    binary.length
+  );
 
   for (let i = 0; i < binary.length; i++) {
-    bytes[i] =
-      binary.charCodeAt(i);
+    bytes[i] = binary.charCodeAt(i);
   }
 
   return bytes;
@@ -152,7 +146,6 @@ function base64UrlDecode(value) {
 // ============================================================
 
 async function getCryptoKey(env) {
-
   if (!env.APP_SECRET) {
     throw new Error(
       "APP_SECRET is not configured"
@@ -181,7 +174,6 @@ async function createHLSToken(
   env,
   target
 ) {
-
   const expires =
     Date.now() +
     HLS_TOKEN_TTL;
@@ -232,9 +224,7 @@ async function verifyHLSToken(
   env,
   token
 ) {
-
   try {
-
     if (!token) {
       return null;
     }
@@ -242,9 +232,7 @@ async function verifyHLSToken(
     const parts =
       token.split(".");
 
-    if (
-      parts.length !== 2
-    ) {
+    if (parts.length !== 2) {
       return null;
     }
 
@@ -300,7 +288,6 @@ async function verifyHLSToken(
     };
 
   } catch (e) {
-
     console.error(
       "TOKEN VERIFY ERROR:",
       e
@@ -320,7 +307,6 @@ async function checkRateLimit(
   limit,
   windowSeconds
 ) {
-
   if (!env.DATA_KV) {
     return {
       allowed: true,
@@ -328,14 +314,12 @@ async function checkRateLimit(
     };
   }
 
-  const now =
-    Date.now();
+  const now = Date.now();
 
   const storageKey =
     `ratelimit:${key}`;
 
   try {
-
     const old =
       await env.DATA_KV.get(
         storageKey,
@@ -347,7 +331,6 @@ async function checkRateLimit(
       !old.resetAt ||
       old.resetAt <= now
     ) {
-
       await env.DATA_KV.put(
         storageKey,
         JSON.stringify({
@@ -376,10 +359,8 @@ async function checkRateLimit(
     }
 
     if (
-      old.count >=
-      limit
+      old.count >= limit
     ) {
-
       return {
         allowed: false,
         remaining: 0,
@@ -417,13 +398,11 @@ async function checkRateLimit(
       remaining:
         Math.max(
           0,
-          limit -
-          old.count
+          limit - old.count
         )
     };
 
   } catch (e) {
-
     console.error(
       "RATE LIMIT ERROR:",
       e
@@ -444,7 +423,6 @@ async function checkAppSecurity(
   request,
   env
 ) {
-
   const ua =
     (
       request.headers.get(
@@ -489,7 +467,6 @@ async function checkAppSecurity(
   }
 
   if (!env.APP_SECRET) {
-
     console.error(
       "APP_SECRET is not configured"
     );
@@ -528,7 +505,6 @@ async function securityGuard(
   env,
   type = "play"
 ) {
-
   const ip =
     getClientIP(request);
 
@@ -538,10 +514,7 @@ async function securityGuard(
       env
     );
 
-  if (
-    !security.allowed
-  ) {
-
+  if (!security.allowed) {
     const ipHash =
       await sha256(ip);
 
@@ -553,29 +526,22 @@ async function securityGuard(
         INVALID_RATE_WINDOW
       );
 
-    if (
-      !invalidLimit.allowed
-    ) {
-
+    if (!invalidLimit.allowed) {
       return {
         allowed: false,
-
         response:
           new Response(
             "Too Many Requests",
             {
               status: 429,
-
               headers: {
                 "Content-Type":
                   "text/plain; charset=utf-8",
-
                 "Retry-After":
                   String(
                     invalidLimit.retryAfter ||
                     INVALID_RATE_WINDOW
                   ),
-
                 "Cache-Control":
                   "no-store"
               }
@@ -586,7 +552,6 @@ async function securityGuard(
 
     return {
       allowed: false,
-
       response:
         text(
           "Forbidden",
@@ -598,7 +563,6 @@ async function securityGuard(
   if (
     type === "play"
   ) {
-
     const appKey =
       request.headers.get(
         "X-App-Key"
@@ -620,29 +584,22 @@ async function securityGuard(
         PLAY_RATE_WINDOW
       );
 
-    if (
-      !rate.allowed
-    ) {
-
+    if (!rate.allowed) {
       return {
         allowed: false,
-
         response:
           new Response(
             "Too Many Requests",
             {
               status: 429,
-
               headers: {
                 "Content-Type":
                   "text/plain; charset=utf-8",
-
                 "Retry-After":
                   String(
                     rate.retryAfter ||
                     PLAY_RATE_WINDOW
                   ),
-
                 "Cache-Control":
                   "no-store"
               }
@@ -658,49 +615,73 @@ async function securityGuard(
 }
 
 // ============================================================
-// NORMALIZE CHANNEL DATA
+// NORMALIZE CHANNELS
 // ============================================================
 
 function normalizeChannels(data) {
-
   if (!data) {
     return [];
   }
 
-  // Array مباشر
+  // --------------------------------------------
+  // Array مباشرة
+  // --------------------------------------------
+
   if (Array.isArray(data)) {
-    return data;
+    return data.filter(
+      item =>
+        item &&
+        typeof item === "object" &&
+        item.id !== undefined
+    );
   }
 
+  // --------------------------------------------
   // { channels: [...] }
+  // --------------------------------------------
+
   if (
     Array.isArray(
       data.channels
     )
   ) {
-    return data.channels;
+    return data.channels.filter(
+      item =>
+        item &&
+        typeof item === "object" &&
+        item.id !== undefined
+    );
   }
 
-  // الشكل الحالي:
+  // --------------------------------------------
+  // تصنيفات:
+  //
   // {
   //   sports: [...],
   //   movies: [...],
-  //   ...
+  //   series: [...]
   // }
+  // --------------------------------------------
+
   const result = [];
 
   for (
-    const value of
-    Object.values(data)
+    const value of Object.values(data)
   ) {
-
     if (
       Array.isArray(value)
     ) {
-
-      result.push(
-        ...value
-      );
+      for (
+        const item of value
+      ) {
+        if (
+          item &&
+          typeof item === "object" &&
+          item.id !== undefined
+        ) {
+          result.push(item);
+        }
+      }
     }
   }
 
@@ -708,35 +689,42 @@ function normalizeChannels(data) {
 }
 
 // ============================================================
-// READ CHANNELS FROM KV
+// LOAD CHANNELS FROM KV
 // ============================================================
 
 async function loadChannelsFromKV(
   env
 ) {
-
   if (!env.DATA_KV) {
     return null;
   }
 
   try {
-
-    const raw =
+    const data =
       await env.DATA_KV.get(
-        "channels"
+        "channels",
+        "json"
       );
 
-    if (!raw) {
+    if (!data) {
+      console.log(
+        "KV CHANNELS: EMPTY"
+      );
+
       return null;
     }
 
-    const parsed =
-      JSON.parse(raw);
+    const channels =
+      normalizeChannels(data);
 
-    return parsed;
+    console.log(
+      "KV CHANNELS COUNT:",
+      channels.length
+    );
+
+    return data;
 
   } catch (e) {
-
     console.error(
       "KV CHANNELS ERROR:",
       e
@@ -747,13 +735,12 @@ async function loadChannelsFromKV(
 }
 
 // ============================================================
-// READ CHANNELS FROM ASSETS
+// LOAD CHANNELS FROM ASSETS
 // ============================================================
 
 async function loadChannelsFromAssets(
   env
 ) {
-
   if (!env.ASSETS) {
     return null;
   }
@@ -766,44 +753,47 @@ async function loadChannelsFromAssets(
   for (
     const path of paths
   ) {
-
     try {
-
       const response =
         await env.ASSETS.fetch(
           new Request(
-            `https://internal.local${path}`
+            new URL(
+              path,
+              "https://internal.local"
+            )
           )
         );
 
       if (
         response.ok
       ) {
-
-        const parsed =
+        const data =
           await response.json();
 
+        const channels =
+          normalizeChannels(data);
+
         console.log(
-          JSON.stringify({
-            type:
-              "ASSETS_CHANNELS_FOUND",
-            path,
-            count:
-              normalizeChannels(
-                parsed
-              ).length
-          })
+          "ASSETS CHANNELS FOUND:",
+          path,
+          "COUNT:",
+          channels.length
         );
 
-        return parsed;
+        return data;
       }
 
-    } catch (e) {
+      console.log(
+        "ASSETS CHANNELS MISS:",
+        path,
+        response.status
+      );
 
+    } catch (e) {
       console.error(
         "ASSETS CHANNELS ERROR:",
         path,
-        e.message
+        e
       );
     }
   }
@@ -819,13 +809,12 @@ async function findChannel(
   env,
   id
 ) {
-
-  const channelId =
+  const wanted =
     String(id);
 
-  // ----------------------------------------------------------
+  // --------------------------------------------
   // KV
-  // ----------------------------------------------------------
+  // --------------------------------------------
 
   const kvData =
     await loadChannelsFromKV(
@@ -837,26 +826,29 @@ async function findChannel(
       kvData
     );
 
-  const kvChannel =
+  const kvFound =
     kvChannels.find(
       channel =>
-        String(channel.id) ===
-        channelId
+        String(
+          channel.id
+        ) === wanted
     );
 
-  if (kvChannel) {
-
+  if (kvFound) {
     console.log(
       "CHANNEL_FOUND source: KV",
-      channelId
+      wanted
     );
 
-    return kvChannel;
+    return {
+      channel: kvFound,
+      source: "KV"
+    };
   }
 
-  // ----------------------------------------------------------
+  // --------------------------------------------
   // ASSETS
-  // ----------------------------------------------------------
+  // --------------------------------------------
 
   const assetData =
     await loadChannelsFromAssets(
@@ -868,37 +860,41 @@ async function findChannel(
       assetData
     );
 
-  const assetChannel =
+  const assetFound =
     assetChannels.find(
       channel =>
-        String(channel.id) ===
-        channelId
+        String(
+          channel.id
+        ) === wanted
     );
 
-  if (assetChannel) {
-
+  if (assetFound) {
     console.log(
       "CHANNEL_FOUND source: ASSETS",
-      channelId
+      wanted
     );
 
-    return assetChannel;
+    return {
+      channel: assetFound,
+      source: "ASSETS"
+    };
   }
 
-  // ----------------------------------------------------------
+  // --------------------------------------------
   // DIAGNOSTIC
-  // ----------------------------------------------------------
+  // --------------------------------------------
 
-  console.log(
+  console.warn(
+    "CHANNEL_LOOKUP",
     JSON.stringify({
-      type:
-        "CHANNEL_LOOKUP",
-      requestedId:
-        channelId,
+      requestedId: wanted,
+
       kvCount:
         kvChannels.length,
+
       assetCount:
         assetChannels.length,
+
       kvIds:
         kvChannels
           .slice(0, 100)
@@ -906,6 +902,7 @@ async function findChannel(
             c =>
               String(c.id)
           ),
+
       assetIds:
         assetChannels
           .slice(0, 100)
@@ -916,22 +913,16 @@ async function findChannel(
     })
   );
 
-  console.warn(
-    "CHANNEL NOT FOUND:",
-    channelId
-  );
-
   return null;
 }
 
 // ============================================================
-// LOAD CHANNELS
+// COMPATIBLE LOAD CHANNELS
 // ============================================================
 
 async function loadChannels(
   env
 ) {
-
   const kvData =
     await loadChannelsFromKV(
       env
@@ -951,7 +942,7 @@ async function loadChannels(
   }
 
   throw new Error(
-    "channels.json not found"
+    "channels.json not found in KV or Assets"
   );
 }
 
@@ -963,20 +954,28 @@ async function channelsApi(
   request,
   env
 ) {
+  const security =
+    await securityGuard(
+      request,
+      env,
+      "channels"
+    );
+
+  if (
+    !security.allowed
+  ) {
+    return security.response;
+  }
 
   try {
-
     const data =
       await loadChannels(
         env
       );
 
-    return json(
-      data
-    );
+    return json(data);
 
   } catch (e) {
-
     console.error(
       "CHANNELS ERROR:",
       e
@@ -993,31 +992,28 @@ async function channelsApi(
 }
 
 // ============================================================
-// BUILD UPSTREAM HEADERS
+// UPSTREAM HEADERS
 // ============================================================
 
 function getUpstreamHeaders(
   target
 ) {
-
   const headers = {
     "User-Agent":
-      PROXY_UA
+      PROXY_UA,
+    "Accept":
+      "*/*"
   };
 
   try {
-
     const parsed =
-      new URL(
-        target
-      );
+      new URL(target);
 
     if (
       parsed.hostname
         .toLowerCase()
         .includes("ostora")
     ) {
-
       headers.Referer =
         "https://ostora.pages.dev/";
     }
@@ -1035,7 +1031,6 @@ async function fetchUpstream(
   target,
   request
 ) {
-
   const headers =
     getUpstreamHeaders(
       target
@@ -1069,14 +1064,13 @@ async function fetchUpstream(
 }
 
 // ============================================================
-// HLS URL REWRITE
+// M3U8 DETECTION
 // ============================================================
 
 function isProbablyM3U8(
   url,
   contentType = ""
 ) {
-
   const lowerUrl =
     url.toLowerCase();
 
@@ -1106,7 +1100,6 @@ async function rewriteHLSManifest(
   sourceUrl,
   workerOrigin
 ) {
-
   const lines =
     body.split(/\r?\n/);
 
@@ -1115,14 +1108,16 @@ async function rewriteHLSManifest(
   for (
     let line of lines
   ) {
-
     const original =
       line.trim();
+
+    // --------------------------------------------
+    // Tags
+    // --------------------------------------------
 
     if (
       original.startsWith("#")
     ) {
-
       line =
         await rewriteURIAttributes(
           env,
@@ -1131,24 +1126,24 @@ async function rewriteHLSManifest(
           workerOrigin
         );
 
-      output.push(
-        line
-      );
-
+      output.push(line);
       continue;
     }
+
+    // --------------------------------------------
+    // Empty
+    // --------------------------------------------
 
     if (!original) {
-
-      output.push(
-        line
-      );
-
+      output.push(line);
       continue;
     }
 
-    try {
+    // --------------------------------------------
+    // Segment / Playlist
+    // --------------------------------------------
 
+    try {
       const absolute =
         new URL(
           original,
@@ -1166,10 +1161,7 @@ async function rewriteHLSManifest(
       );
 
     } catch {
-
-      output.push(
-        line
-      );
+      output.push(line);
     }
   }
 
@@ -1186,20 +1178,14 @@ async function rewriteURIAttributes(
   sourceUrl,
   workerOrigin
 ) {
-
   const regex =
     /URI="([^"]+)"/gi;
 
-  const matches =
-    [
-      ...line.matchAll(
-        regex
-      )
-    ];
+  const matches = [
+    ...line.matchAll(regex)
+  ];
 
-  if (
-    !matches.length
-  ) {
+  if (!matches.length) {
     return line;
   }
 
@@ -1212,7 +1198,6 @@ async function rewriteURIAttributes(
     i >= 0;
     i--
   ) {
-
     const match =
       matches[i];
 
@@ -1220,7 +1205,6 @@ async function rewriteURIAttributes(
       match[1];
 
     try {
-
       const absolute =
         new URL(
           originalUri,
@@ -1249,14 +1233,13 @@ async function rewriteURIAttributes(
         );
 
     } catch {}
-
   }
 
   return result;
 }
 
 // ============================================================
-// HLS ENTRY POINT
+// HLS API
 // ============================================================
 
 async function hlsApi(
@@ -1264,7 +1247,6 @@ async function hlsApi(
   env,
   url
 ) {
-
   const security =
     await securityGuard(
       request,
@@ -1284,7 +1266,6 @@ async function hlsApi(
     );
 
   if (!token) {
-
     return text(
       "Missing token",
       400
@@ -1298,7 +1279,6 @@ async function hlsApi(
     );
 
   if (!decoded) {
-
     return text(
       "Invalid or expired token",
       403
@@ -1308,7 +1288,6 @@ async function hlsApi(
   let targetUrl;
 
   try {
-
     targetUrl =
       new URL(
         decoded.url
@@ -1320,7 +1299,6 @@ async function hlsApi(
       targetUrl.protocol !==
         "https:"
     ) {
-
       return text(
         "Invalid upstream protocol",
         400
@@ -1328,7 +1306,6 @@ async function hlsApi(
     }
 
   } catch {
-
     return text(
       "Invalid upstream URL",
       400
@@ -1336,7 +1313,6 @@ async function hlsApi(
   }
 
   try {
-
     const upstream =
       await fetchUpstream(
         targetUrl.toString(),
@@ -1348,13 +1324,16 @@ async function hlsApi(
         "content-type"
       ) || "";
 
+    // --------------------------------------------
+    // HLS Manifest
+    // --------------------------------------------
+
     if (
       isProbablyM3U8(
         targetUrl.toString(),
         contentType
       )
     ) {
-
       const body =
         await upstream.text();
 
@@ -1389,11 +1368,14 @@ async function hlsApi(
       );
     }
 
+    // --------------------------------------------
+    // Segment / Key / Binary
+    // --------------------------------------------
+
     const headers =
       new Headers();
 
     if (contentType) {
-
       headers.set(
         "Content-Type",
         contentType
@@ -1406,7 +1388,6 @@ async function hlsApi(
       );
 
     if (contentLength) {
-
       headers.set(
         "Content-Length",
         contentLength
@@ -1419,7 +1400,6 @@ async function hlsApi(
       );
 
     if (contentRange) {
-
       headers.set(
         "Content-Range",
         contentRange
@@ -1432,7 +1412,6 @@ async function hlsApi(
       );
 
     if (acceptRanges) {
-
       headers.set(
         "Accept-Ranges",
         acceptRanges
@@ -1459,7 +1438,6 @@ async function hlsApi(
     );
 
   } catch (e) {
-
     console.error(
       "HLS PROXY ERROR:",
       e
@@ -1481,25 +1459,22 @@ async function playApi(
   env,
   url
 ) {
-
   try {
-
     const id =
       url.searchParams.get(
         "id"
       );
 
     if (!id) {
-
       return text(
         "Missing id",
         400
       );
     }
 
-    // --------------------------------------------------------
-    // OLD UA
-    // --------------------------------------------------------
+    // --------------------------------------------
+    // OLD APP
+    // --------------------------------------------
 
     const ua =
       request.headers.get(
@@ -1517,16 +1492,15 @@ async function playApi(
         "superlivetv"
       )
     ) {
-
       return Response.redirect(
         FALLBACK_VIDEO,
         302
       );
     }
 
-    // --------------------------------------------------------
+    // --------------------------------------------
     // SECURITY
-    // --------------------------------------------------------
+    // --------------------------------------------
 
     const security =
       await securityGuard(
@@ -1541,26 +1515,30 @@ async function playApi(
       return security.response;
     }
 
-    // --------------------------------------------------------
+    // --------------------------------------------
     // VIEWER
-    // --------------------------------------------------------
+    // --------------------------------------------
 
     await incrementViewer(
       env,
       id
     );
 
-    // --------------------------------------------------------
+    // --------------------------------------------
     // FIND CHANNEL
-    // --------------------------------------------------------
+    // --------------------------------------------
 
-    const channel =
+    const result =
       await findChannel(
         env,
         id
       );
 
-    if (!channel) {
+    if (!result) {
+      console.warn(
+        "CHANNEL NOT FOUND:",
+        id
+      );
 
       return text(
         "Channel not found",
@@ -1568,29 +1546,44 @@ async function playApi(
       );
     }
 
-    if (!channel.url) {
+    const channel =
+      result.channel;
 
+    console.log(
+      "PLAY CHANNEL:",
+      JSON.stringify({
+        id: String(channel.id),
+        source: result.source,
+        name:
+          channel.name ||
+          channel.title ||
+          "",
+        hasUrl:
+          Boolean(channel.url)
+      })
+    );
+
+    if (!channel.url) {
       return text(
         "Channel URL missing",
         404
       );
     }
 
-    // --------------------------------------------------------
+    // --------------------------------------------
     // SOURCE
-    // --------------------------------------------------------
+    // --------------------------------------------
 
     const cleanUrl =
-      channel.url.split(
-        "#"
-      )[0];
+      String(channel.url)
+        .split("#")[0]
+        .trim();
 
     console.log(
+      "UPSTREAM REQUEST:",
       JSON.stringify({
-        type:
-          "UPSTREAM_REQUEST",
         channel:
-          String(id),
+          String(channel.id),
         protocol:
           (() => {
             try {
@@ -1616,7 +1609,7 @@ async function playApi(
             try {
               return new URL(
                 cleanUrl
-              ).port || "";
+              ).port;
             } catch {
               return "";
             }
@@ -1624,9 +1617,9 @@ async function playApi(
       })
     );
 
-    // --------------------------------------------------------
+    // --------------------------------------------
     // FETCH SOURCE
-    // --------------------------------------------------------
+    // --------------------------------------------
 
     const response =
       await fetchUpstream(
@@ -1634,18 +1627,19 @@ async function playApi(
         request
       );
 
+    console.log(
+      "UPSTREAM RESPONSE:",
+      JSON.stringify({
+        channel:
+          String(channel.id),
+        status:
+          response.status,
+        finalUrl:
+          response.url
+      })
+    );
+
     if (!response.ok) {
-
-      console.error(
-        "PLAY UPSTREAM ERROR:",
-        JSON.stringify({
-          status:
-            response.status,
-          channel:
-            String(id)
-        })
-      );
-
       return text(
         `Upstream error: ${response.status}`,
         response.status
@@ -1657,18 +1651,17 @@ async function playApi(
         "content-type"
       ) || "";
 
-    // --------------------------------------------------------
-    // M3U8 SOURCE
-    // --------------------------------------------------------
+    // --------------------------------------------
+    // M3U8
+    // --------------------------------------------
 
     if (
       isProbablyM3U8(
         response.url ||
-        cleanUrl,
+          cleanUrl,
         contentType
       )
     ) {
-
       const body =
         await response.text();
 
@@ -1703,9 +1696,9 @@ async function playApi(
       );
     }
 
-    // --------------------------------------------------------
-    // NON M3U8 SOURCE
-    // --------------------------------------------------------
+    // --------------------------------------------
+    // NON M3U8
+    // --------------------------------------------
 
     return new Response(
       response.body,
@@ -1728,7 +1721,6 @@ async function playApi(
     );
 
   } catch (e) {
-
     console.error(
       "PLAY ERROR:",
       e
@@ -1751,12 +1743,15 @@ async function playlistApi(
   env,
   url
 ) {
-
   try {
-
     const data =
       await loadChannels(
         env
+      );
+
+    const channels =
+      normalizeChannels(
+        data
       );
 
     let m3u =
@@ -1766,32 +1761,19 @@ async function playlistApi(
       url.origin;
 
     for (
-      const category
-      in data
+      const ch of channels
     ) {
+      const name =
+        ch.name ||
+        ch.title ||
+        ch.channel_name ||
+        ch.id;
 
-      const channels =
-        data[category];
+      m3u +=
+        `#EXTINF:-1 tvg-id="${ch.id}",${name}\n`;
 
-      if (
-        !Array.isArray(
-          channels
-        )
-      ) {
-        continue;
-      }
-
-      for (
-        const ch
-        of channels
-      ) {
-
-        m3u +=
-          `#EXTINF:-1 tvg-id="${ch.id}" group-title="${category}",${ch.name}\n`;
-
-        m3u +=
-          `${host}/api/play.m3u8?id=${encodeURIComponent(ch.id)}\n`;
-      }
+      m3u +=
+        `${host}/api/play.m3u8?id=${encodeURIComponent(ch.id)}\n`;
     }
 
     return new Response(
@@ -1816,7 +1798,6 @@ async function playlistApi(
     );
 
   } catch (e) {
-
     console.error(
       "PLAYLIST ERROR:",
       e
@@ -1831,7 +1812,7 @@ async function playlistApi(
 }
 
 // ============================================================
-// OLD PROXY M3U8
+// PROXY M3U8
 // ============================================================
 
 async function proxyM3u8Api(
@@ -1839,7 +1820,6 @@ async function proxyM3u8Api(
   env,
   url
 ) {
-
   const security =
     await securityGuard(
       request,
@@ -1859,7 +1839,6 @@ async function proxyM3u8Api(
     );
 
   if (!target) {
-
     return text(
       "Missing url",
       400
@@ -1867,7 +1846,6 @@ async function proxyM3u8Api(
   }
 
   try {
-
     const upstream =
       await fetchUpstream(
         target,
@@ -1885,7 +1863,6 @@ async function proxyM3u8Api(
         contentType
       )
     ) {
-
       const body =
         await upstream.text();
 
@@ -1939,7 +1916,6 @@ async function proxyM3u8Api(
     );
 
   } catch (e) {
-
     console.error(
       "PROXY ERROR:",
       e
@@ -1953,7 +1929,7 @@ async function proxyM3u8Api(
 }
 
 // ============================================================
-// OLD TS PROXY
+// TS PROXY
 // ============================================================
 
 async function tsApi(
@@ -1961,7 +1937,6 @@ async function tsApi(
   env,
   url
 ) {
-
   const security =
     await securityGuard(
       request,
@@ -1981,7 +1956,6 @@ async function tsApi(
     );
 
   if (!target) {
-
     return text(
       "Missing url",
       400
@@ -1989,7 +1963,6 @@ async function tsApi(
   }
 
   try {
-
     const upstream =
       await fetchUpstream(
         target,
@@ -2010,13 +1983,15 @@ async function tsApi(
             "video/mp2t",
 
           "Access-Control-Allow-Origin":
-            "*"
+            "*",
+
+          "Cache-Control":
+            "no-store"
         }
       }
     );
 
   } catch (e) {
-
     console.error(
       "TS ERROR:",
       e
@@ -2037,7 +2012,6 @@ async function saveApi(
   request,
   env
 ) {
-
   const security =
     await securityGuard(
       request,
@@ -2055,7 +2029,6 @@ async function saveApi(
     request.method !==
     "POST"
   ) {
-
     return json(
       {
         error:
@@ -2066,12 +2039,10 @@ async function saveApi(
   }
 
   try {
-
     const body =
       await request.json();
 
     if (!env.DATA_KV) {
-
       return json(
         {
           error:
@@ -2088,15 +2059,19 @@ async function saveApi(
       )
     );
 
-    return json(
-      {
-        status:
-          "ok"
-      }
+    console.log(
+      "CHANNELS SAVED:",
+      normalizeChannels(body).length
     );
 
-  } catch (e) {
+    return json({
+      status:
+        "ok",
+      count:
+        normalizeChannels(body).length
+    });
 
+  } catch (e) {
     console.error(
       "SAVE ERROR:",
       e
@@ -2120,7 +2095,6 @@ async function incrementViewer(
   env,
   id
 ) {
-
   if (!env.DATA_KV) {
     return;
   }
@@ -2129,7 +2103,6 @@ async function incrementViewer(
     `viewer:${id}`;
 
   try {
-
     const old =
       await env.DATA_KV.get(
         key,
@@ -2155,7 +2128,6 @@ async function incrementViewer(
     );
 
   } catch (e) {
-
     console.error(
       "VIEWER INCREMENT ERROR:",
       e
@@ -2172,14 +2144,12 @@ async function viewersApi(
   env,
   url
 ) {
-
   const id =
     url.searchParams.get(
       "id"
     );
 
   if (!id) {
-
     return json(
       {
         error:
@@ -2190,15 +2160,12 @@ async function viewersApi(
   }
 
   if (!env.DATA_KV) {
-
     return json({
-      [id]:
-        0
+      [id]: 0
     });
   }
 
   try {
-
     const data =
       await env.DATA_KV.get(
         `viewer:${id}`,
@@ -2211,12 +2178,113 @@ async function viewersApi(
     });
 
   } catch {
-
     return json({
-      [id]:
-        0
+      [id]: 0
     });
   }
+}
+
+// ============================================================
+// DEBUG VERSION
+// ============================================================
+
+async function debugVersionApi() {
+  return json({
+    version:
+      "CHANNEL_DEBUG_V4",
+
+    worker:
+      "super-tv-api",
+
+    time:
+      new Date().toISOString()
+  });
+}
+
+// ============================================================
+// DEBUG CHANNELS
+// ============================================================
+
+async function debugChannelsApi(
+  request,
+  env
+) {
+  const security =
+    await securityGuard(
+      request,
+      env,
+      "debug"
+    );
+
+  if (
+    !security.allowed
+  ) {
+    return security.response;
+  }
+
+  const kvData =
+    await loadChannelsFromKV(
+      env
+    );
+
+  const assetData =
+    await loadChannelsFromAssets(
+      env
+    );
+
+  const kvChannels =
+    normalizeChannels(
+      kvData
+    );
+
+  const assetChannels =
+    normalizeChannels(
+      assetData
+    );
+
+  const targetId =
+    "test_http";
+
+  return json({
+    version:
+      "CHANNEL_DEBUG_V4",
+
+    kvCount:
+      kvChannels.length,
+
+    assetCount:
+      assetChannels.length,
+
+    testHttpInKV:
+      kvChannels.some(
+        c =>
+          String(c.id) ===
+          targetId
+      ),
+
+    testHttpInAssets:
+      assetChannels.some(
+        c =>
+          String(c.id) ===
+          targetId
+      ),
+
+    kvIds:
+      kvChannels
+        .slice(0, 100)
+        .map(
+          c =>
+            String(c.id)
+        ),
+
+    assetIds:
+      assetChannels
+        .slice(0, 100)
+        .map(
+          c =>
+            String(c.id)
+        )
+  });
 }
 
 // ============================================================
@@ -2227,9 +2295,7 @@ async function serveAsset(
   request,
   env
 ) {
-
   if (!env.ASSETS) {
-
     return text(
       "Assets binding not configured",
       500
@@ -2265,14 +2331,12 @@ export default {
       request.method ===
       "OPTIONS"
     ) {
-
       return new Response(
         null,
         {
           status: 204,
 
           headers: {
-
             "Access-Control-Allow-Origin":
               "*",
 
@@ -2287,6 +2351,31 @@ export default {
     }
 
     // ========================================================
+    // DEBUG VERSION
+    // ========================================================
+
+    if (
+      url.pathname ===
+      "/api/debug-version"
+    ) {
+      return debugVersionApi();
+    }
+
+    // ========================================================
+    // DEBUG CHANNELS
+    // ========================================================
+
+    if (
+      url.pathname ===
+      "/api/debug-channels"
+    ) {
+      return debugChannelsApi(
+        request,
+        env
+      );
+    }
+
+    // ========================================================
     // CHANNELS
     // ========================================================
 
@@ -2294,7 +2383,6 @@ export default {
       url.pathname ===
       "/api/channels"
     ) {
-
       return channelsApi(
         request,
         env
@@ -2309,7 +2397,6 @@ export default {
       url.pathname ===
       "/api/play.m3u8"
     ) {
-
       return playApi(
         request,
         env,
@@ -2318,14 +2405,13 @@ export default {
     }
 
     // ========================================================
-    // HIDDEN HLS PROXY
+    // HLS
     // ========================================================
 
     if (
       url.pathname ===
       "/api/hls"
     ) {
-
       return hlsApi(
         request,
         env,
@@ -2341,7 +2427,6 @@ export default {
       url.pathname ===
       "/api/playlist.m3u"
     ) {
-
       return playlistApi(
         request,
         env,
@@ -2357,7 +2442,6 @@ export default {
       url.pathname ===
       "/api/proxy.m3u8"
     ) {
-
       return proxyM3u8Api(
         request,
         env,
@@ -2373,7 +2457,6 @@ export default {
       url.pathname ===
       "/api/ts"
     ) {
-
       return tsApi(
         request,
         env,
@@ -2389,7 +2472,6 @@ export default {
       url.pathname ===
       "/api/save"
     ) {
-
       return saveApi(
         request,
         env
@@ -2404,7 +2486,6 @@ export default {
       url.pathname ===
       "/api/viewers"
     ) {
-
       return viewersApi(
         request,
         env,
@@ -2420,7 +2501,6 @@ export default {
       url.pathname ===
       "/admin"
     ) {
-
       const adminUrl =
         new URL(
           "/admin.html",
@@ -2446,4 +2526,3 @@ export default {
     );
   }
 };
-```
