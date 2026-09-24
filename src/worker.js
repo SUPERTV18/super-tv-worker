@@ -1,30 +1,6 @@
 // ============================================================
 // SUPER TV API - Cloudflare Worker
 // ============================================================
-// Main:
-// https://super-tv-api.super-stv.workers.dev
-//
-// Play:
-// /api/play.m3u8?id=CHANNEL_ID
-//
-// HLS:
-// /api/hls?id=CHANNEL_ID&file=...
-//
-// Required bindings:
-// KV:
-//   DATA_KV
-//
-// Assets:
-//   ASSETS
-//
-// Secret:
-//   APP_SECRET
-// ============================================================
-
-
-// ============================================================
-// CONFIG
-// ============================================================
 
 const CONFIG = {
   APP_UA: "stv2026",
@@ -39,8 +15,6 @@ const CONFIG = {
     "/channels.json"
   ],
 
-  RATE_LIMIT_SECONDS: 60,
-
   VIEWER_TTL: 60,
 
   MAX_REDIRECTS: 8,
@@ -50,7 +24,7 @@ const CONFIG = {
 
 
 // ============================================================
-// BASIC HELPERS
+// RESPONSE HELPERS
 // ============================================================
 
 function json(data, status = 200, extraHeaders = {}) {
@@ -58,18 +32,6 @@ function json(data, status = 200, extraHeaders = {}) {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-      ...extraHeaders
-    }
-  });
-}
-
-
-function textResponse(text, status = 200, extraHeaders = {}) {
-  return new Response(text, {
-    status,
-    headers: {
-      "content-type": "text/plain; charset=utf-8",
       "cache-control": "no-store",
       ...extraHeaders
     }
@@ -119,13 +81,31 @@ function isValidHttpUrl(value) {
 // ============================================================
 
 function checkAppSecurity(request, env) {
-  const ua = safeString(request.headers.get("User-Agent"));
-  const appKey = safeString(request.headers.get("X-App-Key"));
-  const secret = safeString(env.APP_SECRET);
 
-  const uaOk = ua === CONFIG.APP_UA;
-  const keyReceived = !!appKey;
-  const secretConfigured = !!secret;
+  const ua =
+    safeString(
+      request.headers.get("User-Agent")
+    );
+
+  const appKey =
+    safeString(
+      request.headers.get("X-App-Key")
+    );
+
+  const secret =
+    safeString(
+      env.APP_SECRET
+    );
+
+  const uaOk =
+    ua === CONFIG.APP_UA;
+
+  const keyReceived =
+    !!appKey;
+
+  const secretConfigured =
+    !!secret;
+
 
   console.log(
     "APP_SECURITY_CHECK:",
@@ -138,11 +118,16 @@ function checkAppSecurity(request, env) {
     })
   );
 
+
   if (!uaOk) {
-    console.warn("APP SECURITY: BAD USER-AGENT");
+
+    console.warn(
+      "APP SECURITY: BAD USER-AGENT"
+    );
 
     return {
       ok: false,
+
       response: json(
         {
           error: "Unauthorized",
@@ -153,51 +138,73 @@ function checkAppSecurity(request, env) {
     };
   }
 
+
   if (!secretConfigured) {
-    console.error("APP SECURITY: APP_SECRET NOT CONFIGURED");
+
+    console.error(
+      "APP SECURITY: APP_SECRET NOT CONFIGURED"
+    );
 
     return {
       ok: false,
+
       response: json(
         {
-          error: "Server configuration error"
+          error:
+            "Server configuration error"
         },
         500
       )
     };
   }
 
+
   if (!keyReceived) {
-    console.warn("APP SECURITY: KEY MISSING");
+
+    console.warn(
+      "APP SECURITY: KEY MISSING"
+    );
 
     return {
       ok: false,
+
       response: json(
         {
           error: "Unauthorized",
-          message: "X-App-Key is required"
+          message:
+            "X-App-Key is required"
         },
         401
       )
     };
   }
+
 
   if (appKey !== secret) {
-    console.warn("APP SECURITY: INVALID KEY");
+
+    console.warn(
+      "APP SECURITY: INVALID KEY"
+    );
 
     return {
       ok: false,
+
       response: json(
         {
           error: "Unauthorized",
-          message: "Invalid app key"
+          message:
+            "Invalid app key"
         },
         401
       )
     };
   }
 
-  console.log("APP SECURITY: OK");
+
+  console.log(
+    "APP SECURITY: OK"
+  );
+
 
   return {
     ok: true
@@ -208,45 +215,11 @@ function checkAppSecurity(request, env) {
 // ============================================================
 // RATE LIMIT
 // ============================================================
+// Disabled أثناء اختبار البث حتى لا يظهر 429
+// ============================================================
 
 async function checkRateLimit(request, env) {
-  if (!env.DATA_KV) {
-    return true;
-  }
-
-  const ip = getClientIP(request);
-
-  const key =
-    `rate:${ip}:${Math.floor(Date.now() / 1000 / CONFIG.RATE_LIMIT_SECONDS)}`;
-
-  try {
-    const exists = await env.DATA_KV.get(key);
-
-    if (exists) {
-      console.warn("RATE LIMIT:", ip);
-      return false;
-    }
-
-    await env.DATA_KV.put(
-      key,
-      "1",
-      {
-        expirationTtl: Math.max(
-          60,
-          CONFIG.RATE_LIMIT_SECONDS
-        )
-      }
-    );
-
-    return true;
-  } catch (error) {
-    console.error(
-      "RATE LIMIT ERROR:",
-      error?.message || error
-    );
-
-    return true;
-  }
+  return true;
 }
 
 
@@ -255,9 +228,14 @@ async function checkRateLimit(request, env) {
 // ============================================================
 
 function normalizeChannel(channel) {
-  if (!channel || typeof channel !== "object") {
+
+  if (
+    !channel ||
+    typeof channel !== "object"
+  ) {
     return null;
   }
+
 
   const id =
     channel.id ??
@@ -265,12 +243,14 @@ function normalizeChannel(channel) {
     channel.channel_id ??
     channel.channelId;
 
+
   const name =
     channel.name ??
     channel.title ??
     channel.channel_name ??
     channel.channelName ??
     "";
+
 
   const url =
     channel.url ??
@@ -284,6 +264,7 @@ function normalizeChannel(channel) {
     channel.body ??
     "";
 
+
   if (
     id === undefined ||
     id === null ||
@@ -292,56 +273,44 @@ function normalizeChannel(channel) {
     return null;
   }
 
-  if (!isValidHttpUrl(url)) {
+
+  if (
+    !isValidHttpUrl(url)
+  ) {
     return null;
   }
+
 
   return {
     ...channel,
 
-    id: safeString(id),
+    id:
+      safeString(id),
 
     name:
       safeString(name) ||
       safeString(id),
 
-    url: safeString(url)
+    url:
+      safeString(url)
   };
 }
 
 
 // ============================================================
-// EXTRACT CHANNEL ARRAY
-// Supports:
-//
-// [
-//   {...},
-//   {...}
-// ]
-//
-// {
-//   "channels": [...]
-// }
-//
-// {
-//   "data": [...]
-// }
-//
-// {
-//   "results": [...]
-// }
-//
-// {
-//   "items": [...]
-// }
+// EXTRACT CHANNELS
 // ============================================================
 
 function extractChannels(data) {
+
   // ------------------------------------------
-  // Direct array
+  // Array
   // ------------------------------------------
 
-  if (Array.isArray(data)) {
+  if (
+    Array.isArray(data)
+  ) {
+
     return data
       .map(normalizeChannel)
       .filter(Boolean);
@@ -354,8 +323,7 @@ function extractChannels(data) {
 
   if (
     data &&
-    typeof data === "object" &&
-    !Array.isArray(data)
+    typeof data === "object"
   ) {
 
     const possibleKeys = [
@@ -366,14 +334,29 @@ function extractChannels(data) {
       "list"
     ];
 
-    for (const key of possibleKeys) {
-      if (Array.isArray(data[key])) {
 
-        const channels = data[key]
-          .map(normalizeChannel)
-          .filter(Boolean);
+    for (
+      const key of possibleKeys
+    ) {
 
-        if (channels.length > 0) {
+      if (
+        Array.isArray(
+          data[key]
+        )
+      ) {
+
+        const channels =
+          data[key]
+            .map(
+              normalizeChannel
+            )
+            .filter(Boolean);
+
+
+        if (
+          channels.length > 0
+        ) {
+
           return channels;
         }
       }
@@ -381,10 +364,12 @@ function extractChannels(data) {
 
 
     // ----------------------------------------
-    // Sometimes data itself is one channel
+    // Single channel object
     // ----------------------------------------
 
-    const oneChannel = normalizeChannel(data);
+    const oneChannel =
+      normalizeChannel(data);
+
 
     if (oneChannel) {
       return [oneChannel];
@@ -401,43 +386,70 @@ function extractChannels(data) {
 // ============================================================
 
 async function loadChannelsFromKV(env) {
+
   if (!env.DATA_KV) {
-    console.log("KV: NOT CONFIGURED");
+
+    console.log(
+      "KV: NOT CONFIGURED"
+    );
+
     return [];
   }
 
+
   try {
-    const raw = await env.DATA_KV.get("channels");
+
+    const raw =
+      await env.DATA_KV.get(
+        "channels"
+      );
+
 
     if (!raw) {
-      console.log("KV CHANNELS: EMPTY");
+
+      console.log(
+        "KV CHANNELS: EMPTY"
+      );
+
       return [];
     }
+
 
     console.log(
       "KV CHANNELS RAW LENGTH:",
       raw.length
     );
 
+
     let data;
 
+
     try {
-      data = JSON.parse(raw);
+
+      data =
+        JSON.parse(raw);
+
     } catch (error) {
+
       console.error(
         "KV CHANNELS JSON ERROR:",
-        error?.message || error
+        error?.message ||
+          error
       );
 
       return [];
     }
 
-    const channels = extractChannels(data);
+
+    const channels =
+      extractChannels(data);
+
 
     console.log(
       "KV CHANNELS PARSED:",
       channels.length
     );
+
 
     return channels;
 
@@ -445,7 +457,8 @@ async function loadChannelsFromKV(env) {
 
     console.error(
       "KV CHANNELS ERROR:",
-      error?.message || error
+      error?.message ||
+        error
     );
 
     return [];
@@ -462,40 +475,56 @@ async function loadChannelsFromAssets(env) {
   console.log(
     "ASSETS CHECK:",
     JSON.stringify({
-      configured: !!env.ASSETS
+      configured:
+        !!env.ASSETS
     })
   );
 
 
   if (!env.ASSETS) {
-    console.error("ASSETS BINDING: MISSING");
+
+    console.error(
+      "ASSETS BINDING: MISSING"
+    );
+
     return [];
   }
 
 
-  for (const path of CONFIG.CHANNELS_ASSET_PATHS) {
+  for (
+    const path of
+    CONFIG.CHANNELS_ASSET_PATHS
+  ) {
 
     try {
 
-      const request = new Request(
-        `https://assets.local${path}`,
-        {
-          method: "GET"
-        }
-      );
+      const assetRequest =
+        new Request(
+          `https://assets.local${path}`,
+          {
+            method: "GET"
+          }
+        );
+
 
       const response =
-        await env.ASSETS.fetch(request);
+        await env.ASSETS.fetch(
+          assetRequest
+        );
 
 
       console.log(
         "ASSETS RESPONSE:",
         JSON.stringify({
           path,
-          status: response.status,
-          ok: response.ok,
+          status:
+            response.status,
+          ok:
+            response.ok,
           contentType:
-            response.headers.get("content-type") || ""
+            response.headers.get(
+              "content-type"
+            ) || ""
         })
       );
 
@@ -505,21 +534,19 @@ async function loadChannelsFromAssets(env) {
       }
 
 
-      const raw = await response.text();
+      const raw =
+        await response.text();
 
 
       console.log(
         "ASSETS BODY LENGTH:",
         JSON.stringify({
           path,
-          length: raw.length
+          length:
+            raw.length
         })
       );
 
-
-      // --------------------------------------
-      // Debug first 500 chars
-      // --------------------------------------
 
       console.log(
         "ASSETS BODY PREVIEW:",
@@ -529,9 +556,11 @@ async function loadChannelsFromAssets(env) {
 
       let data;
 
+
       try {
 
-        data = JSON.parse(raw);
+        data =
+          JSON.parse(raw);
 
       } catch (error) {
 
@@ -539,7 +568,9 @@ async function loadChannelsFromAssets(env) {
           "ASSETS JSON PARSE ERROR:",
           JSON.stringify({
             path,
-            error: error?.message || String(error)
+            error:
+              error?.message ||
+              String(error)
           })
         );
 
@@ -555,12 +586,15 @@ async function loadChannelsFromAssets(env) {
         "ASSETS PARSED CHANNELS:",
         JSON.stringify({
           path,
-          count: channels.length
+          count:
+            channels.length
         })
       );
 
 
-      if (channels.length > 0) {
+      if (
+        channels.length > 0
+      ) {
 
         const testHttp =
           channels.find(
@@ -569,17 +603,26 @@ async function loadChannelsFromAssets(env) {
               "test_http"
           );
 
+
         console.log(
           "ASSETS TEST_HTTP:",
           JSON.stringify({
-            found: !!testHttp,
-            channel: testHttp
-              ? {
-                  id: testHttp.id,
-                  name: testHttp.name,
-                  url: testHttp.url
-                }
-              : null
+            found:
+              !!testHttp,
+
+            channel:
+              testHttp
+                ? {
+                    id:
+                      testHttp.id,
+
+                    name:
+                      testHttp.name,
+
+                    url:
+                      testHttp.url
+                  }
+                : null
           })
         );
 
@@ -593,7 +636,10 @@ async function loadChannelsFromAssets(env) {
         "ASSETS LOAD ERROR:",
         JSON.stringify({
           path,
-          error: error?.message || String(error)
+
+          error:
+            error?.message ||
+            String(error)
         })
       );
     }
@@ -604,25 +650,26 @@ async function loadChannelsFromAssets(env) {
     "ASSETS CHANNELS: NOT FOUND"
   );
 
+
   return [];
 }
 
 
 // ============================================================
-// LOAD ALL CHANNELS
+// LOAD CHANNELS
 // ============================================================
 
 async function loadChannels(env) {
 
-  // ------------------------------------------
-  // KV first
-  // ------------------------------------------
-
   const kvChannels =
-    await loadChannelsFromKV(env);
+    await loadChannelsFromKV(
+      env
+    );
 
 
-  if (kvChannels.length > 0) {
+  if (
+    kvChannels.length > 0
+  ) {
 
     console.log(
       "CHANNEL SOURCE: KV",
@@ -633,15 +680,15 @@ async function loadChannels(env) {
   }
 
 
-  // ------------------------------------------
-  // Assets fallback
-  // ------------------------------------------
-
   const assetChannels =
-    await loadChannelsFromAssets(env);
+    await loadChannelsFromAssets(
+      env
+    );
 
 
-  if (assetChannels.length > 0) {
+  if (
+    assetChannels.length > 0
+  ) {
 
     console.log(
       "CHANNEL SOURCE: ASSETS",
@@ -660,7 +707,10 @@ async function loadChannels(env) {
 // FIND CHANNEL
 // ============================================================
 
-async function findChannel(env, id) {
+async function findChannel(
+  env,
+  id
+) {
 
   const requestedId =
     safeString(id);
@@ -669,7 +719,8 @@ async function findChannel(env, id) {
   console.log(
     "CHANNEL LOOKUP:",
     JSON.stringify({
-      id: requestedId
+      id:
+        requestedId
     })
   );
 
@@ -680,32 +731,41 @@ async function findChannel(env, id) {
 
 
   const channels =
-    await loadChannels(env);
+    await loadChannels(
+      env
+    );
 
 
   console.log(
     "CHANNEL SEARCH:",
     JSON.stringify({
       requestedId,
-      channelsCount: channels.length
+      channelsCount:
+        channels.length
     })
   );
 
 
   const normalizedRequested =
-    normalizeId(requestedId);
+    normalizeId(
+      requestedId
+    );
 
 
   const channel =
     channels.find(
       item =>
-        normalizeId(item.id) ===
-          normalizedRequested
+        normalizeId(
+          item.id
+        ) ===
+        normalizedRequested
     ) ||
     channels.find(
       item =>
-        normalizeId(item.name) ===
-          normalizedRequested
+        normalizeId(
+          item.name
+        ) ===
+        normalizedRequested
     );
 
 
@@ -714,11 +774,17 @@ async function findChannel(env, id) {
     console.log(
       "CHANNEL FOUND:",
       JSON.stringify({
-        id: channel.id,
-        name: channel.name,
-        url: channel.url
+        id:
+          channel.id,
+
+        name:
+          channel.name,
+
+        url:
+          channel.url
       })
     );
+
 
     return channel;
   }
@@ -735,15 +801,19 @@ async function findChannel(env, id) {
 
 
 // ============================================================
-// URL VALIDATION
+// VALIDATE TARGET URL
 // ============================================================
 
 function validateTargetUrl(url) {
 
-  if (!isValidHttpUrl(url)) {
+  if (
+    !isValidHttpUrl(url)
+  ) {
+
     return {
       ok: false,
-      reason: "Invalid URL"
+      reason:
+        "Invalid URL"
     };
   }
 
@@ -754,10 +824,9 @@ function validateTargetUrl(url) {
       new URL(url);
 
 
-    // Block dangerous local/private targets
-
     const hostname =
-      parsed.hostname.toLowerCase();
+      parsed.hostname
+        .toLowerCase();
 
 
     const blockedHosts = [
@@ -769,25 +838,34 @@ function validateTargetUrl(url) {
 
 
     if (
-      blockedHosts.includes(hostname)
+      blockedHosts.includes(
+        hostname
+      )
     ) {
+
       return {
         ok: false,
-        reason: "Blocked host"
+
+        reason:
+          "Blocked host"
       };
     }
 
 
     return {
       ok: true,
-      url: parsed
+
+      url:
+        parsed
     };
 
   } catch {
 
     return {
       ok: false,
-      reason: "Invalid URL"
+
+      reason:
+        "Invalid URL"
     };
   }
 }
@@ -830,35 +908,32 @@ function buildUpstreamHeaders(
   );
 
 
-  if (mode === "normal") {
+  if (
+    mode === "normal"
+  ) {
 
     headers.set(
       "Referer",
       `${target.origin}/`
     );
 
+
     headers.set(
       "Origin",
       target.origin
     );
-
   }
 
 
-  if (mode === "no-referer") {
-
-    // intentionally no Referer
-    // intentionally no Origin
-
-  }
-
-
-  if (mode === "origin-referer") {
+  if (
+    mode === "origin-referer"
+  ) {
 
     headers.set(
       "Referer",
-      target.origin + "/"
+      `${target.origin}/`
     );
+
 
     headers.set(
       "Origin",
@@ -872,7 +947,7 @@ function buildUpstreamHeaders(
 
 
 // ============================================================
-// MANUAL UPSTREAM FETCH
+// FETCH UPSTREAM WITH MANUAL REDIRECT
 // ============================================================
 
 async function fetchUpstream(
@@ -881,17 +956,23 @@ async function fetchUpstream(
 ) {
 
   let currentUrl =
-    new URL(initialUrl);
+    new URL(
+      initialUrl
+    );
 
 
-  let lastResponse = null;
+  let lastResponse =
+    null;
 
-  let lastError = null;
+
+  let lastError =
+    null;
 
 
   for (
     let redirect = 0;
-    redirect <= CONFIG.MAX_REDIRECTS;
+    redirect <=
+      CONFIG.MAX_REDIRECTS;
     redirect++
   ) {
 
@@ -899,7 +980,9 @@ async function fetchUpstream(
       "UPSTREAM REQUEST:",
       JSON.stringify({
         redirect,
-        url: currentUrl.toString()
+
+        url:
+          currentUrl.toString()
       })
     );
 
@@ -911,7 +994,9 @@ async function fetchUpstream(
     ];
 
 
-    for (const mode of modes) {
+    for (
+      const mode of modes
+    ) {
 
       try {
 
@@ -930,6 +1015,7 @@ async function fetchUpstream(
           setTimeout(
             () =>
               controller.abort(),
+
             options.timeout ||
               CONFIG.FETCH_TIMEOUT
           );
@@ -945,24 +1031,29 @@ async function fetchUpstream(
               currentUrl.toString(),
               {
                 method:
-                  options.method || "GET",
+                  options.method ||
+                  "GET",
 
                 headers,
 
-                redirect: "manual",
+                redirect:
+                  "manual",
 
                 signal:
                   controller.signal,
 
                 cf: {
-                  cacheEverything: false
+                  cacheEverything:
+                    false
                 }
               }
             );
 
         } finally {
 
-          clearTimeout(timeout);
+          clearTimeout(
+            timeout
+          );
         }
 
 
@@ -974,9 +1065,15 @@ async function fetchUpstream(
           "UPSTREAM RESPONSE:",
           JSON.stringify({
             redirect,
+
             mode,
-            status: response.status,
-            url: currentUrl.toString(),
+
+            status:
+              response.status,
+
+            url:
+              currentUrl.toString(),
+
             location:
               response.headers.get(
                 "location"
@@ -985,9 +1082,9 @@ async function fetchUpstream(
         );
 
 
-        // ----------------------------------
+        // ------------------------------------
         // Redirect
-        // ----------------------------------
+        // ------------------------------------
 
         if (
           response.status >= 300 &&
@@ -1040,48 +1137,58 @@ async function fetchUpstream(
         }
 
 
-        // ----------------------------------
+        // ------------------------------------
         // Success
-        // ----------------------------------
+        // ------------------------------------
 
-        if (response.ok) {
+        if (
+          response.ok
+        ) {
 
           return {
             response,
-            finalUrl: currentUrl
+
+            finalUrl:
+              currentUrl
           };
         }
 
 
-        // ----------------------------------
+        // ------------------------------------
         // 403
-        // ----------------------------------
+        // ------------------------------------
 
-        if (response.status === 403) {
+        if (
+          response.status === 403
+        ) {
 
           console.warn(
             "UPSTREAM 403:",
             JSON.stringify({
               mode,
+
               url:
                 currentUrl.toString()
             })
           );
 
+
           continue;
         }
 
 
-        // ----------------------------------
-        // Other error
-        // ----------------------------------
+        // ------------------------------------
+        // Other errors
+        // ------------------------------------
 
         console.warn(
           "UPSTREAM ERROR STATUS:",
           JSON.stringify({
             mode,
+
             status:
               response.status,
+
             url:
               currentUrl.toString()
           })
@@ -1089,14 +1196,18 @@ async function fetchUpstream(
 
       } catch (error) {
 
-        lastError = error;
+        lastError =
+          error;
+
 
         console.error(
           "UPSTREAM FETCH ERROR:",
           JSON.stringify({
             mode,
+
             url:
               currentUrl.toString(),
+
             error:
               error?.message ||
               String(error)
@@ -1107,9 +1218,9 @@ async function fetchUpstream(
   }
 
 
-  // ----------------------------------------
-  // Final fallback request
-  // ----------------------------------------
+  // ==========================================================
+  // FINAL FALLBACK
+  // ==========================================================
 
   try {
 
@@ -1124,7 +1235,8 @@ async function fetchUpstream(
         currentUrl.toString(),
         {
           method:
-            options.method || "GET",
+            options.method ||
+            "GET",
 
           headers: {
             "User-Agent":
@@ -1134,7 +1246,8 @@ async function fetchUpstream(
               "*/*"
           },
 
-          redirect: "manual"
+          redirect:
+            "manual"
         }
       );
 
@@ -1143,18 +1256,23 @@ async function fetchUpstream(
       response;
 
 
-    if (response.ok) {
+    if (
+      response.ok
+    ) {
 
       return {
         response,
-        finalUrl: currentUrl
+
+        finalUrl:
+          currentUrl
       };
     }
 
-
   } catch (error) {
 
-    lastError = error;
+    lastError =
+      error;
+
 
     console.error(
       "UPSTREAM FINAL FALLBACK ERROR:",
@@ -1165,15 +1283,20 @@ async function fetchUpstream(
 
 
   return {
-    response: lastResponse,
-    finalUrl: currentUrl,
-    error: lastError
+    response:
+      lastResponse,
+
+    finalUrl:
+      currentUrl,
+
+    error:
+      lastError
   };
 }
 
 
 // ============================================================
-// GET RESPONSE BASE URL
+// RESPONSE BASE URL
 // ============================================================
 
 function getResponseBaseURL(
@@ -1187,12 +1310,14 @@ function getResponseBaseURL(
       response &&
       response.url
     ) {
+
       return new URL(
         response.url
       );
     }
 
   } catch {}
+
 
   try {
 
@@ -1208,7 +1333,7 @@ function getResponseBaseURL(
 
 
 // ============================================================
-// HLS URL RESOLUTION
+// RESOLVE HLS URL
 // ============================================================
 
 function resolveHLSUrl(
@@ -1231,6 +1356,34 @@ function resolveHLSUrl(
 
 
 // ============================================================
+// BUILD PROXY URL
+// ============================================================
+
+function buildProxyUrl(
+  targetUrl,
+  env
+) {
+
+  const origin =
+    env.__REQUEST_ORIGIN ||
+    "";
+
+
+  if (!origin) {
+    return targetUrl;
+  }
+
+
+  return (
+    `${origin}/api/hls?url=` +
+    encodeURIComponent(
+      targetUrl
+    )
+  );
+}
+
+
+// ============================================================
 // REWRITE HLS MANIFEST
 // ============================================================
 
@@ -1241,21 +1394,27 @@ function rewriteHLSManifest(
 ) {
 
   const lines =
-    manifest.split(/\r?\n/);
+    manifest.split(
+      /\r?\n/
+    );
 
 
   const output = [];
 
 
-  for (let i = 0; i < lines.length; i++) {
+  for (
+    let i = 0;
+    i < lines.length;
+    i++
+  ) {
 
     const line =
       lines[i];
 
 
-    // --------------------------------------
-    // EXT-X-KEY URI
-    // --------------------------------------
+    // ----------------------------------------
+    // EXT-X-KEY
+    // ----------------------------------------
 
     if (
       line.startsWith(
@@ -1300,9 +1459,9 @@ function rewriteHLSManifest(
     }
 
 
-    // --------------------------------------
-    // EXT-X-MAP URI
-    // --------------------------------------
+    // ----------------------------------------
+    // EXT-X-MAP
+    // ----------------------------------------
 
     if (
       line.startsWith(
@@ -1347,23 +1506,21 @@ function rewriteHLSManifest(
     }
 
 
-    // --------------------------------------
-    // Comment / EXT tags
-    // --------------------------------------
+    // ----------------------------------------
+    // Comments
+    // ----------------------------------------
 
     if (
       line.startsWith("#")
     ) {
 
-      output.push(line);
+      output.push(
+        line
+      );
 
       continue;
     }
 
-
-    // --------------------------------------
-    // URI
-    // --------------------------------------
 
     const trimmed =
       line.trim();
@@ -1371,7 +1528,9 @@ function rewriteHLSManifest(
 
     if (!trimmed) {
 
-      output.push("");
+      output.push(
+        ""
+      );
 
       continue;
     }
@@ -1386,7 +1545,9 @@ function rewriteHLSManifest(
 
     if (!absolute) {
 
-      output.push(line);
+      output.push(
+        line
+      );
 
       continue;
     }
@@ -1405,38 +1566,14 @@ function rewriteHLSManifest(
   }
 
 
-  return output.join("\n");
-}
-
-
-// ============================================================
-// BUILD INTERNAL PROXY URL
-// ============================================================
-
-function buildProxyUrl(
-  targetUrl,
-  env
-) {
-
-  const origin =
-    env.__REQUEST_ORIGIN ||
-    "";
-
-
-  if (!origin) {
-    return targetUrl;
-  }
-
-
-  return (
-    `${origin}/api/hls?url=` +
-    encodeURIComponent(targetUrl)
+  return output.join(
+    "\n"
   );
 }
 
 
 // ============================================================
-// VIEWERS
+// REGISTER VIEWER
 // ============================================================
 
 async function registerViewer(
@@ -1453,34 +1590,34 @@ async function registerViewer(
   try {
 
     const ip =
-      getClientIP(request);
-
-
-    const safeChannel =
-      encodeURIComponent(
-        safeString(channelId)
+      getClientIP(
+        request
       );
 
 
-    const safeIP =
-      encodeURIComponent(ip);
-
-
     const key =
-      `viewer:${safeChannel}:${safeIP}`;
+      `viewer:${encodeURIComponent(
+        safeString(channelId)
+      )}:${encodeURIComponent(
+        ip
+      )}`;
 
 
     await env.DATA_KV.put(
       key,
+
       JSON.stringify({
         channelId:
-          safeString(channelId),
+          safeString(
+            channelId
+          ),
 
         ip,
 
         timestamp:
           Date.now()
       }),
+
       {
         expirationTtl:
           Math.max(
@@ -1502,7 +1639,7 @@ async function registerViewer(
 
 
 // ============================================================
-// GET VIEWERS
+// VIEWER COUNT
 // ============================================================
 
 async function getViewerCount(
@@ -1527,7 +1664,8 @@ async function getViewerCount(
       undefined;
 
 
-    let count = 0;
+    let count =
+      0;
 
 
     do {
@@ -1535,8 +1673,11 @@ async function getViewerCount(
       const result =
         await env.DATA_KV.list({
           prefix,
+
           cursor,
-          limit: 1000
+
+          limit:
+            1000
         });
 
 
@@ -1549,7 +1690,9 @@ async function getViewerCount(
           ? undefined
           : result.cursor;
 
-    } while (cursor);
+    } while (
+      cursor
+    );
 
 
     return count;
@@ -1568,7 +1711,7 @@ async function getViewerCount(
 
 
 // ============================================================
-// PLAY API
+// PLAY.M3U8
 // ============================================================
 
 async function playApi(
@@ -1577,11 +1720,15 @@ async function playApi(
 ) {
 
   const url =
-    new URL(request.url);
+    new URL(
+      request.url
+    );
 
 
   const id =
-    url.searchParams.get("id");
+    url.searchParams.get(
+      "id"
+    );
 
 
   if (!id) {
@@ -1648,8 +1795,10 @@ async function playApi(
     "PLAY SOURCE:",
     JSON.stringify({
       id,
+
       name:
         channel.name,
+
       url:
         sourceUrl.toString()
     })
@@ -1692,7 +1841,8 @@ async function playApi(
 
         finalUrl:
           upstream.finalUrl
-            ?.toString() || "",
+            ?.toString() ||
+          "",
 
         error:
           upstream.error
@@ -1733,13 +1883,14 @@ async function playApi(
   const finalBase =
     getResponseBaseURL(
       response,
+
       upstream.finalUrl ||
         sourceUrl
     );
 
 
   // ----------------------------------------
-  // HLS manifest
+  // HLS
   // ----------------------------------------
 
   if (
@@ -1758,10 +1909,18 @@ async function playApi(
       await response.text();
 
 
+    console.log(
+      "HLS MANIFEST LENGTH:",
+      body.length
+    );
+
+
     const rewritten =
       rewriteHLSManifest(
         body,
+
         finalBase,
+
         env
       );
 
@@ -1769,7 +1928,8 @@ async function playApi(
     return new Response(
       rewritten,
       {
-        status: 200,
+        status:
+          200,
 
         headers: {
           "content-type":
@@ -1819,7 +1979,7 @@ async function playApi(
 
 
 // ============================================================
-// HLS API
+// HLS
 // ============================================================
 
 async function hlsApi(
@@ -1828,7 +1988,9 @@ async function hlsApi(
 ) {
 
   const url =
-    new URL(request.url);
+    new URL(
+      request.url
+    );
 
 
   let target =
@@ -1839,15 +2001,10 @@ async function hlsApi(
 
   if (!target) {
 
-    const file =
+    target =
       url.searchParams.get(
         "file"
       );
-
-
-    if (file) {
-      target = file;
-    }
   }
 
 
@@ -1928,7 +2085,8 @@ async function hlsApi(
 
         url:
           upstream.finalUrl
-            ?.toString() || ""
+            ?.toString() ||
+          ""
       },
       502
     );
@@ -1944,6 +2102,7 @@ async function hlsApi(
   const finalBase =
     getResponseBaseURL(
       response,
+
       upstream.finalUrl ||
         targetUrl
     );
@@ -1968,7 +2127,9 @@ async function hlsApi(
     const rewritten =
       rewriteHLSManifest(
         body,
+
         finalBase,
+
         env
       );
 
@@ -1976,7 +2137,8 @@ async function hlsApi(
     return new Response(
       rewritten,
       {
-        status: 200,
+        status:
+          200,
 
         headers: {
           "content-type":
@@ -2022,7 +2184,7 @@ async function hlsApi(
 
 
 // ============================================================
-// PROXY M3U8 API
+// PLAYLIST.M3U8
 // ============================================================
 
 async function proxyM3u8Api(
@@ -2031,7 +2193,9 @@ async function proxyM3u8Api(
 ) {
 
   const url =
-    new URL(request.url);
+    new URL(
+      request.url
+    );
 
 
   const target =
@@ -2121,6 +2285,7 @@ async function proxyM3u8Api(
   const finalBase =
     getResponseBaseURL(
       response,
+
       upstream.finalUrl ||
         targetUrl
     );
@@ -2129,7 +2294,9 @@ async function proxyM3u8Api(
   const rewritten =
     rewriteHLSManifest(
       body,
+
       finalBase,
+
       env
     );
 
@@ -2137,7 +2304,8 @@ async function proxyM3u8Api(
   return new Response(
     rewritten,
     {
-      status: 200,
+      status:
+        200,
 
       headers: {
         "content-type":
@@ -2164,7 +2332,9 @@ async function proxyApi(
 ) {
 
   const url =
-    new URL(request.url);
+    new URL(
+      request.url
+    );
 
 
   const target =
@@ -2259,7 +2429,7 @@ async function proxyApi(
 
 
 // ============================================================
-// TS / SEGMENT API
+// TS
 // ============================================================
 
 async function tsApi(
@@ -2320,7 +2490,9 @@ async function viewersApi(
 ) {
 
   const url =
-    new URL(request.url);
+    new URL(
+      request.url
+    );
 
 
   const id =
@@ -2350,6 +2522,7 @@ async function viewersApi(
 
   return json({
     id,
+
     viewers:
       count
   });
@@ -2378,6 +2551,7 @@ async function saveApi(
 
 
   let body;
+
 
   try {
 
@@ -2434,8 +2608,12 @@ async function saveApi(
   const index =
     current.findIndex(
       item =>
-        normalizeId(item.id) ===
-        normalizeId(channel.id)
+        normalizeId(
+          item.id
+        ) ===
+        normalizeId(
+          channel.id
+        )
     );
 
 
@@ -2454,6 +2632,7 @@ async function saveApi(
 
   await env.DATA_KV.put(
     "channels",
+
     JSON.stringify(
       current
     )
@@ -2461,7 +2640,8 @@ async function saveApi(
 
 
   return json({
-    success: true,
+    success:
+      true,
 
     channel
   });
@@ -2484,7 +2664,8 @@ async function adminApi(
 
 
   return json({
-    success: true,
+    success:
+      true,
 
     channelsCount:
       channels.length,
@@ -2511,7 +2692,8 @@ async function healthApi(
 ) {
 
   return json({
-    ok: true,
+    ok:
+      true,
 
     service:
       "super-tv-api",
@@ -2557,7 +2739,7 @@ function rootApi() {
 
 
 // ============================================================
-// OPTIONS / CORS
+// OPTIONS
 // ============================================================
 
 function optionsResponse() {
@@ -2565,7 +2747,8 @@ function optionsResponse() {
   return new Response(
     null,
     {
-      status: 204,
+      status:
+        204,
 
       headers: {
         "access-control-allow-origin":
@@ -2586,7 +2769,7 @@ function optionsResponse() {
 
 
 // ============================================================
-// MAIN FETCH
+// MAIN
 // ============================================================
 
 export default {
@@ -2598,12 +2781,14 @@ export default {
   ) {
 
     const url =
-      new URL(request.url);
+      new URL(
+        request.url
+      );
 
 
-    // --------------------------------------
-    // CORS preflight
-    // --------------------------------------
+    // ------------------------------------------
+    // OPTIONS
+    // ------------------------------------------
 
     if (
       request.method ===
@@ -2614,17 +2799,17 @@ export default {
     }
 
 
-    // --------------------------------------
-    // Store request origin
-    // --------------------------------------
+    // ------------------------------------------
+    // Origin used for generated HLS URLs
+    // ------------------------------------------
 
     env.__REQUEST_ORIGIN =
       url.origin;
 
 
-    // --------------------------------------
-    // Public routes
-    // --------------------------------------
+    // ------------------------------------------
+    // Health
+    // ------------------------------------------
 
     if (
       url.pathname ===
@@ -2638,6 +2823,10 @@ export default {
     }
 
 
+    // ------------------------------------------
+    // Root
+    // ------------------------------------------
+
     if (
       url.pathname ===
       "/"
@@ -2647,9 +2836,9 @@ export default {
     }
 
 
-    // --------------------------------------
-    // Security for API
-    // --------------------------------------
+    // ------------------------------------------
+    // API SECURITY
+    // ------------------------------------------
 
     if (
       url.pathname.startsWith(
@@ -2664,7 +2853,10 @@ export default {
         );
 
 
-      if (!security.ok) {
+      if (
+        !security.ok
+      ) {
+
         return security.response;
       }
 
@@ -2689,9 +2881,9 @@ export default {
     }
 
 
-    // --------------------------------------
-    // Routes
-    // --------------------------------------
+    // ------------------------------------------
+    // PLAY
+    // ------------------------------------------
 
     if (
       url.pathname ===
@@ -2705,6 +2897,10 @@ export default {
     }
 
 
+    // ------------------------------------------
+    // HLS
+    // ------------------------------------------
+
     if (
       url.pathname ===
       "/api/hls"
@@ -2716,6 +2912,10 @@ export default {
       );
     }
 
+
+    // ------------------------------------------
+    // PLAYLIST
+    // ------------------------------------------
 
     if (
       url.pathname ===
@@ -2729,6 +2929,10 @@ export default {
     }
 
 
+    // ------------------------------------------
+    // PROXY
+    // ------------------------------------------
+
     if (
       url.pathname ===
       "/api/proxy"
@@ -2740,6 +2944,10 @@ export default {
       );
     }
 
+
+    // ------------------------------------------
+    // TS
+    // ------------------------------------------
 
     if (
       url.pathname ===
@@ -2753,6 +2961,10 @@ export default {
     }
 
 
+    // ------------------------------------------
+    // CHANNELS
+    // ------------------------------------------
+
     if (
       url.pathname ===
       "/api/channels"
@@ -2764,6 +2976,10 @@ export default {
       );
     }
 
+
+    // ------------------------------------------
+    // VIEWERS
+    // ------------------------------------------
 
     if (
       url.pathname ===
@@ -2777,6 +2993,10 @@ export default {
     }
 
 
+    // ------------------------------------------
+    // SAVE
+    // ------------------------------------------
+
     if (
       url.pathname ===
       "/api/save"
@@ -2788,6 +3008,10 @@ export default {
       );
     }
 
+
+    // ------------------------------------------
+    // ADMIN
+    // ------------------------------------------
 
     if (
       url.pathname ===
@@ -2801,9 +3025,9 @@ export default {
     }
 
 
-    // --------------------------------------
-    // Static assets fallback
-    // --------------------------------------
+    // ------------------------------------------
+    // ASSETS
+    // ------------------------------------------
 
     if (env.ASSETS) {
 
@@ -2834,9 +3058,9 @@ export default {
     }
 
 
-    // --------------------------------------
+    // ------------------------------------------
     // 404
-    // --------------------------------------
+    // ------------------------------------------
 
     return json(
       {
