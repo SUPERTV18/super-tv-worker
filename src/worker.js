@@ -2045,7 +2045,7 @@ await env.DATA_KV.put(
   }),
   {
     expirationTtl:
-      31
+      60
   }
 );
 
