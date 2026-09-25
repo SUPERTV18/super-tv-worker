@@ -209,43 +209,44 @@
     {
       "id": "b2_SD",
       "name": "Bein Sports 2 SD",
-      "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7iyv_EnUUqlA5rnako6wSUY/m3u8",
-      "headers": { "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
+      "url": "https://bein.kianezidi.workers.dev/bein_sports2&q=SD.m3u8",
+      "headers": {
+        "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
     },
     {
       "id": "b3_SD",
       "name": "Bein Sports 3 SD",
-      "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7rJDoNUmv_2Se37xoT87IkU/m3u8",
+      "url": "https://bein.kianezidi.workers.dev/bein_sports3&q=SD.m3u8",
       "headers": {
-        "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
+        "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
     },
     {
       "id": "b4_SD",
       "name": "Bein Sports 4 SD",
-      "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7v_maCFCj_s8rTFirsSdCrc/m3u8",
+      "url": "https://bein.kianezidi.workers.dev/bein_sports4&q=SD.m3u8",
       "headers": {
-        "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
+        "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
     },
     {
   "id": "b5_SD",
   "name": "Bein Sports 5 SD",
-  "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7my8kIptH9p8EOGoD265FyU/m3u8",
-  "headers": {
-        "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
+  "url": "https://bein.kianezidi.workers.dev/bein_sports5&q=SD.m3u8",
+      "headers": {
+        "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
 },
 {
   "id": "b6_SD",
   "name": "Bein Sports 6 SD",
-  "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7sea5QkSZHhotjnCFvLf_Bw/m3u8",
-  "headers": {
-        "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
+  "url": "https://bein.kianezidi.workers.dev/bein_sports6&q=SD.m3u8",
+      "headers": {
+        "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
 },
 {
   "id": "b7_SD",
   "name": "Bein Sports 7 SD",
-  "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7jx9dTl493R2cfHVcYk3LRs/m3u8",
-  "headers": {
-        "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
+  "url": "https://bein.kianezidi.workers.dev/bein_sports7&q=SD.m3u8",
+      "headers": {
+        "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
 },
 {
   "id": "b1_LOW",
