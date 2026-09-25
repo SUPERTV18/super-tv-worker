@@ -209,31 +209,31 @@
     {
       "id": "b2_SD",
       "name": "Bein Sports 2 SD",
-      "url": "https://pl-4k-ea4k.b-cdn.net/ssh101/ssh101/b1sa/playlist.m3u8",
-      "headers": { "User-Agent": "", "Referer": "", "Origin": "" }
+      "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7iyv_EnUUqlA5rnako6wSUY/m3u8",
+      "headers": { "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
     },
     {
       "id": "b3_SD",
       "name": "Bein Sports 3 SD",
-      "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7kIc4CAzkDfDjtaF4aBhlHI/m3u8",
+      "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7rJDoNUmv_2Se37xoT87IkU/m3u8",
       "headers": {
         "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
     },
     {
       "id": "b4_SD",
       "name": "Bein Sports 4 SD",
-      "url": "https://dev-kaidn.pantheonsite.io/kidntv/ya.php?path=stream/27.m3u8",
+      "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7v_maCFCj_s8rTFirsSdCrc/m3u8",
       "headers": { 
-        "User-Agent": "",
+        "User-Agent": "IPTVPRO-v5.0.1",
         "Referer": "",
         "Origin": "" }
     },
     {
   "id": "b5_SD",
   "name": "Bein Sports 5 SD",
-  "url": "https://dev-kaidn.pantheonsite.io/kidntv/ya.php?path=stream/28.m3u8",
+  "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7my8kIptH9p8EOGoD265FyU/m3u8",
   "headers": {
-    "User-Agent": "",
+    "User-Agent": "IPTVPRO-v5.0.1",
     "Referer": "",
     "Origin": ""
   }
@@ -241,9 +241,9 @@
 {
   "id": "b6_SD",
   "name": "Bein Sports 6 SD",
-  "url": "https://dev-kaidn.pantheonsite.io/kidntv/ya.php?path=stream/29.m3u8",
+  "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7sea5QkSZHhotjnCFvLf_Bw/m3u8",
   "headers": {
-    "User-Agent": "",
+    "User-Agent": "IPTVPRO-v5.0.1",
     "Referer": "",
     "Origin": ""
   }
@@ -251,7 +251,7 @@
 {
   "id": "b7_SD",
   "name": "Bein Sports 7 SD",
-  "url": "https://dev-kaidn.pantheonsite.io/kidntv/ya.php?path=stream/30.m3u8",
+  "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7jx9dTl493R2cfHVcYk3LRs/m3u8",
   "headers": {
     "User-Agent": "",
     "Referer": "",
