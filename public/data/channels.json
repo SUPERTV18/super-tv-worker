@@ -223,40 +223,29 @@
       "id": "b4_SD",
       "name": "Bein Sports 4 SD",
       "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7v_maCFCj_s8rTFirsSdCrc/m3u8",
-      "headers": { 
-        "User-Agent": "IPTVPRO-v5.0.1",
-        "Referer": "",
-        "Origin": "" }
+      "headers": {
+        "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
     },
     {
   "id": "b5_SD",
   "name": "Bein Sports 5 SD",
   "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7my8kIptH9p8EOGoD265FyU/m3u8",
   "headers": {
-    "User-Agent": "IPTVPRO-v5.0.1",
-    "Referer": "",
-    "Origin": ""
-  }
+        "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
 },
 {
   "id": "b6_SD",
   "name": "Bein Sports 6 SD",
   "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7sea5QkSZHhotjnCFvLf_Bw/m3u8",
   "headers": {
-    "User-Agent": "IPTVPRO-v5.0.1",
-    "Referer": "",
-    "Origin": ""
-  }
+        "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
 },
 {
   "id": "b7_SD",
   "name": "Bein Sports 7 SD",
   "url": "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7jx9dTl493R2cfHVcYk3LRs/m3u8",
   "headers": {
-    "User-Agent": "",
-    "Referer": "",
-    "Origin": ""
-  }
+        "User-Agent": "IPTVPRO-v5.0.1", "Referer": "", "Origin": "" }
 },
 {
   "id": "b1_LOW",
