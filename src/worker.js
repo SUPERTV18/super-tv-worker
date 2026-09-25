@@ -119,8 +119,8 @@ binary += String.fromCharCode(byte);
 }
 
 return btoa(binary)
-.replace(/+/g, "-")
-.replace(///g, "_")
+.replace(/\+/g, "-")
+.replace(/\//g, "_")
 .replace(/=+$/g, "");
 }
 
@@ -224,7 +224,7 @@ signature
 )
 );
 
-return ${payload64}.${sig64};
+return `${payload64}.${sig64}`;
 }
 
 // ============================================================
@@ -342,7 +342,7 @@ const now =
 Date.now();
 
 const storageKey =
-ratelimit:${key};
+`ratelimit:${key}`;
 
 try {
 
@@ -2021,7 +2021,7 @@ return;
 }
 
 const key =
-viewer:${id};
+`viewer:${id}`;
 
 try {
 
