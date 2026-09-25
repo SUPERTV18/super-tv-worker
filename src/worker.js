@@ -539,6 +539,11 @@ if (
 !security.allowed
 ) {
 
+console.warn(
+  "APP_SECURITY_DENIED",
+  { reason: security.reason || "unknown" }
+);
+
 const ipHash =
   await sha256(
     ip
@@ -1508,6 +1513,21 @@ const response =
       headers
     }
   );
+
+let upstreamTarget = {};
+try {
+  const responseUrl = new URL(response.url || cleanUrl);
+  upstreamTarget = {
+    protocol: responseUrl.protocol,
+    hostname: responseUrl.hostname,
+    port: responseUrl.port || (responseUrl.protocol === "https:" ? "443" : "80")
+  };
+} catch {}
+
+console.log(
+  "PLAY_UPSTREAM_RESPONSE",
+  JSON.stringify({ status: response.status, target: upstreamTarget })
+);
 
 if (!response.ok) {
 
