@@ -7,7 +7,7 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
-  },
+  }, 
   "kv_namespaces": [
     {
       "binding": "DATA_KV",
