@@ -200,9 +200,9 @@
       "id": "b1_SD",
       "name": "Bein Sports 1 SD",
       "url": 
-      "http://23370wa.xyz/play/BMoDRXtRtbrnsYhxpeoI7kIc4CAzkDfDjtaF4aBhlHI/m3u8",
+      "http://23370wa.xyz:80/play/BMoDRXtRtbrnsYhxpeoI7kIc4CAzkDfDjtaF4aBhlHI/m3u8",
       "headers": {
-        "User-Agent": "",
+        "User-Agent": "IPTVPRO-v5.0.1",
         "Referer": "",
         "Origin": "" }
     },
