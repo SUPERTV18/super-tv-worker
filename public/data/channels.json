@@ -200,9 +200,9 @@
       "id": "b1_SD",
       "name": "Bein Sports 1 SD",
       "url": 
-      "http://cname1.elg-26.com:8080/live/Abdo20250505/hze7pmru27/1.m3u8",
+      "https://bein.kianezidi.workers.dev/bein_sports1&q=FHD.m3u8",
       "headers": {
-        "User-Agent": "SwordTV/2.1 (Android) Media3/1.11.1",
+        "User-Agent": "OSCARTV2020",
         "Referer": "",
         "Origin": "" }
     },
