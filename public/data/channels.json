@@ -197,8 +197,8 @@
       "headers": { "User-Agent": "", "Referer": "", "Origin": "" }
     },
     {
-      "id": "test_http",
-      "name": "اختبار HTTP",
+      "id": "b1_SD",
+      "name": "Bein Sports 1 SD",
       "url": 
       "http://asmr4k.pro:8080/live/67389201934/0572884955/497111.m3u8",
       "headers": {
