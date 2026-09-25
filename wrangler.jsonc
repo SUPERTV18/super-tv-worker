@@ -4,8 +4,14 @@
   "main": "src/worker.js",
   "compatibility_date": "2026-09-13",
   "compatibility_flags": ["allow_custom_ports"],
-  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
   "kv_namespaces": [
-    { "binding": "DATA_KV", "id": "3bf2696d6cb0472dae2233fe9e27cfe2" }
+    {
+      "binding": "DATA_KV",
+      "id": "3bf2696d6cb0472dae2233fe9e27cfe2"
+    }
   ]
 }
