@@ -180,7 +180,8 @@ false,
 
 async function createHLSToken(
 env,
-target
+target,
+channelHeaders = {}
 ) {
 
 const expires =
@@ -190,7 +191,8 @@ HLS_TOKEN_TTL;
 const payload =
 JSON.stringify({
 u: target,
-e: expires
+e: expires,
+h: normalizeChannelHeaders(channelHeaders)
 });
 
 const payloadBytes =
@@ -303,7 +305,8 @@ if (
 
 return {
   url: payload.u,
-  expires: payload.e
+  expires: payload.e,
+  headers: normalizeChannelHeaders(payload.h)
 };
 
 } catch (e) {
@@ -778,8 +781,32 @@ return json(
 // BUILD UPSTREAM HEADERS
 // ============================================================
 
+const ALLOWED_CHANNEL_HEADERS = new Set([
+  "user-agent",
+  "referer",
+  "origin"
+]);
+
+function normalizeChannelHeaders(value) {
+  const result = {};
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return result;
+  }
+
+  for (const [name, rawValue] of Object.entries(value)) {
+    const normalizedName = name.toLowerCase();
+    if (!ALLOWED_CHANNEL_HEADERS.has(normalizedName)) continue;
+    if (typeof rawValue !== "string" || !rawValue.trim()) continue;
+    result[normalizedName] = rawValue.trim();
+  }
+
+  return result;
+}
+
 function getUpstreamHeaders(
-target
+target,
+channelHeaders = {}
 ) {
 
 const headers = {
@@ -807,6 +834,16 @@ if (
 
 } catch {}
 
+for (const [name, value] of Object.entries(
+  normalizeChannelHeaders(channelHeaders)
+)) {
+  const canonicalName = name
+    .split("-")
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("-");
+  headers[canonicalName] = value;
+}
+
 return headers;
 }
 
@@ -816,12 +853,14 @@ return headers;
 
 async function fetchUpstream(
 target,
-request
+request,
+channelHeaders = {}
 ) {
 
 const headers =
 getUpstreamHeaders(
-target
+target,
+channelHeaders
 );
 
 // مهم للفيديو/segments
@@ -905,7 +944,8 @@ async function rewriteHLSManifest(
 env,
 body,
 sourceUrl,
-workerOrigin
+workerOrigin,
+channelHeaders = {}
 ) {
 
 const lines =
@@ -935,7 +975,8 @@ if (
       env,
       line,
       sourceUrl,
-      workerOrigin
+      workerOrigin,
+      channelHeaders
     );
 
   output.push(
@@ -973,7 +1014,8 @@ try {
   const token =
     await createHLSToken(
       env,
-      absolute
+      absolute,
+      channelHeaders
     );
 
   output.push(
@@ -1001,7 +1043,8 @@ async function rewriteURIAttributes(
 env,
 line,
 sourceUrl,
-workerOrigin
+workerOrigin,
+channelHeaders = {}
 ) {
 
 const regex =
@@ -1048,7 +1091,8 @@ try {
   const token =
     await createHLSToken(
       env,
-      absolute
+      absolute,
+      channelHeaders
     );
 
   const replacement =
@@ -1184,7 +1228,8 @@ try {
 const upstream =
   await fetchUpstream(
     targetUrl.toString(),
-    request
+    request,
+    decoded.headers
   );
 
 const contentType =
@@ -1211,7 +1256,8 @@ if (
       env,
       body,
       targetUrl.toString(),
-      url.origin
+      url.origin,
+      decoded.headers
     );
 
   return new Response(
@@ -1494,9 +1540,13 @@ const cleanUrl =
 // OSTORA REFERER
 // --------------------------------------------------------
 
+const channelHeaders =
+  normalizeChannelHeaders(channel.headers);
+
 const headers =
   getUpstreamHeaders(
-    cleanUrl
+    cleanUrl,
+    channelHeaders
   );
 
 // --------------------------------------------------------
@@ -1564,7 +1614,8 @@ if (
       body,
       response.url ||
         cleanUrl,
-      url.origin
+      url.origin,
+      channelHeaders
     );
 
   return new Response(
