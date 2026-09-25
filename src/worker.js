@@ -410,7 +410,7 @@ await env.DATA_KV.put(
   {
     expirationTtl:
       Math.max(
-        1,
+        60,
         Math.ceil(
           (
             old.resetAt -
