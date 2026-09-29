@@ -251,7 +251,7 @@
 {
   "id": "b1_LOW",
   "name": "Bein Sports 1 LOW",
-  "url": "https://prime-fast.sytes.net/prime-tv/stream/25.m3u8",
+  "url": "https://prime-fast.sytes.net/prime-tv/stream/492.m3u8",
   "headers": {
     "User-Agent": "",
     "Referer": "",
@@ -261,7 +261,7 @@
 {
   "id": "b2_LOW",
   "name": "Bein Sports 2 LOW",
-  "url": "https://uruk.optikl.ink/ostora/main.php?id=4074&cat=331",
+  "url": "https://uruk.optikl.ink/ostora/main.php?id=4074&cat=331.m3u8",
   "headers": {
     "User-Agent": 
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
