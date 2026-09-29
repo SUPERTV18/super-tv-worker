@@ -251,9 +251,9 @@
 {
   "id": "b1_LOW",
   "name": "Bein Sports 1 LOW",
-  "url": "https://prime-fast.sytes.net/prime-tv/stream/492.m3u8",
+  "url": "https://bein.kianezidi.workers.dev/bein_sports1&q=LOW.m3u8",
   "headers": {
-    "User-Agent": "",
+    "User-Agent": "OSCARTV2020",
     "Referer": "",
     "Origin": ""
   }
@@ -261,20 +261,20 @@
 {
   "id": "b2_LOW",
   "name": "Bein Sports 2 LOW",
-  "url": "https://uruk.optikl.ink/ostora/main.php?id=4074&cat=331.m3u8",
+  "url": "https://bein.kianezidi.workers.dev/bein_sports2&q=LOW.m3u8",
   "headers": {
     "User-Agent": 
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
-    "Referer": "https://www.w2.maziikaaaaa.shop/",
-    "Origin": "https://www.w2.maziikaaaaa.shop"
+    "OSCARTV2020",
+    "Referer": "",
+    "Origin": ""
   }
 },
 {
   "id": "b3_LOW",
   "name": "Bein Sports 3 LOW",
-  "url": "https://prime-fast.sytes.net/prime-tv/stream/27.m3u8",
+  "url": "https://bein.kianezidi.workers.dev/bein_sports3&q=LOW.m3u8",
   "headers": {
-    "User-Agent": "",
+    "User-Agent": "OSCARTV2020",
     "Referer": "",
     "Origin": ""
   }
@@ -282,9 +282,9 @@
 {
   "id": "b4_LOW",
   "name": "Bein Sports 4 LOW",
-  "url": "https://prime-fast.sytes.net/prime-tv/stream/28.m3u8",
+  "url": "https://bein.kianezidi.workers.dev/bein_sports4&q=LOW.m3u8",
   "headers": {
-    "User-Agent": "",
+    "User-Agent": "OSCARTV2020",
     "Referer": "",
     "Origin": ""
   }
@@ -292,9 +292,9 @@
 {
   "id": "b5_LOW",
   "name": "Bein Sports 5 LOW",
-  "url": "https://prime-fast.sytes.net/prime-tv/stream/29.m3u8",
+  "url": "https://bein.kianezidi.workers.dev/bein_sports5&q=LOW.m3u8",
   "headers": {
-    "User-Agent": "",
+    "User-Agent": "OSCARTV2020",
     "Referer": "",
     "Origin": ""
   }
