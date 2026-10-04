@@ -23,10 +23,10 @@ const CHANNELS_GITHUB_URL =
   "https://raw.githubusercontent.com/SUPERTV18/super-tv-worker/main/public/data/channels.json";
 
 // مدة Cloudflare Cache
-const CHANNELS_CACHE_TTL = 300;
+const CHANNELS_CACHE_TTL = 10;
 
 // مدة Memory Cache
-const CHANNELS_MEMORY_TTL = 5 * 60 * 1000;
+const CHANNELS_MEMORY_TTL = 10 * 1000;
 
 // ============================================================
 // RATE LIMIT
