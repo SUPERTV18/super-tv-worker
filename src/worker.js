@@ -1,6 +1,7 @@
 // ============================================================
 // SUPER TV API - Cloudflare Worker
 // HLS SOURCE HIDDEN PROXY
+// GITHUB CHANNELS + CLOUDFLARE CACHE
 // KV OPTIMIZED VERSION
 // ============================================================
 
@@ -13,6 +14,19 @@ const FALLBACK_VIDEO =
 const PROXY_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
+
+// ============================================================
+// GITHUB CHANNELS SOURCE
+// ============================================================
+
+const CHANNELS_GITHUB_URL =
+  "https://raw.githubusercontent.com/SUPERTV18/super-tv-worker/main/public/data/channels.json";
+
+// مدة Cloudflare Cache
+const CHANNELS_CACHE_TTL = 300;
+
+// مدة Memory Cache
+const CHANNELS_MEMORY_TTL = 5 * 60 * 1000;
 
 // ============================================================
 // RATE LIMIT
@@ -34,22 +48,12 @@ const HLS_TOKEN_TTL = 30 * 60 * 1000;
 // CHANNEL MEMORY CACHE
 // ============================================================
 
-// حفظ channels.json في ذاكرة الـ Worker
-// لمدة 5 دقائق
-const CHANNELS_MEMORY_TTL = 5 * 60 * 1000;
-
 let CHANNELS_MEMORY_CACHE = null;
 let CHANNELS_MEMORY_CACHE_TIME = 0;
 
 // ============================================================
 // MEMORY RATE LIMIT
 // ============================================================
-
-// ملاحظة:
-// هذا الـRate Limit يعمل في ذاكرة الـWorker فقط.
-// لا يستخدم KV.
-// Cloudflare Workers يمكن أن يكون لها أكثر من instance,
-// لذلك هذا حماية خفيفة وليست نظام Rate Limit مركزي.
 
 const RATE_LIMIT_MEMORY = new Map();
 
@@ -455,10 +459,6 @@ async function checkRateLimit(
       storageKey
     );
 
-  // ----------------------------------------------------------
-  // NEW WINDOW
-  // ----------------------------------------------------------
-
   if (
     !old ||
     !old.resetAt ||
@@ -490,10 +490,6 @@ async function checkRateLimit(
 
   }
 
-  // ----------------------------------------------------------
-  // LIMIT REACHED
-  // ----------------------------------------------------------
-
   if (
     old.count >= limit
   ) {
@@ -515,10 +511,6 @@ async function checkRateLimit(
     };
 
   }
-
-  // ----------------------------------------------------------
-  // INCREMENT
-  // ----------------------------------------------------------
 
   old.count += 1;
 
@@ -572,7 +564,6 @@ function cleanupRateLimitMemory() {
 
   }
 
-  // حماية من تضخم الذاكرة
   if (
     RATE_LIMIT_MEMORY.size >
     5000
@@ -837,19 +828,17 @@ async function securityGuard(
 }
 
 // ============================================================
-// LOAD CHANNELS
+// LOAD CHANNELS FROM GITHUB
 // ============================================================
 //
-// الأولوية:
+// المصدر الأساسي:
 //
-// 1. Memory Cache
-// 2. Cloudflare Assets
-// 3. KV كـ fallback فقط
+// GitHub Raw
 //
-// channels.json:
+// https://raw.githubusercontent.com/
+// SUPERTV18/super-tv-worker/main/public/data/channels.json
 //
-// public/data/channels.json
-//
+// لا يستخدم KV.
 // ============================================================
 
 async function loadChannels(env) {
@@ -867,7 +856,7 @@ async function loadChannels(env) {
       now -
       CHANNELS_MEMORY_CACHE_TIME
     ) <
-      CHANNELS_MEMORY_TTL
+    CHANNELS_MEMORY_TTL
   ) {
 
     return CHANNELS_MEMORY_CACHE;
@@ -875,95 +864,196 @@ async function loadChannels(env) {
   }
 
   // ==========================================================
-  // 2. CLOUDFLARE ASSETS
+  // 2. CLOUDFLARE CACHE
   // ==========================================================
 
-  if (env.ASSETS) {
+  try {
 
-    try {
+    const githubRequest =
+      new Request(
+        CHANNELS_GITHUB_URL,
+        {
+          method: "GET",
 
-      const response =
-        await env.ASSETS.fetch(
-          new Request(
-            new URL(
-              "/data/channels.json",
-              "https://internal.local"
-            )
-          )
-        );
+          headers: {
+            "Accept":
+              "application/json",
 
-      if (
-        response.ok
-      ) {
+            "User-Agent":
+              "SUPER-TV-Worker"
+          }
+        }
+      );
+
+    // --------------------------------------------------------
+    // Cloudflare Cache
+    // --------------------------------------------------------
+
+    const cachedResponse =
+      await caches.default.match(
+        githubRequest
+      );
+
+    if (
+      cachedResponse
+    ) {
+
+      try {
 
         const data =
-          await response.json();
+          await cachedResponse.json();
 
-        CHANNELS_MEMORY_CACHE =
-          data;
+        if (
+          data &&
+          typeof data === "object"
+        ) {
 
-        CHANNELS_MEMORY_CACHE_TIME =
-          now;
+          CHANNELS_MEMORY_CACHE =
+            data;
 
-        return data;
+          CHANNELS_MEMORY_CACHE_TIME =
+            now;
+
+          return data;
+
+        }
+
+      } catch (e) {
+
+        console.error(
+          "CACHED CHANNELS JSON ERROR:",
+          e
+        );
 
       }
 
-    } catch (e) {
+    }
 
-      console.error(
-        "ASSETS CHANNELS ERROR:",
-        e
+    // ========================================================
+    // 3. GITHUB FETCH
+    // ========================================================
+
+    const response =
+      await fetch(
+        githubRequest,
+        {
+          redirect:
+            "follow",
+
+          cf: {
+            cacheEverything:
+              true,
+
+            cacheTtl:
+              CHANNELS_CACHE_TTL
+          }
+        }
+      );
+
+    if (
+      !response.ok
+    ) {
+
+      throw new Error(
+        `GitHub returned HTTP ${response.status}`
       );
 
     }
 
-  }
+    const data =
+      await response.json();
 
-  // ==========================================================
-  // 3. KV FALLBACK
-  // ==========================================================
+    if (
+      !data ||
+      typeof data !== "object"
+    ) {
 
-  if (env.DATA_KV) {
+      throw new Error(
+        "Invalid channels.json format"
+      );
+
+    }
+
+    // ========================================================
+    // SAVE TO MEMORY
+    // ========================================================
+
+    CHANNELS_MEMORY_CACHE =
+      data;
+
+    CHANNELS_MEMORY_CACHE_TIME =
+      now;
+
+    // ========================================================
+    // SAVE TO CLOUDFLARE CACHE
+    // ========================================================
 
     try {
 
-      const kvData =
-        await env.DATA_KV.get(
-          "channels",
-          "json"
+      const cacheResponse =
+        new Response(
+          JSON.stringify(data),
+          {
+            status: 200,
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              "Cache-Control":
+                `public, max-age=${CHANNELS_CACHE_TTL}`
+            }
+          }
         );
 
-      if (kvData) {
+      await caches.default.put(
+        githubRequest,
+        cacheResponse
+      );
 
-        CHANNELS_MEMORY_CACHE =
-          kvData;
-
-        CHANNELS_MEMORY_CACHE_TIME =
-          now;
-
-        return kvData;
-
-      }
-
-    } catch (e) {
+    } catch (cacheError) {
 
       console.error(
-        "KV CHANNELS FALLBACK ERROR:",
-        e
+        "CHANNELS CACHE PUT ERROR:",
+        cacheError
       );
 
     }
 
+    return data;
+
+  } catch (e) {
+
+    console.error(
+      "GITHUB CHANNELS ERROR:",
+      e
+    );
+
+    // ========================================================
+    // 4. STALE MEMORY FALLBACK
+    // ========================================================
+    //
+    // إذا فشل GitHub وكان Worker لديه نسخة قديمة
+    // يتم استخدامها بدل إيقاف القنوات.
+    // ========================================================
+
+    if (
+      CHANNELS_MEMORY_CACHE
+    ) {
+
+      console.warn(
+        "USING STALE MEMORY CHANNELS CACHE"
+      );
+
+      return CHANNELS_MEMORY_CACHE;
+
+    }
+
+    throw new Error(
+      "channels.json could not be loaded from GitHub"
+    );
+
   }
-
-  // ==========================================================
-  // 4. ERROR
-  // ==========================================================
-
-  throw new Error(
-    "channels.json not found"
-  );
 
 }
 
@@ -1259,10 +1349,6 @@ async function rewriteHLSManifest(
     const original =
       line.trim();
 
-    // ========================================================
-    // URI ATTRIBUTE
-    // ========================================================
-
     if (
       original.startsWith("#")
     ) {
@@ -1284,10 +1370,6 @@ async function rewriteHLSManifest(
 
     }
 
-    // ========================================================
-    // EMPTY
-    // ========================================================
-
     if (!original) {
 
       output.push(
@@ -1297,10 +1379,6 @@ async function rewriteHLSManifest(
       continue;
 
     }
-
-    // ========================================================
-    // SEGMENT / CHILD PLAYLIST
-    // ========================================================
 
     try {
 
@@ -1370,7 +1448,6 @@ async function rewriteURIAttributes(
   let result =
     line;
 
-  // من الخلف للأمام
   for (
     let i =
       matches.length - 1;
@@ -1432,10 +1509,6 @@ async function hlsApi(
   url
 ) {
 
-  // ==========================================================
-  // SECURITY
-  // ==========================================================
-
   const security =
     await securityGuard(
       request,
@@ -1450,10 +1523,6 @@ async function hlsApi(
     return security.response;
 
   }
-
-  // ==========================================================
-  // TOKEN
-  // ==========================================================
 
   const token =
     url.searchParams.get(
@@ -1487,10 +1556,6 @@ async function hlsApi(
   const target =
     decoded.url;
 
-  // ==========================================================
-  // URL SAFETY
-  // ==========================================================
-
   let targetUrl;
 
   try {
@@ -1523,10 +1588,6 @@ async function hlsApi(
 
   }
 
-  // ==========================================================
-  // FETCH
-  // ==========================================================
-
   try {
 
     const upstream =
@@ -1540,10 +1601,6 @@ async function hlsApi(
       upstream.headers.get(
         "content-type"
       ) || "";
-
-    // ========================================================
-    // HLS MANIFEST
-    // ========================================================
 
     if (
       isProbablyM3U8(
@@ -1591,10 +1648,6 @@ async function hlsApi(
       );
 
     }
-
-    // ========================================================
-    // SEGMENT / KEY / BINARY
-    // ========================================================
 
     const headers =
       new Headers();
@@ -2360,7 +2413,7 @@ async function tsApi(
 // ============================================================
 //
 // KV يستخدم هنا فقط للحفظ الإداري.
-// لا يتم استدعاؤه أثناء تشغيل القنوات.
+// تشغيل القنوات لا يستخدم KV.
 // ============================================================
 
 async function saveApi(
@@ -2422,7 +2475,7 @@ async function saveApi(
       )
     );
 
-    // تحديث Memory Cache
+    // تحديث Memory Cache فقط
     CHANNELS_MEMORY_CACHE =
       body;
 
@@ -2457,9 +2510,6 @@ async function saveApi(
 
 // ============================================================
 // VIEWER INCREMENT
-// ============================================================
-//
-// لم يعد يستخدم KV.
 // ============================================================
 
 function incrementViewer(
