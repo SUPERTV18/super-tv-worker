@@ -200,7 +200,7 @@
       "id": "b1_SD",
       "name": "Bein Sports 1 SD",
       "url": 
-      "http://h35.infiniteedgehub.live/live/978480008877005/index.m3u8",
+      "https://h35.infiniteedgehub.live/live/978480008877005/index.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
@@ -209,37 +209,37 @@
     {
       "id": "b2_SD",
       "name": "Bein Sports 2 SD",
-      "url": "https://oscartv.super-stv.workers.dev/bein_sports2&q=SD.m3u8",
+      "url": "http://h35.infiniteedgehub.live/live/10011244/index.m3u8",
       "headers": {
-        "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
+        "User-Agent": "", "Referer": "", "Origin": "" }
     },
     {
       "id": "b3_SD",
       "name": "Bein Sports 3 SD",
-      "url": "https://bein.kianezidi.workers.dev/bein_sports3&q=SD.m3u8",
+      "url": "http://h35.infiniteedgehub.live/live/161988840/index.m3u8",
       "headers": {
-        "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
+        "User-Agent": "", "Referer": "", "Origin": "" }
     },
     {
       "id": "b4_SD",
       "name": "Bein Sports 4 SD",
-      "url": "https://bein.kianezidi.workers.dev/bein_sports4&q=SD.m3u8",
+      "url": "http://h35.infiniteedgehub.live/live/0103088447/index.m3u8",
       "headers": {
-        "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
+        "User-Agent": "", "Referer": "", "Origin": "" }
     },
     {
   "id": "b5_SD",
   "name": "Bein Sports 5 SD",
-  "url": "https://bein.kianezidi.workers.dev/bein_sports5&q=SD.m3u8",
+  "url": "http://h35.infiniteedgehub.live/live/115451004/index.m3u8",
       "headers": {
-        "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
+        "User-Agent": "", "Referer": "", "Origin": "" }
 },
 {
   "id": "b6_SD",
   "name": "Bein Sports 6 SD",
-  "url": "https://bein.kianezidi.workers.dev/bein_sports6&q=SD.m3u8",
+  "url": "http://h35.infiniteedgehub.live/live/788550011/index.m3u8",
       "headers": {
-        "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
+        "User-Agent": "", "Referer": "", "Origin": "" }
 },
 {
   "id": "b7_SD",
@@ -251,9 +251,9 @@
 {
   "id": "b1_LOW",
   "name": "Bein Sports 1 LOW",
-  "url": "https://bein.kianezidi.workers.dev/bein_sports1&q=LOW.m3u8",
+  "url": "http://h35.infiniteedgehub.live/live/31009988005/index.m3u8",
   "headers": {
-    "User-Agent": "OSCARTV2020",
+    "User-Agent": "",
     "Referer": "",
     "Origin": ""
   }
@@ -261,10 +261,10 @@
 {
   "id": "b2_LOW",
   "name": "Bein Sports 2 LOW",
-  "url": "https://bein.kianezidi.workers.dev/bein_sports2&q=LOW.m3u8",
+  "url": "http://h35.infiniteedgehub.live/live/4798998070/index.m3u8",
   "headers": {
     "User-Agent": 
-    "OSCARTV2020",
+    "",
     "Referer": "",
     "Origin": ""
   }
@@ -272,9 +272,9 @@
 {
   "id": "b3_LOW",
   "name": "Bein Sports 3 LOW",
-  "url": "https://bein.kianezidi.workers.dev/bein_sports3&q=LOW.m3u8",
+  "url": "http://h35.infiniteedgehub.live/live/551818447/index.m3u8",
   "headers": {
-    "User-Agent": "OSCARTV2020",
+    "User-Agent": "",
     "Referer": "",
     "Origin": ""
   }
@@ -282,9 +282,9 @@
 {
   "id": "b4_LOW",
   "name": "Bein Sports 4 LOW",
-  "url": "https://bein.kianezidi.workers.dev/bein_sports4&q=LOW.m3u8",
+  "url": "http://h35.infiniteedgehub.live/live/131326625/index.m3u8",
   "headers": {
-    "User-Agent": "OSCARTV2020",
+    "User-Agent": "",
     "Referer": "",
     "Origin": ""
   }
@@ -292,9 +292,9 @@
 {
   "id": "b5_LOW",
   "name": "Bein Sports 5 LOW",
-  "url": "https://bein.kianezidi.workers.dev/bein_sports5&q=LOW.m3u8",
+  "url": "http://h35.infiniteedgehub.live/live/181818444/index.m3u8",
   "headers": {
-    "User-Agent": "OSCARTV2020",
+    "User-Agent": "",
     "Referer": "",
     "Origin": ""
   }
@@ -302,7 +302,7 @@
 {
   "id": "b6_LOW",
   "name": "Bein Sports 6 LOW",
-  "url": "https://prime-fast.sytes.net/prime-tv/stream/30.m3u8",
+  "url": "http://h35.infiniteedgehub.live/live/9882222/index.m3u8",
   "headers": {
     "User-Agent": "",
     "Referer": "",
