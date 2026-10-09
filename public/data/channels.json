@@ -251,7 +251,8 @@
 {
   "id": "b1_LOW",
   "name": "Bein Sports 1 LOW",
-  "url": "http://h35.infiniteedgehub.live/live/31009988005/index.m3u8",
+  "url": 
+  "https://live-tv-116849026166.europe-west1.run.app/api/korasport/stream/bein1-480p.m3u8",
   "headers": {
     "User-Agent": "",
     "Referer": "",
@@ -261,7 +262,8 @@
 {
   "id": "b2_LOW",
   "name": "Bein Sports 2 LOW",
-  "url": "http://h35.infiniteedgehub.live/live/4798998070/index.m3u8",
+  "url": 
+  "https://live-tv-116849026166.europe-west1.run.app/api/korasport/stream/bein2-480p.m3u8",
   "headers": {
     "User-Agent": 
     "",
@@ -272,7 +274,8 @@
 {
   "id": "b3_LOW",
   "name": "Bein Sports 3 LOW",
-  "url": "http://h35.infiniteedgehub.live/live/551818447/index.m3u8",
+  "url": 
+  "https://live-tv-116849026166.europe-west1.run.app/api/korasport/stream/bein3-480p.m3u8",
   "headers": {
     "User-Agent": "",
     "Referer": "",
@@ -282,7 +285,8 @@
 {
   "id": "b4_LOW",
   "name": "Bein Sports 4 LOW",
-  "url": "http://h35.infiniteedgehub.live/live/131326625/index.m3u8",
+  "url": 
+  "https://live-tv-116849026166.europe-west1.run.app/api/korasport/stream/bein4-480p.m3u8",
   "headers": {
     "User-Agent": "",
     "Referer": "",
@@ -292,7 +296,8 @@
 {
   "id": "b5_LOW",
   "name": "Bein Sports 5 LOW",
-  "url": "http://h35.infiniteedgehub.live/live/181818444/index.m3u8",
+  "url": 
+  "https://live-tv-116849026166.europe-west1.run.app/api/korasport/stream/bein5-480p.m3u8",
   "headers": {
     "User-Agent": "",
     "Referer": "",
@@ -302,7 +307,8 @@
 {
   "id": "b6_LOW",
   "name": "Bein Sports 6 LOW",
-  "url": "http://h35.infiniteedgehub.live/live/9882222/index.m3u8",
+  "url": 
+  "https://live-tv-116849026166.europe-west1.run.app/api/korasport/stream/bein6-480p.m3u8",
   "headers": {
     "User-Agent": "",
     "Referer": "",
@@ -312,7 +318,8 @@
 {
   "id": "b7_LOW",
   "name": "Bein Sports 7 LOW",
-  "url": "https://prime-fast.sytes.net/prime-tv/stream/31.m3u8",
+  "url": 
+  "https://live-tv-116849026166.europe-west1.run.app/api/korasport/stream/bein7-480p.m3u8",
   "headers": {
     "User-Agent": "",
     "Referer": "",
