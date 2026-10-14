@@ -93,14 +93,14 @@
     {
       "id": "b2_4K",
       "name": "Bein Sports 2 4K",
-      "url": "https://www.manar2.shop/x1/60_0.m3u8",
-      "headers": { "User-Agent": "", "Referer": "", "Origin": "" }
+      "url": "https://bein.kianezidi.workers.dev/bein_sports2&q=FHD.m3u8",
+      "headers": { "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
     },
     {
       "id": "b3_4K",
       "name": "Bein Sports 3 4K",
-      "url": "https://www.manar2.shop/x1/61_0.m3u8",
-      "headers": { "User-Agent": "", "Referer": "", "Origin": "" }
+      "url": "https://bein.kianezidi.workers.dev/bein_sports3&q=FHD.m3u8",
+      "headers": { "User-Agent": "OSCARTV2020", "Referer": "", "Origin": "" }
     },
     {
       "id": "b1_FHD",
