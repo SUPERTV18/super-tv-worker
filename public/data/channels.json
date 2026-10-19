@@ -200,9 +200,9 @@
       "id": "b1_SD",
       "name": "Bein Sports 1 SD",
       "url": 
-      "http://het2.2depannage.cyou/196189/tracks-v1a1/mono.m3u8",
+      "http://assets.pushyourcss.world:8080/assets/res2/java2/1319.css?x=/hls",
       "headers": {
-        "User-Agent": "",
+        "User-Agent": "OSCARTV2021",
         "Referer": "",
         "Origin": "" }
     },
@@ -558,7 +558,7 @@
       "name": "Thmanyah 1 HD",
       "url": "https://oscartv.super-stv.workers.dev/?id=80&go=243&file=.m3u8",
       "headers": { 
-        "User-Agent": "",
+        "User-Agent": "OSCARTV2020",
         "Referer": "",
         "Origin": "" }
     },
