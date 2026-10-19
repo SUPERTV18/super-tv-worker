@@ -1989,27 +1989,91 @@ async function playApi(
         "content-type"
       ) || "";
 
+    const finalSourceUrl =
+      response.url ||
+      cleanUrl;
+
     // ========================================================
-    // M3U8 SOURCE
+    // DETECT HLS EVEN WHEN THE SOURCE URL ENDS WITH .CSS
+    // Some HLS providers expose an M3U8 manifest through a
+    // .css URL and require a channel-specific User-Agent.
+    // Inspect the body only for CSS-like source URLs so normal
+    // binary/video responses can continue streaming untouched.
     // ========================================================
 
-    if (
+    let isHLSManifest =
       isProbablyM3U8(
-        response.url ||
-          cleanUrl,
+        finalSourceUrl,
         contentType
-      )
-    ) {
+      );
+
+    let detectedManifestBody =
+      null;
+
+    if (!isHLSManifest) {
+
+      let sourceLooksLikeCss =
+        false;
+
+      try {
+
+        const parsedSource =
+          new URL(
+            finalSourceUrl
+          );
+
+        sourceLooksLikeCss =
+          /\\.css$/i.test(
+            parsedSource.pathname
+          ) ||
+          parsedSource.hostname
+            .toLowerCase() ===
+            "assets.pushyourcss.world";
+
+      } catch {}
+
+      if (sourceLooksLikeCss) {
+
+        const candidateBody =
+          await response.clone().text();
+
+        const trimmedBody =
+          candidateBody
+            .replace(/^\\uFEFF/, "")
+            .trimStart();
+
+        if (
+          trimmedBody.startsWith(
+            "#EXTM3U"
+          )
+        ) {
+
+          isHLSManifest = true;
+          detectedManifestBody =
+            candidateBody;
+
+        }
+
+      }
+
+    }
+
+    // ========================================================
+    // REWRITE HLS MANIFEST
+    // ========================================================
+
+    if (isHLSManifest) {
 
       const body =
-        await response.text();
+        detectedManifestBody !== null
+          ? detectedManifestBody
+          : await response.text();
 
       const rewritten =
         await rewriteHLSManifest(
           env,
           body,
-          response.url ||
-            cleanUrl,
+          finalSourceUrl,
           url.origin,
           channelHeaders
         );
