@@ -1602,6 +1602,19 @@ async function hlsApi(
         "content-type"
       ) || "";
 
+    // Safe diagnostics for failed HLS requests; never log full URLs or tokens.
+    if (!upstream.ok) {
+      console.warn(
+        "HLS_UPSTREAM_FAILURE",
+        JSON.stringify({
+          status: upstream.status,
+          host: targetUrl.hostname,
+          contentType: contentType.slice(0, 100),
+          rangeRequested: Boolean(request.headers.get("Range"))
+        })
+      );
+    }
+
     // Some providers serve nested HLS playlists through .css URLs.
     // Inspect the response body before deciding to stream it as binary.
     let isHLSManifest =
