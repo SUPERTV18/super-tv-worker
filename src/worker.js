@@ -2022,9 +2022,17 @@ async function playApi(
             finalSourceUrl
           );
 
+        const parsedRequestedSource =
+          new URL(
+            cleanUrl
+          );
+
         sourceLooksLikeCss =
-          /\\.css$/i.test(
+          /\.css$/i.test(
             parsedSource.pathname
+          ) ||
+          /\.css$/i.test(
+            parsedRequestedSource.pathname
           ) ||
           parsedSource.hostname
             .toLowerCase() ===
