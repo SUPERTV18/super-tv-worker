@@ -1602,15 +1602,47 @@ async function hlsApi(
         "content-type"
       ) || "";
 
-    if (
+    // Some providers serve nested HLS playlists through .css URLs.
+    // Inspect the response body before deciding to stream it as binary.
+    let isHLSManifest =
       isProbablyM3U8(
-        targetUrl.toString(),
+        upstream.url || targetUrl.toString(),
         contentType
-      )
-    ) {
+      );
+
+    let detectedManifestBody = null;
+
+    if (!isHLSManifest) {
+      const finalUrl = upstream.url || targetUrl.toString();
+      let looksLikePlaylist = false;
+
+      try {
+        const finalParsed = new URL(finalUrl);
+        const requestedParsed = new URL(targetUrl.toString());
+
+        looksLikePlaylist =
+          /\\.css$/i.test(finalParsed.pathname) ||
+          /\\.css$/i.test(requestedParsed.pathname) ||
+          finalParsed.hostname.toLowerCase().includes("majedcss.site");
+      } catch {}
+
+      if (looksLikePlaylist) {
+        const candidateBody = await upstream.clone().text();
+        const trimmedBody = candidateBody.replace(/^\\uFEFF/, "").trimStart();
+
+        if (trimmedBody.startsWith("#EXTM3U")) {
+          isHLSManifest = true;
+          detectedManifestBody = candidateBody;
+        }
+      }
+    }
+
+    if (isHLSManifest) {
 
       const body =
-        await upstream.text();
+        detectedManifestBody !== null
+          ? detectedManifestBody
+          : await upstream.text();
 
       const rewritten =
         await rewriteHLSManifest(
