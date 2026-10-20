@@ -96,7 +96,7 @@
       "url": "https://smarter.majedcss.site/live/ch1/19327c567ee248f78a86c636d15fa0b6.1792506052.1792527652.0.cc51e86b3420d44a77b129f52a0829e39bbdad1f9b45b54c23b1a5259eadd23b/v/s_cc.css",
       "headers": {
         "User-Agent": "",
-        "Referer": "https://player.majed-koora.live",
+        "Referer": "https://player.majed-koora.live/",
         "Origin": ""
       }
     },
@@ -363,7 +363,7 @@
     {
       "id": "b1_LOW",
       "name": "Bein Sports 1 LOW",
-      "url": "https://live-tv-116849026166.europe-west1.run.app/api/korasport/stream/bein1-480p.m3u8",
+      "url": "http://assets.pushyourcss.world:8080/assets/res2/java2/1313.css?x=/hls/",
       "headers": {
         "User-Agent": "",
         "Referer": "",
@@ -373,7 +373,7 @@
     {
       "id": "b2_LOW",
       "name": "Bein Sports 2 LOW",
-      "url": "https://live-tv-116849026166.europe-west1.run.app/api/korasport/stream/bein2-480p.m3u8",
+      "url": "http://assets.pushyourcss.world:8080/assets/res2/java2/1322.css?x=/hls/",
       "headers": {
         "User-Agent": "",
         "Referer": "",
@@ -383,7 +383,7 @@
     {
       "id": "b3_LOW",
       "name": "Bein Sports 3 LOW",
-      "url": "https://live-tv-116849026166.europe-west1.run.app/api/korasport/stream/bein3-480p.m3u8",
+      "url": "http://assets.pushyourcss.world:8080/assets/res2/java2/1331.css?x=/hls/",
       "headers": {
         "User-Agent": "",
         "Referer": "",
