@@ -365,7 +365,7 @@
       "name": "Bein Sports 1 LOW",
       "url": "http://assets.pushyourcss.world:8080/assets/res2/java2/1313.css?x=/hls/",
       "headers": {
-        "User-Agent": "",
+        "User-Agent": "OSCARTV2021",
         "Referer": "",
         "Origin": ""
       }
@@ -375,7 +375,7 @@
       "name": "Bein Sports 2 LOW",
       "url": "http://assets.pushyourcss.world:8080/assets/res2/java2/1322.css?x=/hls/",
       "headers": {
-        "User-Agent": "",
+        "User-Agent": "OSCARTV2021",
         "Referer": "",
         "Origin": ""
       }
@@ -385,7 +385,7 @@
       "name": "Bein Sports 3 LOW",
       "url": "http://assets.pushyourcss.world:8080/assets/res2/java2/1331.css?x=/hls/",
       "headers": {
-        "User-Agent": "",
+        "User-Agent": "OSCARTV2021",
         "Referer": "",
         "Origin": ""
       }
