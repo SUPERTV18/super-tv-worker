@@ -94,13 +94,14 @@
       "id": "TOD1",
       "name": "TOD 1 ",
       "url": 
-      "https://smarter.majedcss.site/live/ch2/4fdf212205f94b6381ffbcbf1fe928be.1792522333.1792533133.0.2b20feec66fc756819622dc2f00279abf78a6bb14436b8821ae843c26da082db/master.css",
+      "https://smarter.majedcss.site/live/ch1/e0b9da6d1adc41afa5c3a76a43cd96da.1792608196.1792618996.0.52b1213a74a73b3f330c4b6ee6f163111c10d6b41aaa836248b9cadb99262ce2/master.css",
       "headers": {
         "User-Agent": 
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0",
         "Referer": 
         "https://player.majed-koora.live/?player=hls&channel=tood1/",
-        "Origin": ""
+        "Origin": 
+        "https://player.majed-koora.live/?player=hls&channel=tood1"
       }
     },
     {
