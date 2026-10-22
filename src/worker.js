@@ -9,7 +9,7 @@ const NEW_UA = "stv2026";
 const OLD_UA = "2026stv";
 
 const FALLBACK_VIDEO =
-  "https://github.com/himasabry/video/raw/refs/heads/main/output.m3u8";
+  "https://github.com/himasabry/video/raw/refs/heads/main/master.m3u8";
 
 const PROXY_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
