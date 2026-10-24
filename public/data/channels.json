@@ -90,11 +90,11 @@
         "Origin": ""
       }
     },
-    {
+    { 
       "id": "TOD1",
       "name": "TOD 1 ",
       "url": 
-      "https://smarter.majedcss.site/live/ch1/bb8685034ccb4dfea2f8019d6414b824.1792845191.1792855991.0.9c01b87af5de81c7eae60ca561253d4c2d4aa97a36b8f1add1c36b08687e5713/master.css",
+      "https://smarter.majedcss.site/live/ch2/ab3b6f05359944ea9ecf8b959e5fa4f3.1792845387.1792856187.0.29bf199ef8f414a9aee118d4b74ec6f0245e646d645afce888000100862a1468/master.css",
       "headers": {
         "User-Agent": 
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0",
@@ -107,7 +107,7 @@
     {
       "id": "TOD2",
       "name": "TOD 2 ",
-      "url": "https://iptv-subscription-api.tvkora56.workers.dev/v1/custom/stream/16.m3u8?code=2027",
+      "url": "https://smarter.majedcss.site/live/ch1/bb8685034ccb4dfea2f8019d6414b824.1792845191.1792855991.0.9c01b87af5de81c7eae60ca561253d4c2d4aa97a36b8f1add1c36b08687e5713/master.css",
       "headers": {
         "User-Agent": "",
         "Referer": "",
