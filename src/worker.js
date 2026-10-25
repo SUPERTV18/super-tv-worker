@@ -1793,7 +1793,8 @@ async function hlsApi(
 async function playApi(
   request,
   env,
-  url
+  url,
+  forceRaw = false
 ) {
 
   try {
@@ -2048,6 +2049,31 @@ async function playApi(
     const finalSourceUrl =
       response.url ||
       cleanUrl;
+
+    // ========================================================
+    // RAW STREAM PASSTHROUGH (FLV / OTHER NON-HLS)
+    // Dedicated endpoint: /api/play.flv?id=TOD2
+    // This forwards the original stream; it does not transcode it.
+    // ========================================================
+
+    if (forceRaw) {
+      const rawHeaders = new Headers({
+        "Content-Type": contentType || "application/octet-stream",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff"
+      });
+
+      for (const headerName of ["content-length", "content-range", "accept-ranges"]) {
+        const headerValue = response.headers.get(headerName);
+        if (headerValue) rawHeaders.set(headerName, headerValue);
+      }
+
+      return new Response(response.body, {
+        status: response.status,
+        headers: rawHeaders
+      });
+    }
 
     // ========================================================
     // DETECT HLS EVEN WHEN THE SOURCE URL ENDS WITH .CSS
@@ -2852,6 +2878,24 @@ export default {
         request,
         env,
         url
+      );
+
+    }
+
+    // ========================================================
+    // RAW STREAM PASSTHROUGH (FLV / NON-HLS)
+    // ========================================================
+
+    if (
+      url.pathname ===
+      "/api/play.flv"
+    ) {
+
+      return playApi(
+        request,
+        env,
+        url,
+        true
       );
 
     }
