@@ -2032,6 +2032,31 @@ async function playApi(
       })
     );
 
+    // If the upstream explicitly reports a tiny body, inspect a clone only.
+    // The live response body remains untouched for normal playback.
+    const reportedLength = Number(upstreamContentLength);
+    if (Number.isFinite(reportedLength) && reportedLength > 0 && reportedLength <= 1024) {
+      try {
+        const tinyBytes = new Uint8Array(await response.clone().arrayBuffer());
+        const tinyHex = Array.from(tinyBytes.slice(0, 64))
+          .map(byte => byte.toString(16).padStart(2, "0"))
+          .join(" ");
+        const tinyText = new TextDecoder()
+          .decode(tinyBytes.slice(0, 256))
+          .replace(/[^\\x20-\\x7E\\r\\n\\t]/g, ".");
+        console.warn(
+          "PLAY_UPSTREAM_TINY_BODY",
+          JSON.stringify({
+            length: tinyBytes.length,
+            hex: tinyHex,
+            printable: tinyText
+          })
+        );
+      } catch (diagnosticError) {
+        console.warn("PLAY_UPSTREAM_TINY_BODY_READ_FAILED");
+      }
+    }
+
     if (!response.ok) {
 
       return text(
