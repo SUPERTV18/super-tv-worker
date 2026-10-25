@@ -5,8 +5,73 @@
 // KV OPTIMIZED VERSION
 // ============================================================
 
-const NEW_UA = "stv2026";
-const OLD_UA = "2026stv";
+const DEFAULT_NEW_UA = "stv2026";
+const DEFAULT_OLD_UA = "2026stv";
+const SERVER_SETTINGS_URL = "https://raw.githubusercontent.com/SUPERTV18/super-tv-worker/main/public/data/server-settings.json";
+let SERVER_UA_SETTINGS_CACHE = null;
+let SERVER_UA_SETTINGS_CACHE_TIME = 0;
+const SERVER_UA_SETTINGS_TTL = 30 * 1000;
+
+async function getServerUASettings() {
+  const now = Date.now();
+  if (SERVER_UA_SETTINGS_CACHE && now - SERVER_UA_SETTINGS_CACHE_TIME < SERVER_UA_SETTINGS_TTL) {
+    return SERVER_UA_SETTINGS_CACHE;
+  }
+  try {
+    const response = await fetch(SERVER_SETTINGS_URL, {
+      headers: { "Accept": "application/json", "User-Agent": "SUPER-TV-Worker" },
+      cf: { cacheTtl: 30, cacheEverything: true }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data && typeof data.newUA === "string" && typeof data.oldUA === "string") {
+        SERVER_UA_SETTINGS_CACHE = {
+          newUA: data.newUA.trim() || DEFAULT_NEW_UA,
+          oldUA: data.oldUA.trim() || DEFAULT_OLD_UA
+        };
+        SERVER_UA_SETTINGS_CACHE_TIME = now;
+        return SERVER_UA_SETTINGS_CACHE;
+      }
+    }
+  } catch (e) {
+    console.error("SERVER UA SETTINGS LOAD ERROR", e.message);
+  }
+  return { newUA: DEFAULT_NEW_UA, oldUA: DEFAULT_OLD_UA };
+}
+
+async function saveServerUASettings(env, newUA, oldUA) {
+  if (!env.GITHUB_TOKEN) throw new Error("يجب ضبط GITHUB_TOKEN في إعدادات Worker.");
+  const apiUrl = "https://api.github.com/repos/SUPERTV18/super-tv-worker/contents/public/data/server-settings.json";
+  const headers = {
+    "Authorization": "Bearer " + env.GITHUB_TOKEN,
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "SUPER-TV-Admin"
+  };
+  const currentResponse = await fetch(apiUrl, { headers });
+  let current = null;
+  if (currentResponse.status === 404) {
+    current = null;
+  } else {
+    if (!currentResponse.ok) throw new Error("تعذر قراءة إعدادات السيرفر من GitHub: " + currentResponse.status);
+    current = await currentResponse.json();
+  }
+  const content = JSON.stringify({ newUA, oldUA }, null, 2);
+  const encoded = btoa(Array.from(new TextEncoder().encode(content), b => String.fromCharCode(b)).join(""));
+  const body = {
+    message: "Update server User-Agent settings",
+    content: encoded,
+    branch: "main"
+  };
+  if (current?.sha) body.sha = current.sha;
+  const response = await fetch(apiUrl, { method: "PUT", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.message || ("GitHub save failed: " + response.status));
+  SERVER_UA_SETTINGS_CACHE = { newUA, oldUA };
+  SERVER_UA_SETTINGS_CACHE_TIME = Date.now();
+  try { await caches.default.delete(new Request(SERVER_SETTINGS_URL)); } catch {}
+  return { status: "ok", settings: SERVER_UA_SETTINGS_CACHE };
+}
 
 const FALLBACK_VIDEO =
   "https://github.com/himasabry/video/raw/refs/heads/main/master.m3u8";
@@ -584,6 +649,7 @@ async function checkAppSecurity(
   env
 ) {
 
+  const uaSettings = await getServerUASettings();
   const ua =
     (
       request.headers.get(
@@ -598,7 +664,7 @@ async function checkAppSecurity(
 
   if (
     !ua.includes(
-      NEW_UA.toLowerCase()
+      uaSettings.newUA.toLowerCase()
     )
   ) {
 
@@ -1817,6 +1883,7 @@ async function playApi(
     // OLD UA
     // ========================================================
 
+    const uaSettings = await getServerUASettings();
     const ua =
       request.headers.get(
         "User-Agent"
@@ -1827,7 +1894,7 @@ async function playApi(
 
     if (
       lowerUA.includes(
-        OLD_UA.toLowerCase()
+        uaSettings.oldUA.toLowerCase()
       ) ||
       lowerUA.includes(
         "superlivetv"
@@ -2728,6 +2795,27 @@ function validateChannelsData(data) {
 async function adminApi(request, env, url) {
   if (!adminAuthorized(request, env)) {
     return json({ error: "غير مصرح. تحقق من مفتاح الإدارة." }, 401);
+  }
+
+  if (url.pathname === "/api/admin/server-ua" && request.method === "GET") {
+    const settings = await getServerUASettings();
+    return json({ status: "ok", settings });
+  }
+
+  if (url.pathname === "/api/admin/server-ua" && request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "بيانات غير صالحة" }, 400); }
+    const newUA = typeof body.newUA === "string" ? body.newUA.trim() : "";
+    const oldUA = typeof body.oldUA === "string" ? body.oldUA.trim() : "";
+    if (!newUA || !oldUA || newUA.length > 200 || oldUA.length > 200 || /[\\r\\n]/.test(newUA + oldUA)) {
+      return json({ error: "أدخل قيمتي User-Agent صحيحتين، بحد أقصى 200 حرف لكل قيمة." }, 400);
+    }
+    try {
+      const result = await saveServerUASettings(env, newUA, oldUA);
+      return json({ status: "ok", message: "تم حفظ إعدادات User-Agent للسيرفر. قد يستغرق انتشارها حتى 30 ثانية.", settings: result.settings });
+    } catch (e) {
+      return json({ error: "تعذر حفظ إعدادات السيرفر", detail: e.message }, 502);
+    }
   }
 
   if (url.pathname === "/api/admin/stats" && request.method === "GET") {
