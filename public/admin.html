@@ -1,356 +1,124 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<title>لوحة تحكم Super IPTV</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b1220"><title>SUPER LIVE TV | Admin</title>
 <style>
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #0f172a;
-  color: #fff;
-  margin: 0;
-  padding: 0;
-}
-header {
-  background: linear-gradient(90deg,#1e293b,#0f172a);
-  padding: 20px;
-  text-align: center;
-  font-size: 24px;
-  font-weight: bold;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-}
-.container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: auto;
-}
-.form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
-  gap: 10px;
-  margin-bottom: 20px;
-  background: #1e293b;
-  padding: 15px;
-  border-radius: 10px;
-}
-input, select, button {
-  padding: 10px;
-  border-radius: 6px;
-  border: 0;
-  font-size: 14px;
-}
-input, select { width: 100%; }
-button {
-  cursor: pointer;
-  font-weight: bold;
-  transition: all 0.2s;
-}
-button:hover { transform: scale(1.05); }
-button.green { background: #22c55e; color: #000; }
-button.red { background: #ef4444; color: #fff; }
-button.blue { background: #3b82f6; color: #fff; }
-button.yellow { background: #facc15; color: #000; }
-.search {
-  margin-bottom: 20px;
-  padding: 10px;
-  width: 100%;
-  border-radius: 6px;
-  border: none;
-  font-size: 14px;
-  background: #1e293b;
-  color: #fff;
-}
-
-/* بطاقات القنوات */
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 15px;
-}
-.card {
-  background: #1e293b;
-  padding: 15px;
-  border-radius: 10px;
-  position: relative;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.card.dragging {
-  opacity: 0.5;
-  transform: scale(1.05);
-  border: 2px dashed #22c55e;
-}
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.5);
-}
-.card h3 {
-  margin: 0 0 10px 0;
-  font-size: 18px;
-  color: #22c55e;
-}
-.card p {
-  margin: 5px 0;
-  font-size: 14px;
-}
-.card .viewers {
-  font-weight: bold;
-  color: #3b82f6;
-}
-.card .buttons {
-  margin-top: 10px;
-  display: flex;
-  gap: 5px;
-  justify-content: center;
-}
-.sort-buttons {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-  justify-content: flex-end;
-}
-@media(max-width:600px){
-  .form {grid-template-columns:1fr;}
-  .cards {grid-template-columns:1fr;}
-  .sort-buttons {justify-content: center;}
-}
-</style>
-</head>
+:root{--bg:#080d18;--panel:#111a2b;--panel2:#172338;--line:#26344b;--text:#edf4ff;--muted:#8ea1bc;--blue:#00bfff;--green:#25d695;--red:#ff647c;--gold:#ffc857}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top right,#102342 0,transparent 42%),var(--bg);color:var(--text);font-family:Tahoma,Arial,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;font-weight:700}button:disabled{opacity:.5;cursor:not-allowed}.primary{background:linear-gradient(120deg,#00a6e8,#4266ff);color:white}.soft{background:#21314a;color:var(--text);border:1px solid var(--line)}.danger{background:#4a1f32;color:#ff9caf;border:1px solid #703247}.success{background:#103b35;color:#7ff0c4;border:1px solid #1d6255}.wrap{max-width:1440px;margin:auto;padding:22px}.top{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;margin-bottom:20px}.brand{display:flex;align-items:center;gap:12px}.logo{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,#00bfff,#4b57ff);font-weight:900;font-size:20px;box-shadow:0 8px 30px #00bfff25}.brand h1{font-size:20px;margin:0 0 5px}.muted{color:var(--muted);font-size:13px}.pill{border:1px solid var(--line);border-radius:999px;padding:7px 11px;color:#a7bad4;font-size:12px}.layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px}.sidebar,.panel,.stat{background:linear-gradient(145deg,#121d30,#0e1727);border:1px solid var(--line);border-radius:18px}.sidebar{padding:12px;height:max-content;position:sticky;top:14px}.nav{width:100%;display:flex;align-items:center;gap:10px;text-align:right;background:transparent;color:#9fb0c8;margin:3px 0}.nav.active,.nav:hover{background:#19304b;color:white}.nav span{width:23px;text-align:center}.content{min-width:0}.page{display:none}.page.active{display:block}.pagehead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:15px}.pagehead h2{margin:0;font-size:21px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.stat{padding:17px}.stat .label{font-size:12px;color:var(--muted)}.stat .num{font-size:27px;font-weight:800;margin-top:9px}.stat .sub{font-size:11px;color:var(--muted);margin-top:5px}.panel{padding:17px;margin-bottom:16px}.panel h3{margin:0 0 14px;font-size:16px}.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px}.toolbar input,.toolbar select{flex:1;min-width:150px}.field{display:flex;flex-direction:column;gap:7px;margin-bottom:13px}.field label{font-size:12px;color:#b6c7df}.field input,.field select,.field textarea,.toolbar input,.toolbar select{width:100%;background:#091221;border:1px solid #2a3b55;border-radius:10px;color:white;padding:11px;outline:none}.field input:focus,.field textarea:focus,.toolbar input:focus{border-color:var(--blue)}.field textarea{min-height:74px;resize:vertical}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 13px}.wide{grid-column:1/-1}.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.channel{border:1px solid var(--line);border-radius:15px;padding:14px;background:#101b2c;min-width:0}.channel h3{font-size:15px;margin:0 0 9px;overflow-wrap:anywhere}.channel .meta{font-size:12px;color:var(--muted);margin:6px 0;overflow-wrap:anywhere}.channel .url{direction:ltr;text-align:left;font-size:11px;max-height:38px;overflow:hidden;word-break:break-all;color:#8db9df;margin:8px 0}.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.actions button{padding:8px 10px;font-size:12px}.badge{display:inline-flex;padding:4px 8px;border-radius:999px;background:#1b3047;color:#9bdcff;font-size:11px}.empty{padding:32px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:560px}th,td{text-align:right;padding:12px;border-bottom:1px solid var(--line);font-size:13px}th{color:#9fb4d0;font-weight:600}.status{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;padding:12px;border-radius:10px;background:#07111f;border:1px solid var(--line);margin-top:12px;direction:ltr;text-align:left}.login{max-width:440px;margin:9vh auto;padding:25px}.login h2{margin-top:0}.hidden{display:none!important}.notice{font-size:12px;color:var(--muted);line-height:1.8}.toast{position:fixed;bottom:20px;left:20px;max-width:min(420px,90vw);padding:13px 17px;border:1px solid #2c4562;background:#15253b;border-radius:12px;box-shadow:0 10px 40px #0008;z-index:99}.toast.error{border-color:#9d3c52}.toast.ok{border-color:#238466}
+@media(max-width:1000px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.wrap{padding:12px}.layout{grid-template-columns:1fr}.sidebar{position:static;display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.nav{justify-content:center;font-size:12px;padding:10px 5px}.nav span{display:none}.cards{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}.wide{grid-column:auto}.stats{gap:8px}.stat{padding:13px}.stat .num{font-size:23px}.top{align-items:flex-start}}
+</style></head>
 <body>
-<header>لوحة تحكم Super IPTV</header>
-<div class="container">
-
-<!-- فورم إضافة وتعديل -->
-<div class="form">
-<input id="id" placeholder="ID">
-<input id="name" placeholder="اسم القناة">
-<input id="url" placeholder="رابط البث">
-<input id="group" placeholder="اسم الباقة">
-<input id="ua" placeholder="User-Agent">
-<input id="ref" placeholder="Referer">
-<input id="org" placeholder="Origin">
-<input id="adminKey" type="password" placeholder="Admin Key (optional)">
-<button onclick="addChannel()" class="green">➕ إضافة</button>
-<button onclick="updateChannel()" class="blue">💾 حفظ التعديل</button>
+<section id="loginView" class="panel login">
+<div class="brand"><div class="logo">STV</div><div><h1>SUPER LIVE TV</h1><div class="muted">لوحة الإدارة الآمنة</div></div></div>
+<p class="notice">أدخل مفتاح الإدارة الذي ستضيفه في إعدادات Cloudflare Worker باسم <b>ADMIN_SECRET</b>. لا تستخدم مفتاح التطبيق العادي.</p>
+<div class="field"><label for="loginKey">مفتاح الإدارة</label><input id="loginKey" type="password" autocomplete="current-password" placeholder="ADMIN_SECRET"></div>
+<button class="primary" style="width:100%" id="loginBtn">دخول آمن</button><div id="loginStatus" class="status hidden"></div>
+</section>
+<div id="app" class="hidden">
+<div class="wrap">
+<header class="top"><div class="brand"><div class="logo">STV</div><div><h1>SUPER LIVE TV <span class="badge">ADMIN</span></h1><div class="muted">إدارة القنوات ومراقبة المصدر والإعدادات</div></div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="pill" id="connection">غير متصل</span><button class="soft" id="refreshBtn">↻ تحديث</button><button class="danger" id="logoutBtn">خروج</button></div></header>
+<div class="layout">
+<aside class="sidebar">
+<button class="nav active" data-page="overview"><span>▦</span> نظرة عامة</button>
+<button class="nav" data-page="channels"><span>▤</span> إدارة القنوات</button>
+<button class="nav" data-page="editor"><span>＋</span> إضافة / تعديل</button>
+<button class="nav" data-page="tester"><span>◉</span> اختبار المصدر</button>
+<button class="nav" data-page="security"><span>♢</span> الحماية والإعدادات</button>
+<button class="nav" data-page="logs"><span>≋</span> حالة النظام</button>
+</aside>
+<main class="content">
+<section class="page active" id="page-overview">
+<div class="pagehead"><h2>نظرة عامة</h2><span class="muted" id="lastUpdate">—</span></div>
+<div class="stats">
+<div class="stat"><div class="label">إجمالي القنوات</div><div class="num" id="statChannels">—</div><div class="sub">من ملف القنوات الرئيسي</div></div>
+<div class="stat"><div class="label">المجموعات</div><div class="num" id="statGroups">—</div><div class="sub">تصنيفات القنوات</div></div>
+<div class="stat"><div class="label">طلبات المشاهدة المرصودة</div><div class="num" id="statViewers">—</div><div class="sub">ذاكرة نسخة Worker الحالية فقط</div></div>
+<div class="stat"><div class="label">حالة الإدارة</div><div class="num" style="font-size:19px;color:var(--green)">محمية</div><div class="sub">تحتاج ADMIN_SECRET</div></div>
 </div>
-
-<!-- أزرار الترتيب -->
-<div class="sort-buttons">
-  <button onclick="sortByViewers()" class="yellow">ترتيب حسب المشاهدين ⬆️</button>
-  <button onclick="sortByName()" class="yellow">ترتيب حسب الاسم ⬆️</button>
+<div class="panel"><h3>أكثر القنوات طلبًا في الذاكرة الحالية</h3><div id="topChannels" class="tablewrap"><div class="empty">اضغط تحديث لتحميل الإحصائيات</div></div><p class="notice">ملاحظة: إحصائيات المشاهدين الحالية تقريبية ومؤقتة، ولا تمثل عدد المشاهدين الفريدين على مستوى جميع نسخ Cloudflare.</p></div>
+<div class="panel"><h3>اختصارات سريعة</h3><div class="toolbar"><button class="primary" data-goto="editor">＋ إضافة قناة</button><button class="soft" data-goto="channels">عرض القنوات</button><button class="soft" data-goto="tester">اختبار رابط بث</button></div></div>
+</section>
+<section class="page" id="page-channels">
+<div class="pagehead"><h2>إدارة القنوات</h2><button class="primary" data-goto="editor">＋ إضافة قناة</button></div>
+<div class="toolbar"><input id="search" placeholder="ابحث بالاسم أو ID أو الرابط..."><select id="groupFilter"><option value="">كل المجموعات</option></select><button class="soft" id="exportBtn">تصدير JSON</button><button class="soft" id="importBtn">استيراد JSON</button><input id="importFile" class="hidden" type="file" accept=".json,application/json"></div>
+<div id="channelCards" class="cards"><div class="empty">جار تحميل القنوات...</div></div>
+</section>
+<section class="page" id="page-editor">
+<div class="pagehead"><h2 id="editorTitle">إضافة قناة</h2><button class="soft" id="clearEditor">مسح الحقول</button></div>
+<div class="panel"><form id="channelForm">
+<div class="formgrid">
+<div class="field"><label for="chId">معرّف القناة ID *</label><input id="chId" required placeholder="مثال: TOD2"></div>
+<div class="field"><label for="chName">اسم القناة *</label><input id="chName" required placeholder="اسم ظاهر في التطبيق"></div>
+<div class="field wide"><label for="chUrl">رابط المصدر *</label><textarea id="chUrl" required placeholder="https://..."></textarea></div>
+<div class="field"><label for="chGroup">المجموعة / الباقة *</label><input id="chGroup" list="knownGroups" required placeholder="Bein Sports"><datalist id="knownGroups"></datalist></div>
+<div class="field"><label for="chUA">User-Agent</label><input id="chUA" placeholder="اتركه فارغًا لاستخدام الافتراضي"></div>
+<div class="field"><label for="chRef">Referer</label><input id="chRef" placeholder="https://..."></div>
+<div class="field"><label for="chOrigin">Origin</label><input id="chOrigin" placeholder="https://..."></div>
 </div>
-
-<!-- البحث -->
-<input class="search" id="search" placeholder="بحث سريع..." oninput="render()">
-
-<!-- قائمة القنوات -->
-<div class="cards" id="list"></div>
-
+<div class="toolbar"><button class="primary" type="submit" id="saveChannel">حفظ القناة</button><button class="soft" type="button" id="testCurrent">اختبار المصدر</button><button class="soft" type="button" id="cancelEdit">إلغاء التعديل</button></div>
+<p class="notice">الحفظ يكتب إلى <b>public/data/channels.json</b> في GitHub من خلال Worker، ثم يحدّث الذاكرة المؤقتة. لا تُرسل مفاتيح GitHub إلى المتصفح.</p>
+</form></div>
+</section>
+<section class="page" id="page-tester">
+<div class="pagehead"><h2>اختبار مصدر البث</h2></div>
+<div class="panel"><form id="testForm">
+<div class="field"><label for="testUrl">رابط المصدر</label><textarea id="testUrl" required placeholder="https://..."></textarea></div>
+<div class="formgrid">
+<div class="field"><label for="testUA">User-Agent</label><input id="testUA"></div><div class="field"><label for="testRef">Referer</label><input id="testRef"></div><div class="field"><label for="testOrigin">Origin</label><input id="testOrigin"></div>
+</div><button class="primary" type="submit" id="testBtn">فحص المصدر</button><div id="testResult" class="status hidden"></div></form></div>
+<div class="panel"><h3>اختبار قناة محفوظة</h3><div class="toolbar"><select id="testChannelSelect"><option value="">اختر قناة</option></select><button class="soft" id="loadTestChannel">تحميل بيانات القناة</button></div></div>
+</section>
+<section class="page" id="page-security">
+<div class="pagehead"><h2>الحماية والإعدادات</h2></div>
+<div class="panel"><h3>متغيرات Worker المطلوبة</h3><div class="tablewrap"><table><thead><tr><th>اسم المتغير</th><th>الغرض</th><th>مكان الإعداد</th></tr></thead><tbody>
+<tr><td><code>ADMIN_SECRET</code></td><td>مفتاح لوحة الإدارة</td><td>Cloudflare → Worker → Settings → Variables and Secrets</td></tr>
+<tr><td><code>GITHUB_TOKEN</code></td><td>حفظ ملف القنوات في GitHub</td><td>Secret بصلاحية Contents: Read and write للمستودع</td></tr>
+<tr><td><code>APP_SECRET</code></td><td>مفتاح التطبيق الحالي، لا تستبدله</td><td>اتركه كما هو</td></tr>
+</tbody></table></div><p class="notice">أنشئ مفتاحي ADMIN_SECRET وGITHUB_TOKEN كـ Secrets في Cloudflare، وليس داخل HTML أو GitHub. استخدم GitHub fine-grained token محدودًا بمستودع SUPERTV18/super-tv-worker وصلاحية Contents للقراءة والكتابة فقط. لا تغيّر APP_SECRET الخاص بالتطبيق.</p></div>
+<div class="panel"><h3>حدود حالية مهمة</h3><ul class="notice"><li>إحصائيات المشاهدين مؤقتة داخل ذاكرة نسخة Worker الحالية.</li><li>فحص الرابط يؤكد استجابة المصدر ونوع المحتوى فقط، وليس استمرارية الفيديو.</li><li>تعديل القناة يحدّث ملف GitHub؛ انتظر انتشار التغيير عبر Cloudflare Cache.</li><li>لا توجد سجلات تاريخية دائمة أو إيقاف/تفعيل فعلي للقنوات في هذا الإصدار.</li></ul></div>
+</section>
+<section class="page" id="page-logs">
+<div class="pagehead"><h2>حالة النظام</h2><button class="soft" id="systemRefresh">تحديث الحالة</button></div>
+<div class="panel"><div id="systemInfo" class="status">لم يتم الفحص بعد.</div><p class="notice">لم يتم دمج واجهة Cloudflare Logs API. راجع Logs / Tail في لوحة Cloudflare لمعرفة الأخطاء التفصيلية مثل PLAY_UPSTREAM_RESPONSE.</p></div>
+</section>
+</main></div></div></div>
+<div id="toast" class="toast hidden"></div>
 <script>
-let channels = {};
-let editId = null;
-const list = document.getElementById("list");
-const search = document.getElementById("search");
-const id = document.getElementById("id");
-const name = document.getElementById("name");
-const url = document.getElementById("url");
-const group = document.getElementById("group");
-const ua = document.getElementById("ua");
-const ref = document.getElementById("ref");
-const org = document.getElementById("org");
-
-async function load(){
-  const r = await fetch('/api/channels');
-  channels = await r.json();
-  render();
-  loadViewers();
-}
-
-function render(){
-  const q = search.value.toLowerCase();
-  list.innerHTML='';
-  for(const grp in channels){
-    channels[grp].forEach(ch=>{
-      if(ch.name.toLowerCase().includes(q) || ch.id.toString().includes(q)){
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.setAttribute('draggable', true);
-        card.dataset.id = ch.id;
-        card.dataset.group = grp;
-        card.innerHTML = `
-          <h3>${ch.name}</h3>
-          <p><strong>ID:</strong> ${ch.id}</p>
-          <p><strong>الباقة:</strong> ${grp}</p>
-          <p class="viewers"><strong>المشاهدين:</strong> <span id="viewers-${ch.id}">0</span></p>
-          <div class="buttons">
-            <button onclick='edit("${grp}","${ch.id}")' class="blue">✏️ تعديل</button>
-            <button onclick='del("${grp}","${ch.id}")' class="red">🗑 حذف</button>
-          </div>
-        `;
-        addDragAndDrop(card);
-        list.appendChild(card);
-      }
-    })
-  }
-}
-
-// إضافة قناة
-function addChannel(){
-  const g = group.value.trim();
-  if(!channels[g]) channels[g]=[];
-  channels[g].push({
-    id:id.value.trim(),
-    name:name.value.trim(),
-    url:url.value.trim(),
-    headers:{
-      "User-Agent": ua.value.trim(),
-      "Referer": ref.value.trim(),
-      "Origin": org.value.trim()
-    }
-  });
-  save();
-}
-
-// تعديل قناة
-function edit(grp, idVal){
-  const ch = channels[grp].find(x=>x.id==idVal);
-  id.value=ch.id; name.value=ch.name; url.value=ch.url; group.value=grp;
-  ua.value=ch.headers?.["User-Agent"]||""; ref.value=ch.headers?.["Referer"]||""; org.value=ch.headers?.["Origin"]||"";
-  editId=idVal;
-}
-
-// حفظ التعديل
-function updateChannel(){
-  if(!editId) return alert("اختر قناة أولاً");
-  const g = group.value.trim();
-  for(const k in channels) channels[k]=channels[k].filter(x=>x.id!=editId);
-  if(!channels[g]) channels[g]=[];
-  channels[g].push({
-    id:id.value.trim(),
-    name:name.value.trim(),
-    url:url.value.trim(),
-    headers:{
-      "User-Agent": ua.value.trim(),
-      "Referer": ref.value.trim(),
-      "Origin": org.value.trim()
-    }
-  });
-  editId=null;
-  save();
-}
-
-// حذف قناة
-function del(grp, idVal){
-  if(!confirm("حذف القناة؟")) return;
-  channels[grp]=channels[grp].filter(x=>x.id!=idVal);
-  save();
-}
-
-// حفظ بيانات القنوات في السيرفر
-async function save(){
-  const key=document.getElementById('adminKey').value.trim();
-  const headers={'Content-Type':'application/json'};
-  if(key) headers['X-Admin-Key']=key;
-  const r=await fetch('/api/channels',{
-    method:'POST',
-    headers,
-    body:JSON.stringify(channels)
-  });
-  if(!r.ok){const d=await r.json().catch(()=>({}));alert(d.error||'فشل الحفظ');return;}
-  id.value=name.value=url.value=group.value=ua.value=ref.value=org.value="";
-  load();
-}
-
-// جلب عدد المشاهدين
-async function loadViewers(){
-  try{
-    for(const grp in channels){
-      for(const ch of channels[grp]){
-        const res = await fetch(`/api/viewers?id=${ch.id}`);
-        const data = await res.json();
-        const count = data[ch.id] || 0;
-        const el = document.getElementById(`viewers-${ch.id}`);
-        if(el) el.innerText = count;
-      }
-    }
-  }catch(e){ console.error("خطأ في جلب المشاهدين:", e.message); }
-}
-
-// === Drag & Drop مع حفظ الترتيب ===
-function addDragAndDrop(card){
-  card.addEventListener('dragstart', e=>{
-    card.classList.add('dragging');
-  });
-  card.addEventListener('dragend', e=>{
-    card.classList.remove('dragging');
-    updateChannelOrder();
-  });
-
-  list.addEventListener('dragover', e=>{
-    e.preventDefault();
-    const draggingCard = document.querySelector('.dragging');
-    const afterElement = getDragAfterElement(list, e.clientY);
-    if(afterElement == null){
-      list.appendChild(draggingCard);
-    } else {
-      list.insertBefore(draggingCard, afterElement);
-    }
-  });
-}
-
-// حساب البطاقة التالية أثناء السحب
-function getDragAfterElement(container, y){
-  const draggableElements = [...container.querySelectorAll('.card:not(.dragging)')];
-  return draggableElements.reduce((closest, child)=>{
-    const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height/2;
-    if(offset < 0 && offset > closest.offset){
-      return { offset: offset, element: child };
-    } else return closest;
-  }, {offset: Number.NEGATIVE_INFINITY}).element;
-}
-
-// تحديث ترتيب القنوات وحفظه في السيرفر
-function updateChannelOrder(){
-  const newChannels = {};
-  const cards = list.querySelectorAll('.card');
-  cards.forEach(card=>{
-    const grp = card.dataset.group;
-    const idVal = card.dataset.id;
-    const ch = channels[grp].find(c=>c.id==idVal);
-    if(!newChannels[grp]) newChannels[grp]=[];
-    newChannels[grp].push(ch);
-  });
-  channels = newChannels;
-  const key=document.getElementById('adminKey').value.trim();
-  const headers={'Content-Type':'application/json'};
-  if(key) headers['X-Admin-Key']=key;
-  fetch('/api/channels',{method:'POST',headers,body:JSON.stringify(channels)});
-}
-
-// ترتيب حسب المشاهدين
-function sortByViewers(){
-  for(const grp in channels){
-    channels[grp].sort((a,b)=>{
-      const aCount = parseInt(document.getElementById(`viewers-${a.id}`)?.innerText || 0);
-      const bCount = parseInt(document.getElementById(`viewers-${b.id}`)?.innerText || 0);
-      return bCount - aCount;
-    });
-  }
-  updateChannelOrder();
-  render();
-}
-
-// ترتيب حسب الاسم أبجديًا
-function sortByName(){
-  for(const grp in channels){
-    channels[grp].sort((a,b)=>a.name.localeCompare(b.name));
-  }
-  updateChannelOrder();
-  render();
-}
-
-setInterval(loadViewers, 1000);
-load();
-</script>
-</body>
-</html>
+const $=id=>document.getElementById(id);
+let adminKey="",channels={},editing=null,stats=null;
+function notify(msg,type="ok"){const el=$("toast");el.textContent=msg;el.className="toast "+type;el.classList.remove("hidden");setTimeout(()=>el.classList.add("hidden"),4200)}
+async function api(path,opts={}){const headers={...(opts.headers||{}),"X-Admin-Key":adminKey};if(opts.body&&!headers["Content-Type"])headers["Content-Type"]="application/json";const res=await fetch(path,{...opts,headers});const data=await res.json().catch(()=>({error:"استجابة غير صالحة"}));if(!res.ok)throw new Error(data.error||("HTTP "+res.status));return data}
+function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));document.querySelectorAll(".nav").forEach(b=>b.classList.toggle("active",b.dataset.page===name));if(name==="editor"&&!editing)clearEditor()}
+document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
+document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.goto)));
+function allChannels(){return Object.entries(channels).flatMap(([group,items])=>(Array.isArray(items)?items:[]).map(ch=>({...ch,__group:group})))}
+async function login(){adminKey=$("loginKey").value.trim();if(!adminKey){$("loginStatus").textContent="أدخل مفتاح الإدارة";$("loginStatus").classList.remove("hidden");return}try{await api("/api/admin/channels");sessionStorage.setItem("stvAdminKey",adminKey);$("loginView").classList.add("hidden");$("app").classList.remove("hidden");await refreshAll();notify("تم تسجيل الدخول بأمان")}catch(e){$("loginStatus").textContent=e.message;$("loginStatus").classList.remove("hidden");adminKey=""}}
+$("loginBtn").addEventListener("click",login);$("loginKey").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
+$("logoutBtn").addEventListener("click",()=>{sessionStorage.removeItem("stvAdminKey");adminKey="";$("app").classList.add("hidden");$("loginView").classList.remove("hidden");$("loginKey").value=""});
+async function refreshAll(){try{channels=await api("/api/admin/channels");renderChannels();fillGroups();fillTestSelect();await loadStats();$("connection").textContent="متصل • تم التحميل";$("lastUpdate").textContent="آخر تحديث: "+new Date().toLocaleTimeString("ar-EG");$("systemInfo").textContent="واجهة الإدارة: متصلة\nتحميل ملف القنوات: ناجح\nعدد القنوات: "+allChannels().length+"\nآخر فحص: "+new Date().toISOString()}catch(e){$("connection").textContent="خطأ في الاتصال";notify(e.message,"error")}}
+async function loadStats(){try{stats=await api("/api/admin/stats");$("statChannels").textContent=stats.channelCount??"—";$("statGroups").textContent=stats.groupCount??"—";$("statViewers").textContent=stats.activeViewerRequests??"—";const rows=(stats.viewers||[]).sort((a,b)=>b.viewers-a.viewers).slice(0,10);$("topChannels").innerHTML=rows.length?'<table><thead><tr><th>القناة</th><th>المجموعة</th><th>الطلبات المرصودة</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+esc(x.group)+'</td><td>'+x.viewers+'</td></tr>').join("")+'</tbody></table>':'<div class="empty">لا توجد بيانات مشاهدة في الذاكرة الحالية</div>'}catch(e){$("topChannels").textContent=e.message}}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function fillGroups(){const groups=Object.keys(channels);$("groupFilter").innerHTML='<option value="">كل المجموعات</option>'+groups.map(g=>'<option>'+esc(g)+'</option>').join("");$("knownGroups").innerHTML=groups.map(g=>'<option value="'+esc(g)+'"></option>').join("")}
+function renderChannels(){const q=$("search").value.trim().toLowerCase(),gf=$("groupFilter").value;const rows=allChannels().filter(c=>(!gf||c.__group===gf)&&[c.id,c.name,c.url,c.__group].some(v=>String(v||"").toLowerCase().includes(q)));$("channelCards").innerHTML=rows.length?rows.map(ch=>'<article class="channel"><h3>'+esc(ch.name)+'</h3><span class="badge">'+esc(ch.__group)+'</span><div class="meta">ID: '+esc(ch.id)+'</div><div class="url">'+esc(ch.url)+'</div><div class="actions"><button class="soft" data-edit="'+esc(ch.id)+'" data-group="'+esc(ch.__group)+'">تعديل</button><button class="soft" data-test="'+esc(ch.id)+'" data-group="'+esc(ch.__group)+'">اختبار</button><button class="danger" data-delete="'+esc(ch.id)+'" data-group="'+esc(ch.__group)+'">حذف</button></div></article>').join(""):'<div class="empty" style="grid-column:1/-1">لا توجد قنوات مطابقة</div>';$("channelCards").querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editChannel(b.dataset.group,b.dataset.edit));$("channelCards").querySelectorAll("[data-test]").forEach(b=>b.onclick=()=>testSaved(b.dataset.group,b.dataset.test));$("channelCards").querySelectorAll("[data-delete]").forEach(b=>b.onclick=()=>deleteChannel(b.dataset.group,b.dataset.delete))}
+$("search").addEventListener("input",renderChannels);$("groupFilter").addEventListener("change",renderChannels);
+function clearEditor(){editing=null;$("channelForm").reset();$("editorTitle").textContent="إضافة قناة";$("saveChannel").textContent="حفظ القناة"}
+$("clearEditor").onclick=clearEditor;$("cancelEdit").onclick=()=>{clearEditor();showPage("channels")};
+function editChannel(group,id){const ch=(channels[group]||[]).find(c=>String(c.id)===String(id));if(!ch)return;editing={group,id:String(id)};$("chId").value=ch.id;$("chName").value=ch.name;$("chUrl").value=ch.url;$("chGroup").value=group;$("chUA").value=ch.headers?.["User-Agent"]||ch.headers?.["user-agent"]||"";$("chRef").value=ch.headers?.Referer||ch.headers?.referer||"";$("chOrigin").value=ch.headers?.Origin||ch.headers?.origin||"";$("editorTitle").textContent="تعديل: "+ch.name;$("saveChannel").textContent="حفظ التعديلات";showPage("editor")}
+function formChannel(){return{id:$("chId").value.trim(),name:$("chName").value.trim(),url:$("chUrl").value.trim(),headers:{"User-Agent":$("chUA").value.trim(),"Referer":$("chRef").value.trim(),"Origin":$("chOrigin").value.trim()}}}
+$("channelForm").addEventListener("submit",async e=>{e.preventDefault();const group=$("chGroup").value.trim(),ch=formChannel();if(!/^https?:\/\//i.test(ch.url)){notify("الرابط يجب أن يبدأ بـ http:// أو https://","error");return}if(!group){notify("اكتب اسم المجموعة","error");return}if(!channels[group])channels[group]=[];const duplicate=allChannels().find(c=>String(c.id)===String(ch.id)&&(!editing||String(c.id)!==editing.id||c.__group!==editing.group));if(duplicate){notify("هذا ID مستخدم بالفعل في مجموعة "+duplicate.__group,"error");return}if(editing){for(const g in channels)channels[g]=channels[g].filter(c=>String(c.id)!==editing.id);if(!channels[group])channels[group]=[];channels[group].push(ch)}else channels[group].push(ch);await saveChannels("تم حفظ القناة في GitHub")});
+async function saveChannels(msg){const btn=$("saveChannel");btn.disabled=true;try{const data={};for(const [g,arr] of Object.entries(channels))if(arr.length)data[g]=arr;const result=await api("/api/admin/channels",{method:"POST",body:JSON.stringify(data)});channels=data;clearEditor();fillGroups();renderChannels();fillTestSelect();await loadStats();notify(result.message||msg);showPage("channels")}catch(e){notify(e.message,"error")}finally{btn.disabled=false}}
+async function deleteChannel(group,id){const ch=(channels[group]||[]).find(c=>String(c.id)===String(id));if(!ch||!confirm("هل تريد حذف القناة "+ch.name+"؟ سيتم حفظ الحذف في GitHub."))return;channels[group]=channels[group].filter(c=>String(c.id)!==String(id));await saveChannels("تم حذف القناة")}
+function fillTestSelect(){const all=allChannels();$("testChannelSelect").innerHTML='<option value="">اختر قناة</option>'+all.map(c=>'<option value="'+esc(c.id)+'" data-group="'+esc(c.__group)+'">'+esc(c.name+' — '+c.__group)+'</option>').join("")}
+function testSaved(group,id){const ch=(channels[group]||[]).find(c=>String(c.id)===String(id));if(!ch)return;$("testUrl").value=ch.url;$("testUA").value=ch.headers?.["User-Agent"]||"";$("testRef").value=ch.headers?.Referer||"";$("testOrigin").value=ch.headers?.Origin||"";showPage("tester")}
+$("loadTestChannel").onclick=()=>{const opt=$("testChannelSelect").selectedOptions[0];if(!opt||!opt.value)return;testSaved(opt.dataset.group,opt.value)};
+async function runTest(url,headers,out){out.classList.remove("hidden");out.textContent="جار فحص المصدر...";try{const r=await api("/api/admin/test",{method:"POST",body:JSON.stringify({url,headers})});out.textContent=JSON.stringify(r,null,2);notify(r.ok?"استجاب المصدر بنجاح":"المصدر ردّ برمز HTTP غير ناجح",r.ok?"ok":"error")}catch(e){out.textContent="فشل الفحص: "+e.message;notify(e.message,"error")}}
+$("testForm").addEventListener("submit",e=>{e.preventDefault();runTest($("testUrl").value.trim(),{"User-Agent":$("testUA").value.trim(),"Referer":$("testRef").value.trim(),"Origin":$("testOrigin").value.trim()},$("testResult"))});
+$("testCurrent").onclick=()=>{const ch=formChannel();if(!ch.url)return notify("أدخل رابط المصدر أولًا","error");$("testUrl").value=ch.url;$("testUA").value=ch.headers["User-Agent"];$("testRef").value=ch.headers.Referer;$("testOrigin").value=ch.headers.Origin;showPage("tester");runTest(ch.url,ch.headers,$("testResult"))};
+$("refreshBtn").onclick=refreshAll;$("systemRefresh").onclick=refreshAll;
+$("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(channels,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="super-live-tv-channels.json";a.click();URL.revokeObjectURL(a.href)};
+$("importBtn").onclick=()=>$("importFile").click();
+$("importFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("صيغة JSON غير صحيحة");if(!confirm("استيراد هذا الملف سيستبدل قائمة القنوات الحالية. هل تريد المتابعة؟"))return;channels=data;await saveChannels("تم استيراد القنوات وحفظها")}catch(err){notify("فشل الاستيراد: "+err.message,"error")}finally{e.target.value=""}});
+const remembered=sessionStorage.getItem("stvAdminKey");if(remembered){$("loginKey").value=remembered;login()}
+</script></body></html>
