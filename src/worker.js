@@ -7,6 +7,7 @@
 
 const DEFAULT_NEW_UA = "stv2026";
 const DEFAULT_OLD_UA = "2026stv";
+const DEFAULT_PROXY_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
 const SERVER_SETTINGS_URL = "https://raw.githubusercontent.com/SUPERTV18/super-tv-worker/main/public/data/server-settings.json";
 let SERVER_UA_SETTINGS_CACHE = null;
 let SERVER_UA_SETTINGS_CACHE_TIME = 0;
@@ -24,10 +25,11 @@ async function getServerUASettings() {
     });
     if (response.ok) {
       const data = await response.json();
-      if (data && typeof data.newUA === "string" && typeof data.oldUA === "string") {
+      if (data && typeof data.newUA === "string" && typeof data.oldUA === "string" && typeof data.proxyUA === "string") {
         SERVER_UA_SETTINGS_CACHE = {
           newUA: data.newUA.trim() || DEFAULT_NEW_UA,
-          oldUA: data.oldUA.trim() || DEFAULT_OLD_UA
+          oldUA: data.oldUA.trim() || DEFAULT_OLD_UA,
+          proxyUA: data.proxyUA.trim() || DEFAULT_PROXY_UA
         };
         SERVER_UA_SETTINGS_CACHE_TIME = now;
         return SERVER_UA_SETTINGS_CACHE;
@@ -36,10 +38,10 @@ async function getServerUASettings() {
   } catch (e) {
     console.error("SERVER UA SETTINGS LOAD ERROR", e.message);
   }
-  return { newUA: DEFAULT_NEW_UA, oldUA: DEFAULT_OLD_UA };
+  return { newUA: DEFAULT_NEW_UA, oldUA: DEFAULT_OLD_UA, proxyUA: DEFAULT_PROXY_UA };
 }
 
-async function saveServerUASettings(env, newUA, oldUA) {
+async function saveServerUASettings(env, newUA, oldUA, proxyUA) {
   if (!env.GITHUB_TOKEN) throw new Error("يجب ضبط GITHUB_TOKEN في إعدادات Worker.");
   const apiUrl = "https://api.github.com/repos/SUPERTV18/super-tv-worker/contents/public/data/server-settings.json";
   const headers = {
@@ -56,7 +58,7 @@ async function saveServerUASettings(env, newUA, oldUA) {
     if (!currentResponse.ok) throw new Error("تعذر قراءة إعدادات السيرفر من GitHub: " + currentResponse.status);
     current = await currentResponse.json();
   }
-  const content = JSON.stringify({ newUA, oldUA }, null, 2);
+  const content = JSON.stringify({ newUA, oldUA, proxyUA }, null, 2);
   const encoded = btoa(Array.from(new TextEncoder().encode(content), b => String.fromCharCode(b)).join(""));
   const body = {
     message: "Update server User-Agent settings",
@@ -67,7 +69,7 @@ async function saveServerUASettings(env, newUA, oldUA) {
   const response = await fetch(apiUrl, { method: "PUT", headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const result = await response.json();
   if (!response.ok) throw new Error(result.message || ("GitHub save failed: " + response.status));
-  SERVER_UA_SETTINGS_CACHE = { newUA, oldUA };
+  SERVER_UA_SETTINGS_CACHE = { newUA, oldUA, proxyUA };
   SERVER_UA_SETTINGS_CACHE_TIME = Date.now();
   try { await caches.default.delete(new Request(SERVER_SETTINGS_URL)); } catch {}
   return { status: "ok", settings: SERVER_UA_SETTINGS_CACHE };
@@ -1241,13 +1243,14 @@ function normalizeChannelHeaders(
 
 function getUpstreamHeaders(
   target,
-  channelHeaders = {}
+  channelHeaders = {},
+  proxyUA = DEFAULT_PROXY_UA
 ) {
 
   const headers = {
 
     "User-Agent":
-      PROXY_UA
+      (proxyUA || DEFAULT_PROXY_UA)
 
   };
 
@@ -1314,13 +1317,15 @@ function getUpstreamHeaders(
 async function fetchUpstream(
   target,
   request,
-  channelHeaders = {}
+  channelHeaders = {},
+  proxyUA = DEFAULT_PROXY_UA
 ) {
 
   const headers =
     getUpstreamHeaders(
       target,
-      channelHeaders
+      channelHeaders,
+      proxyUA
     );
 
   const range =
@@ -1656,11 +1661,13 @@ async function hlsApi(
 
   try {
 
+    const uaSettings = await getServerUASettings();
     const upstream =
       await fetchUpstream(
         targetUrl.toString(),
         request,
-        decoded.headers
+        decoded.headers,
+        uaSettings.proxyUA
       );
 
     const contentType =
@@ -2481,10 +2488,13 @@ async function proxyM3u8Api(
 
   try {
 
+    const uaSettings = await getServerUASettings();
     const upstream =
       await fetchUpstream(
         target,
-        request
+        request,
+        {},
+        uaSettings.proxyUA
       );
 
     const contentType =
@@ -2807,11 +2817,12 @@ async function adminApi(request, env, url) {
     try { body = await request.json(); } catch { return json({ error: "بيانات غير صالحة" }, 400); }
     const newUA = typeof body.newUA === "string" ? body.newUA.trim() : "";
     const oldUA = typeof body.oldUA === "string" ? body.oldUA.trim() : "";
-    if (!newUA || !oldUA || newUA.length > 200 || oldUA.length > 200 || /[\\r\\n]/.test(newUA + oldUA)) {
+    const proxyUA = typeof body.proxyUA === "string" ? body.proxyUA.trim() : "";
+    if (!newUA || !oldUA || !proxyUA || newUA.length > 200 || oldUA.length > 200 || proxyUA.length > 512 || /[\\r\\n]/.test(newUA + oldUA + proxyUA)) {
       return json({ error: "أدخل قيمتي User-Agent صحيحتين، بحد أقصى 200 حرف لكل قيمة." }, 400);
     }
     try {
-      const result = await saveServerUASettings(env, newUA, oldUA);
+      const result = await saveServerUASettings(env, newUA, oldUA, proxyUA);
       return json({ status: "ok", message: "تم حفظ إعدادات User-Agent للسيرفر. قد يستغرق انتشارها حتى 30 ثانية.", settings: result.settings });
     } catch (e) {
       return json({ error: "تعذر حفظ إعدادات السيرفر", detail: e.message }, 502);
@@ -2859,7 +2870,8 @@ async function adminApi(request, env, url) {
       if (target.protocol !== "https:" && target.protocol !== "http:") throw new Error("protocol");
     } catch { return json({ error: "رابط غير صالح" }, 400); }
     try {
-      const headers = getUpstreamHeaders(target.href, body.headers || {});
+      const uaSettings = await getServerUASettings();
+      const headers = getUpstreamHeaders(target.href, body.headers || {}, uaSettings.proxyUA);
       const response = await fetch(target.href, { method: "GET", redirect: "follow", headers });
       const result = {
         status: response.status,
