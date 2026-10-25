@@ -2009,14 +2009,25 @@ async function playApi(
 
     } catch {}
 
+    const upstreamContentType =
+      response.headers.get("content-type") || "";
+    const upstreamContentLength =
+      response.headers.get("content-length") || "";
+    let finalTargetHost = "";
+    try {
+      finalTargetHost = new URL(response.url || cleanUrl).hostname;
+    } catch {}
+
+    // Diagnostic only: do not consume the response body or alter player behavior.
     console.log(
       "PLAY_UPSTREAM_RESPONSE",
       JSON.stringify({
-        status:
-          response.status,
-
-        target:
-          upstreamTarget
+        status: response.status,
+        target: upstreamTarget,
+        finalHost: finalTargetHost,
+        contentType: upstreamContentType.slice(0, 120),
+        contentLength: upstreamContentLength || null,
+        redirected: response.redirected
       })
     );
 
