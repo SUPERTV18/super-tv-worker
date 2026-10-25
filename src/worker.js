@@ -1869,6 +1869,14 @@ async function playApi(
     );
 
     // ========================================================
+    // ADMIN API
+    // ========================================================
+
+    if (url.pathname.startsWith("/api/admin/")) {
+      return adminApi(request, env, url);
+    }
+
+    // ========================================================
     // CHANNELS
     // ========================================================
 
@@ -2685,6 +2693,154 @@ async function saveApi(
 
   }
 
+}
+
+// ============================================================
+// ADMIN API (ADMIN_SECRET + GITHUB_TOKEN)
+// Channel edits are committed to channels.json on GitHub.
+// No KV reads/writes are used by the admin dashboard.
+// ============================================================
+
+function adminAuthorized(request, env) {
+  const expected = env.ADMIN_SECRET || "";
+  const supplied = request.headers.get("X-Admin-Key") || "";
+  return Boolean(expected && supplied && supplied === expected);
+}
+
+function validateChannelsData(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  let total = 0;
+  for (const [group, items] of Object.entries(data)) {
+    if (!group.trim() || !Array.isArray(items)) return false;
+    for (const ch of items) {
+      total++;
+      if (!ch || typeof ch !== "object" || !String(ch.id || "").trim() ||
+          !String(ch.name || "").trim() || !String(ch.url || "").trim()) return false;
+      try {
+        const u = new URL(ch.url);
+        if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+      } catch { return false; }
+    }
+  }
+  return total <= 2000;
+}
+
+async function adminApi(request, env, url) {
+  if (!adminAuthorized(request, env)) {
+    return json({ error: "غير مصرح. تحقق من مفتاح الإدارة." }, 401);
+  }
+
+  if (url.pathname === "/api/admin/stats" && request.method === "GET") {
+    let channelCount = 0;
+    let groupCount = 0;
+    let viewerTotal = 0;
+    const viewers = [];
+    try {
+      const data = await loadChannels(env);
+      groupCount = Object.keys(data).length;
+      for (const [group, items] of Object.entries(data)) {
+        if (!Array.isArray(items)) continue;
+        channelCount += items.length;
+        for (const ch of items) {
+          const v = VIEWERS_MEMORY.get(String(ch.id));
+          const count = v && v.resetAt > Date.now() ? v.count : 0;
+          viewerTotal += count;
+          viewers.push({ id: String(ch.id), name: ch.name || String(ch.id), group, viewers: count });
+        }
+      }
+      return json({
+        status: "ok",
+        channelCount,
+        groupCount,
+        activeViewerRequests: viewerTotal,
+        viewerStatsScope: "ذاكرة نسخة Worker الحالية فقط وقد تختلف بين النسخ",
+        viewers,
+        timestamp: new Date().toISOString()
+      });
+    } catch (e) {
+      return json({ error: "تعذر تحميل القنوات", detail: e.message }, 500);
+    }
+  }
+
+  if (url.pathname === "/api/admin/test" && request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "بيانات غير صالحة" }, 400); }
+    let target;
+    try {
+      target = new URL(String(body.url || ""));
+      if (target.protocol !== "https:" && target.protocol !== "http:") throw new Error("protocol");
+    } catch { return json({ error: "رابط غير صالح" }, 400); }
+    try {
+      const headers = getUpstreamHeaders(target.href, body.headers || {});
+      const response = await fetch(target.href, { method: "GET", redirect: "follow", headers });
+      const result = {
+        status: response.status,
+        ok: response.ok,
+        contentType: response.headers.get("content-type") || "",
+        contentLength: response.headers.get("content-length") || null,
+        redirected: response.redirected,
+        finalHost: (() => { try { return new URL(response.url || target.href).hostname; } catch { return ""; } })()
+      };
+      try { await response.body?.cancel(); } catch {}
+      return json(result);
+    } catch (e) {
+      return json({ error: "فشل الاتصال بالمصدر", detail: e.message }, 502);
+    }
+  }
+
+  if (url.pathname === "/api/admin/channels" && request.method === "GET") {
+    try { return json(await loadChannels(env)); }
+    catch (e) { return json({ error: e.message }, 500); }
+  }
+
+  if (url.pathname === "/api/admin/channels" && request.method === "POST") {
+    if (!env.GITHUB_TOKEN) {
+      return json({ error: "يجب ضبط GitHub Secret باسم GITHUB_TOKEN في إعدادات Worker." }, 503);
+    }
+    let data;
+    try { data = await request.json(); } catch { return json({ error: "JSON غير صالح" }, 400); }
+    if (!validateChannelsData(data)) {
+      return json({ error: "بيانات القنوات غير صالحة. تأكد من المجموعة والمعرّف والاسم والرابط." }, 400);
+    }
+    const apiUrl = "https://api.github.com/repos/SUPERTV18/super-tv-worker/contents/public/data/channels.json";
+    const apiHeaders = {
+      "Authorization": "Bearer " + env.GITHUB_TOKEN,
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "SUPER-TV-Admin"
+    };
+    try {
+      const currentResponse = await fetch(apiUrl, { headers: apiHeaders });
+      if (!currentResponse.ok) throw new Error("GitHub read failed: " + currentResponse.status);
+      const current = await currentResponse.json();
+      const encoded = btoa(Array.from(new TextEncoder().encode(JSON.stringify(data, null, 2)), b => String.fromCharCode(b)).join(""));
+      const saveResponse = await fetch(apiUrl, {
+        method: "PUT",
+        headers: { ...apiHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "Update channels from SUPER LIVE TV Admin",
+          content: encoded,
+          sha: current.sha,
+          branch: "main"
+        })
+      });
+      const saveResult = await saveResponse.json();
+      if (!saveResponse.ok) throw new Error(saveResult.message || ("GitHub write failed: " + saveResponse.status));
+
+      CHANNELS_MEMORY_CACHE = data;
+      CHANNELS_MEMORY_CACHE_TIME = Date.now();
+      try {
+        const cachedRequest = new Request(CHANNELS_GITHUB_URL, { method: "GET" });
+        await caches.default.delete(cachedRequest);
+      } catch {}
+      return json({ status: "ok", message: "تم حفظ القنوات في GitHub بنجاح", commit: saveResult.commit?.sha || null });
+    } catch (e) {
+      console.error("ADMIN CHANNEL SAVE ERROR", e.message);
+      return json({ error: "فشل الحفظ إلى GitHub", detail: e.message }, 502);
+    }
+  }
+
+  return json({ error: "Method not allowed" }, 405);
 }
 
 // ============================================================
