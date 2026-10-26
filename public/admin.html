@@ -178,6 +178,26 @@ details.adv .formgrid{padding:6px 16px 0}
 .t-bar{position:absolute;right:0;left:0;bottom:0;height:4px;background:#35dfa2;transform-origin:left;animation:tbar 4.2s linear forwards}
 .toast.error .t-bar{background:#ff6b83}
 @keyframes tbar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.diffbox{max-height:320px;overflow:auto;border:1px solid #26374d;border-radius:12px;background:#07101b;padding:10px 14px;font-size:13px;line-height:1.9}
+.diffbox.plain{background:transparent;border:0;padding:0}
+.diffbox h4{margin:10px 0 4px;font-size:12px;color:var(--muted)}
+.diffbox .a{color:#6bf0c4}.diffbox .r{color:#ff9fb0}.diffbox .m{color:#ffcf91}
+.dialog.wide{max-width:580px}
+.grp-list{display:flex;flex-direction:column;gap:8px}
+.grp-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #26374d;border-radius:10px;background:#0a1421}
+.channel.off{opacity:.6}
+.channel.dragging{opacity:.35}
+.channel.over{border-color:#35c9ff;box-shadow:0 0 0 2px #35c9ff44}
+.handle{cursor:grab;display:inline-grid;place-items:center;color:#6f86a6;flex:0 0 auto}
+.handle:active{cursor:grabbing}
+.st-off{background:#2b2210;color:#ffcf91}
+.field input[type=checkbox]{width:18px;height:18px;padding:0;accent-color:#35c9ff;flex:0 0 auto}
+.chkrow{display:flex!important;flex-direction:row!important;align-items:center;gap:10px;font-size:14px!important;color:var(--text)!important;cursor:pointer;font-weight:600}
+.ipcell{display:flex;align-items:center;gap:6px}
+.icon.sm{width:30px;height:30px;border-radius:9px}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 #35dfa288;animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #35dfa288}70%{box-shadow:0 0 0 8px #35dfa200}100%{box-shadow:0 0 0 0 #35dfa200}}
+@media(hover:none){.handle{display:none}}
 @media(max-width:1100px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:205px minmax(0,1fr)}.dash{grid-template-columns:1fr}}
 @media(max-width:900px){
 .wrap{padding:12px 12px 104px}
@@ -217,8 +237,10 @@ details.adv .formgrid{padding:6px 16px 0}
 <button class="nav" data-page="editor"><span class="ic" data-ico="plus"></span><span>إضافة / تعديل</span></button>
 <button class="nav" data-page="tester"><span class="ic" data-ico="target"></span><span>اختبار المصدر</span></button>
 <button class="nav" data-page="health"><span class="ic" data-ico="pulse"></span><span>فحص القنوات</span></button>
+<button class="nav" data-page="viewers"><span class="ic" data-ico="users"></span><span>المشاهدون الآن</span></button>
 <button class="nav" data-page="smartlinks"><span class="ic" data-ico="link"></span><span>مدير الروابط الذكي</span></button>
 <button class="nav" data-page="errors"><span class="ic" data-ico="alert"></span><span>سجل الأخطاء</span></button>
+<button class="nav" data-page="history"><span class="ic" data-ico="history"></span><span>سجل التعديلات</span></button>
 <button class="nav" data-page="security"><span class="ic" data-ico="shield"></span><span>الحماية والإعدادات</span></button>
 <button class="nav" data-page="logs"><span class="ic" data-ico="log"></span><span>حالة النظام</span></button>
 </aside>
@@ -245,9 +267,10 @@ details.adv .formgrid{padding:6px 16px 0}
 <label class="searchbox"><span data-ico="search"></span><input id="search" aria-label="بحث في القنوات" placeholder="ابحث بالاسم أو ID أو الرابط..."></label>
 <select id="groupFilter" aria-label="المجموعة"><option value="">كل المجموعات</option></select>
 <div class="seg" role="group" aria-label="طريقة العرض"><button id="viewCards" class="on" aria-pressed="true" aria-label="عرض كروت"><span data-ico="grid"></span></button><button id="viewTable" aria-pressed="false" aria-label="عرض جدول"><span data-ico="list"></span></button></div>
-<button class="soft" id="checkAllBtn"><span data-ico="pulse" data-size="16"></span>فحص الحالة</button>
+<button class="ghost" id="groupOrderBtn" type="button"><span data-ico="list" data-size="16"></span>ترتيب المجموعات</button><button class="soft" id="checkAllBtn"><span data-ico="pulse" data-size="16"></span>فحص الحالة</button>
 <button class="ghost" id="exportBtn"><span data-ico="download" data-size="16"></span>تصدير JSON</button><button class="ghost" id="importBtn"><span data-ico="upload" data-size="16"></span>استيراد JSON</button><input id="importFile" class="hidden" type="file" accept=".json,application/json">
 </div>
+<div id="orderBar" class="banner hidden" role="status"><span><span data-ico="alert"></span>تم تغيير ترتيب القنوات — لم يُحفظ بعد</span><div style="display:flex;gap:8px"><button type="button" id="orderSave" style="background:linear-gradient(120deg,#35c9ff,#6f9bff);color:#04121f;border-color:transparent">حفظ الترتيب</button><button type="button" id="orderDiscard">تجاهل</button></div></div>
 <div id="statusChips" class="chips"></div>
 <div id="bulkBar" class="bulk hidden"><b id="bulkCount"></b><div><button class="soft" id="bulkMove">نقل لمجموعة</button><button class="danger" id="bulkDelete">حذف</button><button class="ghost" id="bulkClear">إلغاء التحديد</button></div></div>
 <div id="channelCards" class="cards" aria-live="polite">
@@ -268,6 +291,7 @@ details.adv .formgrid{padding:6px 16px 0}
 <div class="field wide"><label for="chUrl">رابط المصدر *</label><textarea id="chUrl" required dir="ltr" placeholder="https://..." aria-describedby="urlHint"></textarea><div class="hint" id="urlHint"></div></div>
 <div class="field"><label for="chGroup">المجموعة / الباقة *</label><input id="chGroup" list="knownGroups" required placeholder="Bein Sports" aria-describedby="groupHint"><datalist id="knownGroups"></datalist><div class="hint" id="groupHint"></div></div>
 <div class="field"><label for="chEndpoint">نوع رابط السيرفر النهائي</label><select id="chEndpoint"><option value="m3u8">HLS — play.m3u8</option><option value="flv">Raw / FLV — play.flv</option></select><small class="muted">اختَر النوع الذي يناسب مصدر القناة. رابط FLV لا يحوّل صيغة البث؛ يمرر المصدر كما هو.</small></div>
+<div class="field wide"><label class="chkrow" for="chEnabled"><input type="checkbox" id="chEnabled" checked> القناة مفعّلة (تظهر في التطبيق)</label></div>
 </div>
 <details class="adv"><summary><span>خيارات متقدمة <span class="muted">— User-Agent و Referer و Origin</span></span><span data-ico="chev"></span></summary>
 <div class="formgrid">
@@ -292,6 +316,30 @@ details.adv .formgrid{padding:6px 16px 0}
 </div>
 <div class="panel"><h3>نتائج فحص المصادر</h3><p class="notice">الفحص يطلب المصدر ويلغي تنزيل جسم الاستجابة بعد معرفة الحالة. نجاح HTTP لا يضمن استمرار البث أو سلامة كل مقاطع HLS.</p><div id="healthResults" class="empty">اضغط «بدء الفحص» لفحص جميع القنوات تلقائيًا على دفعات من 25 قناة.</div></div>
 <div class="panel"><div class="pagehead" style="margin:0 0 12px"><div><h3 style="margin:0">السجل التاريخي والتنبيهات</h3><p class="notice" style="margin:6px 0 0">يُحفظ السجل في هذا المتصفح فقط، دون KV أو كتابة إضافية على السيرفر. لا يظهر في متصفح آخر أو بعد مسح بيانات المتصفح.</p></div><button class="ghost" id="clearHealthHistory" type="button">مسح السجل</button></div><div id="healthAlerts" class="status" role="status">لا توجد تنبيهات حتى الآن.</div><div class="stats" style="margin-top:12px"><div class="stat"><div class="label">عدد جولات الفحص</div><div class="num" id="historyRuns">0</div></div><div class="stat"><div class="label">إجمالي القنوات المفحوصة</div><div class="num" id="historyChecked">0</div></div><div class="stat"><div class="label">إجمالي حالات الفشل</div><div class="num" id="historyFailures">0</div></div><div class="stat"><div class="label">آخر نسبة نجاح</div><div class="num" id="historyRate">—</div></div></div><div id="healthHistoryTable" class="empty">سيظهر السجل بعد أول فحص.</div></div>
+</section>
+
+<section class="page" id="page-viewers">
+<div class="pagehead"><div><div class="crumb">لوحة التحكم<i>/</i><b>المشاهدون الآن</b></div><div class="h-row"><h2>المشاهدون الآن</h2><span class="pill" id="liveBadge"><span class="live-dot"></span><span id="liveText">—</span></span></div></div>
+<div class="toolbar" style="margin:0"><button class="soft" id="viewersAuto" type="button" aria-pressed="true"><span data-ico="pause" data-size="16"></span><span id="viewersAutoTxt">إيقاف التحديث التلقائي</span></button><button class="soft" id="viewersRefresh" type="button"><span data-ico="refresh" data-size="16"></span>تحديث</button><button class="ghost" id="viewersMask" type="button"><span data-ico="eye" data-size="16"></span><span id="viewersMaskTxt">إظهار كل العناوين</span></button></div></div>
+<div class="stats">
+<div class="stat"><div class="stat-top"><span class="label">جلسات نشطة</span><span class="sic" data-ico="users"></span></div><div class="num" id="viewersNow">—</div><div class="sub">آخر نشاط خلال دقيقة ونصف</div></div>
+<div class="stat"><div class="stat-top"><span class="label">عناوين IP مختلفة</span><span class="sic" data-ico="link"></span></div><div class="num" id="viewersIps">—</div><div class="sub">عدد المشاهدين الفعليين تقريبًا</div></div>
+<div class="stat"><div class="stat-top"><span class="label">أكثر قناة مشاهدة الآن</span><span class="sic" data-ico="tv"></span></div><div class="num" id="viewersTop" style="font-size:20px">—</div><div class="sub" id="viewersTopSub">&nbsp;</div></div>
+<div class="stat"><div class="stat-top"><span class="label">الدول</span><span class="sic" data-ico="folder"></span></div><div class="num" id="viewersCountries">—</div><div class="sub">حسب بيانات Cloudflare</div></div>
+</div>
+<div class="dash">
+<div class="panel"><h3>حسب القناة</h3><div id="viewersByChannel"><div class="empty">—</div></div></div>
+<div class="panel"><h3>حسب الدولة</h3><div id="viewersByCountry"><div class="empty">—</div></div></div>
+</div>
+<div class="panel"><h3>الجلسات النشطة</h3>
+<div class="toolbar"><label class="searchbox"><span data-ico="search"></span><input id="viewersSearch" aria-label="بحث في المشاهدين" placeholder="ابحث بالـ IP أو القناة أو الدولة أو الشبكة..."></label><select id="viewersChannel" aria-label="القناة"><option value="">كل القنوات</option></select></div>
+<div id="viewersTable" class="empty">جار التحميل...</div>
+<p class="notice">العناوين تُعرض مخفّية جزئيًا افتراضيًا، والجلسات تُحفظ في ذاكرة الـ Worker لدقيقة ونصف فقط ولا تُكتب في أي ملف. عنوان IP بيانات شخصية، فاستخدمه للإدارة والحماية فقط.</p></div>
+</section>
+
+<section class="page" id="page-history">
+<div class="pagehead"><div><div class="crumb">لوحة التحكم<i>/</i><b>سجل التعديلات</b></div><h2>سجل التعديلات والاسترجاع</h2></div><button class="soft" id="refreshHistory" type="button"><span data-ico="refresh" data-size="16"></span>تحديث</button></div>
+<div class="panel"><p class="notice">كل حفظ من اللوحة يُسجَّل كتعديل (commit) على GitHub. يمكنك معاينة الفروق ثم استرجاع أي نسخة، والاسترجاع نفسه يُسجَّل كتعديل جديد فلا يضيع أي تاريخ.</p><div id="historyList" class="empty">جار تحميل السجل عند فتح الصفحة.</div></div>
 </section>
 
 <section class="page" id="page-smartlinks">
@@ -320,6 +368,8 @@ details.adv .formgrid{padding:6px 16px 0}
 <div class="panel"><h3>متغيرات Worker المطلوبة</h3><div class="tablewrap"><table><thead><tr><th>اسم المتغير</th><th>الغرض</th><th>مكان الإعداد</th></tr></thead><tbody>
 <tr><td><code>ADMIN_SECRET</code></td><td>مفتاح لوحة الإدارة</td><td>Cloudflare → Worker → Settings → Variables and Secrets</td></tr>
 <tr><td><code>GITHUB_TOKEN</code></td><td>حفظ ملف القنوات في GitHub</td><td>Secret بصلاحية Contents: Read and write للمستودع</td></tr>
+<tr><td><code>TRACKER</code> (Durable Object)</td><td>تتبّع المشاهدين الحاليين (صفحة «المشاهدون الآن»)</td><td>Worker → Settings → Bindings، والكود في worker-additions.mjs</td></tr>
+<tr><td><code>TELEGRAM_BOT_TOKEN</code> / <code>TELEGRAM_CHAT_ID</code></td><td>اختياري: تنبيهات الفحص المجدول</td><td>Secrets في Cloudflare</td></tr>
 <tr><td><code>APP_SECRET</code></td><td>مفتاح التطبيق الحالي، لا تستبدله</td><td>اتركه كما هو</td></tr>
 </tbody></table></div><p class="notice">أنشئ مفتاحي ADMIN_SECRET وGITHUB_TOKEN كـ Secrets في Cloudflare، وليس داخل HTML أو GitHub. استخدم GitHub fine-grained token محدودًا بمستودع SUPERTV18/super-tv-worker وصلاحية Contents للقراءة والكتابة فقط. لا تغيّر APP_SECRET الخاص بالتطبيق.</p></div>
 <div class="panel"><h3>تغيير User-Agent الخاص بالسيرفر</h3>
@@ -331,7 +381,7 @@ details.adv .formgrid{padding:6px 16px 0}
 </div>
 <div class="toolbar"><button class="primary" id="loadServerUABtn" type="button">تحميل القيم الحالية</button><button class="soft" id="saveServerUABtn" type="button">حفظ إعدادات السيرفر</button><button class="ghost" id="resetServerUABtn" type="button">استعادة القيم الافتراضية</button></div>
 <div id="serverUAStatus" class="status hidden"></div></div>
-<div class="panel"><h3>حدود حالية مهمة</h3><ul class="notice"><li>إحصائيات المشاهدين مؤقتة داخل ذاكرة نسخة Worker الحالية.</li><li>فحص الرابط يؤكد استجابة المصدر ونوع المحتوى فقط، وليس استمرارية الفيديو.</li><li>تعديل القناة يحدّث ملف GitHub؛ انتظر انتشار التغيير عبر Cloudflare Cache.</li><li>لا توجد سجلات تاريخية دائمة أو إيقاف/تفعيل فعلي للقنوات في هذا الإصدار.</li><li>حالة القنوات (تعمل / لا تستجيب) تُحفظ في المتصفح لهذه الجلسة فقط بعد كل فحص.</li></ul></div>
+<div class="panel"><h3>حدود حالية مهمة</h3><ul class="notice"><li>إحصائيات المشاهدين مؤقتة داخل ذاكرة نسخة Worker الحالية.</li><li>فحص الرابط يؤكد استجابة المصدر ونوع المحتوى فقط، وليس استمرارية الفيديو.</li><li>تعديل القناة يحدّث ملف GitHub؛ انتظر انتشار التغيير عبر Cloudflare Cache.</li><li>الإيقاف المؤقت يضيف الحقل <code>enabled:false</code> للقناة؛ يجب أن يتجاهل التطبيق والـ Worker القنوات الموقوفة (مضمَّن في worker-additions.mjs).</li><li>حالة القنوات (تعمل / لا تستجيب) تُحفظ في المتصفح لهذه الجلسة فقط بعد كل فحص.</li></ul></div>
 </section>
 
 <section class="page" id="page-logs">
@@ -343,7 +393,7 @@ details.adv .formgrid{padding:6px 16px 0}
 
 <div id="modal" class="scrim hidden"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgTitle" aria-describedby="dlgText">
 <div class="dlg-head"><span class="dlg-ic info" id="dlgIc"></span><h3 id="dlgTitle"></h3></div>
-<p id="dlgText"></p>
+<p id="dlgText"></p><div id="dlgBody" class="diffbox hidden"></div>
 <div class="field hidden" id="dlgField" style="margin:0"><label for="dlgInput" id="dlgLabel"></label><input id="dlgInput" list="knownGroups" autocomplete="off"></div>
 <div class="dlg-actions"><button id="dlgOk" type="button" class="primary">تأكيد</button><button id="dlgCancel" type="button" class="soft">إلغاء</button></div>
 </div></div>
@@ -359,7 +409,8 @@ details.adv .formgrid{padding:6px 16px 0}
 <script>
 const $=id=>document.getElementById(id);
 const WORKER_BASE="https://super-tv-api.stvl.workers.dev/api/";
-let adminKey="",channels={},editing=null,stats=null,dirty=false,viewMode="cards",healthMap={},lastCheck=0,selected=new Set();
+let adminKey="",channels={},editing=null,stats=null,dirty=false,viewMode="cards",healthMap={},lastCheck=0,selected=new Set(),baseSha="",lastSaved={},orderDirty=false;
+const clone=o=>JSON.parse(JSON.stringify(o));
 const ICONS={
 grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
 tv:'<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>',
@@ -385,7 +436,14 @@ logout:'<path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3M10 8l-4 4 4 4M6 12h10"/>
 folder:'<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
 download:'<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',
 upload:'<path d="M12 16V5M7 9l5-5 5 5M5 20h14"/>',
-eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
+eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 010 6.8M18 14.3c2.2.6 3.5 2.4 3.5 5.7"/>',
+history:'<path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+grip:'<circle cx="9" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.5" fill="currentColor" stroke="none"/>',
+up:'<path d="M12 19V5M6 11l6-6 6 6"/>',
+down:'<path d="M12 5v14M6 13l6 6 6-6"/>',
+pause:'<path d="M8 5v14M16 5v14"/>',
+play:'<path d="M7 4l13 8-13 8z"/>'
 };
 function ico(n,s){s=s||18;return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[n]||"")+'</svg>'}
 function paintIcons(root){(root||document).querySelectorAll("[data-ico]").forEach(el=>{if(!el.firstChild)el.innerHTML=ico(el.dataset.ico,+el.dataset.size||18)})}
@@ -393,14 +451,14 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 const AV=[["#35c9ff","#6f9bff"],["#5ee6b6","#35c9ff"],["#ffb86b","#ff8a65"],["#c9a7ff","#8b7cff"],["#ff9fb0","#ffb86b"],["#8be0ff","#5268ff"]];
 function avatar(ch){let h=0;for(const c of String(ch.__group||""))h=(h*31+c.charCodeAt(0))>>>0;const p=AV[h%AV.length];const l=(String(ch.name||ch.id||"?").trim()[0]||"?").toUpperCase();return '<div class="av" style="background:linear-gradient(145deg,'+p[0]+','+p[1]+')">'+esc(l)+'</div>'}
 function ago(t){const s=Math.max(1,Math.round((Date.now()-t)/1000));if(s<60)return "الآن";const m=Math.round(s/60);if(m<60)return "منذ "+m+" دقيقة";return "منذ "+Math.round(m/60)+" ساعة"}
-function statusOf(ch){const h=healthMap[String(ch.id)];if(!h)return{k:"idle",label:"لم تُفحص",meta:"لم يُفحص بعد"};if(h.ok)return{k:"ok",label:"تعمل",meta:h.ms+"ms · "+ago(h.time)};return{k:"bad",label:"لا تستجيب",meta:(h.status?("HTTP "+h.status):(h.error||"فشل الاتصال"))+" · "+ago(h.time)}}
+function statusOf(ch){if(ch.enabled===false)return{k:"off",label:"متوقفة",meta:"موقوفة مؤقتًا"};const h=healthMap[String(ch.id)];if(!h)return{k:"idle",label:"لم تُفحص",meta:"لم يُفحص بعد"};if(h.ok)return{k:"ok",label:"تعمل",meta:h.ms+"ms · "+ago(h.time)};return{k:"bad",label:"لا تستجيب",meta:(h.status?("HTTP "+h.status):(h.error||"فشل الاتصال"))+" · "+ago(h.time)}}
 function key(ch){return ch.__group+"\u0000"+ch.id}
 
 function notify(msg,type="ok"){const box=$("toasts"),t=document.createElement("div"),kind=type==="error"?"error":"ok";t.className="toast "+kind;t.setAttribute("role",kind==="error"?"alert":"status");t.innerHTML='<span class="t-ic">'+ico(kind==="error"?"x":"check",16)+'</span><span class="t-msg"></span><button class="t-x" aria-label="إغلاق الإشعار">'+ico("x",14)+'</button><i class="t-bar"></i>';t.querySelector(".t-msg").textContent=msg;const kill=()=>t.remove();t.querySelector(".t-x").onclick=kill;box.appendChild(t);while(box.children.length>4)box.firstChild.remove();setTimeout(kill,4200)}
 
 function openDialog(o){return new Promise(resolve=>{
  const m=$("modal"),ok=$("dlgOk"),cancel=$("dlgCancel"),inp=$("dlgInput"),prev=document.activeElement;
- $("dlgTitle").textContent=o.title;$("dlgText").textContent=o.text||"";
+ $("dlgTitle").textContent=o.title;$("dlgText").textContent=o.text||"";const bodyEl=$("dlgBody");if(o.body){bodyEl.classList.remove("hidden");bodyEl.classList.toggle("plain",typeof o.body!=="string");if(typeof o.body==="string")bodyEl.innerHTML=o.body;else{bodyEl.innerHTML="";bodyEl.appendChild(o.body)}}else{bodyEl.classList.add("hidden");bodyEl.innerHTML=""}m.querySelector(".dialog").classList.toggle("wide",!!o.body);
  const ic=$("dlgIc");ic.className="dlg-ic "+(o.danger?"danger":"info");ic.innerHTML=ico(o.danger?"trash":"info",24);
  if(o.input){$("dlgField").classList.remove("hidden");$("dlgLabel").textContent=o.input.label;inp.value=o.input.value||""}else $("dlgField").classList.add("hidden");
  ok.textContent=o.ok||"تأكيد";ok.className=o.danger?"solid-danger":"primary";
@@ -418,8 +476,8 @@ function openDialog(o){return new Promise(resolve=>{
  setTimeout(()=>(o.input?inp:cancel).focus(),30);
 })}
 
-async function api(path,opts={}){const headers={...(opts.headers||{}),"X-Admin-Key":adminKey};if(opts.body&&!headers["Content-Type"])headers["Content-Type"]="application/json";const res=await fetch(path,{...opts,headers});const data=await res.json().catch(()=>({error:"استجابة غير صالحة"}));if(!res.ok)throw new Error(data.error||("HTTP "+res.status));return data}
-function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));document.querySelectorAll(".nav").forEach(b=>{const on=b.dataset.page===name;b.classList.toggle("active",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});if(name==="editor"&&!editing)clearEditor();if(name==="errors")loadErrorLogs();window.scrollTo({top:0})}
+async function api(path,opts={}){const headers={...(opts.headers||{}),"X-Admin-Key":adminKey};if(opts.body&&!headers["Content-Type"])headers["Content-Type"]="application/json";const isCh=path.startsWith("/api/admin/channels");if(isCh&&opts.method==="POST"&&baseSha)headers["X-Base-Sha"]=baseSha;const res=await fetch(path,{...opts,headers});const sh=res.headers.get("X-File-Sha");if(isCh&&sh)baseSha=sh;const data=await res.json().catch(()=>({error:"استجابة غير صالحة"}));if(!res.ok){const err=new Error(data.error||("HTTP "+res.status));err.status=res.status;throw err}if(data&&data.sha&&(isCh||path.startsWith("/api/admin/restore")))baseSha=data.sha;return data}
+function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));document.querySelectorAll(".nav").forEach(b=>{const on=b.dataset.page===name;b.classList.toggle("active",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});if(name==="editor"&&!editing)clearEditor();if(name==="errors")loadErrorLogs();if(name==="viewers")startViewers();else stopViewers();if(name==="history")loadHistory();window.scrollTo({top:0})}
 document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.goto)));
 function allChannels(){return Object.entries(channels).flatMap(([group,items])=>(Array.isArray(items)?items:[]).map(ch=>({...ch,__group:group})))}
@@ -427,9 +485,9 @@ function allChannels(){return Object.entries(channels).flatMap(([group,items])=>
 async function login(){adminKey=$("loginKey").value.trim();if(!adminKey){$("loginStatus").textContent="أدخل مفتاح الإدارة";$("loginStatus").classList.remove("hidden");return}try{await api("/api/admin/channels");sessionStorage.setItem("stvAdminKey",adminKey);$("loginView").classList.add("hidden");$("app").classList.remove("hidden");await refreshAll();notify("تم تسجيل الدخول بأمان")}catch(e){$("loginStatus").textContent=e.message;$("loginStatus").classList.remove("hidden");adminKey=""}}
 $("loginBtn").addEventListener("click",login);$("loginKey").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
 $("toggleKey").onclick=()=>{const i=$("loginKey");i.type=i.type==="password"?"text":"password"};
-$("logoutBtn").addEventListener("click",()=>{sessionStorage.removeItem("stvAdminKey");adminKey="";healthMap={};$("app").classList.add("hidden");$("loginView").classList.remove("hidden");$("loginKey").value=""});
+$("logoutBtn").addEventListener("click",()=>{sessionStorage.removeItem("stvAdminKey");adminKey="";healthMap={};baseSha="";stopViewers();$("app").classList.add("hidden");$("loginView").classList.remove("hidden");$("loginKey").value=""});
 function setConn(ok,t){$("connText").textContent=t;$("connection").className="pill "+(ok?"ok":"bad")}
-async function refreshAll(){try{channels=await api("/api/admin/channels");fillGroups();renderChannels();fillTestSelect();renderDonut();renderHealthHistory();await loadStats();setConn(true,"متصل • تم التحميل");$("lastUpdate").textContent="آخر تحديث: "+new Date().toLocaleTimeString("ar-EG");$("systemInfo").textContent="واجهة الإدارة: متصلة\nتحميل ملف القنوات: ناجح\nعدد القنوات: "+allChannels().length+"\nآخر فحص: "+new Date().toISOString()}catch(e){setConn(false,"خطأ في الاتصال");notify(e.message,"error")}}
+async function refreshAll(){try{channels=await api("/api/admin/channels");lastSaved=clone(channels);orderDirty=false;fillGroups();renderChannels();fillTestSelect();renderDonut();renderHealthHistory();await loadStats();setConn(true,"متصل • تم التحميل");$("lastUpdate").textContent="آخر تحديث: "+new Date().toLocaleTimeString("ar-EG");$("systemInfo").textContent="واجهة الإدارة: متصلة\nتحميل ملف القنوات: ناجح\nعدد القنوات: "+allChannels().length+"\nآخر فحص: "+new Date().toISOString()}catch(e){setConn(false,"خطأ في الاتصال");notify(e.message,"error")}}
 
 async function loadStats(){try{stats=await api("/api/admin/stats");$("statChannels").textContent=stats.channelCount??"—";$("statGroups").textContent=stats.groupCount??"—";$("statViewers").textContent=stats.activeViewerRequests??"—";const rows=(stats.viewers||[]).sort((a,b)=>b.viewers-a.viewers).slice(0,10);const max=rows.length?Math.max(...rows.map(x=>Number(x.viewers)||0),1):1;$("topChannels").innerHTML=rows.length?'<div class="bars">'+rows.map(x=>{const v=Number(x.viewers)||0;return '<div class="bar-row">'+avatar({name:x.name,__group:x.group}).replace('class="av"','class="av sm"')+'<div class="bar-main"><div class="bar-top"><span>'+esc(x.name)+' <span class="muted">· '+esc(x.group)+'</span></span><b>'+v+'</b></div><div class="bar"><i style="width:'+Math.max(4,Math.round(v/max*100))+'%"></i></div></div></div>'}).join("")+'</div>':'<div class="empty">لا توجد بيانات مشاهدة في الذاكرة الحالية</div>'}catch(e){$("topChannels").textContent=e.message}}
 
@@ -445,7 +503,7 @@ function saveHealthSnapshot(results){const rows=readHealthHistory(),previous=row
 async function runHealthCheck(ids=null,triggerBtn=null){
  const out=$("healthResults"),btn=triggerBtn||$("runHealthCheck");
  const all=allChannels();
- const requested=ids?ids.map(String):all.map(c=>String(c.id));
+ const requested=ids?ids.map(String):all.filter(c=>c.enabled!==false).map(c=>String(c.id));
  const unique=[...new Set(requested)];
  const batches=[];for(let i=0;i<unique.length;i+=25)batches.push(unique.slice(i,i+25));
  if(!batches.length){out.className="empty";out.textContent="لا توجد قنوات للفحص";return}
@@ -479,25 +537,25 @@ async function loadErrorLogs(){const out=$("errorLogResults");out.className="sta
 function finalChannelUrl(ch){const source=String(ch.url||"");const isViberLive=/^https?:\/\/vibertv\.fun\/ind4ex\.php\?[^#]*\blive=/i.test(source);const route=(isViberLive||String(ch.endpoint||"m3u8").toLowerCase()==="flv")?"play.flv":"play.m3u8";return WORKER_BASE+route+"?id="+encodeURIComponent(String(ch.id??""))}
 function smartConvert(){const v=$("smartLinkInput").value.trim(),out=$("smartLinkResult");out.classList.remove("hidden");let ch=null;if(/^https?:\/\//i.test(v)){ch=allChannels().find(x=>String(x.url||"").trim()===v)}else{ch=allChannels().find(x=>String(x.id)===v)}if(!ch){out.textContent="لم يتم العثور على قناة مطابقة محفوظة. افتح إدارة القنوات وتأكد من رابط المصدر أو ID.";return}const finalUrl=finalChannelUrl(ch);out.textContent="القناة: "+ch.name+"\nID الأصلي: "+ch.id+"\nرابط المصدر: "+String(ch.url||"")+"\nالرابط النهائي: "+finalUrl;const b=document.createElement("button");b.className="primary";b.textContent="نسخ الرابط النهائي";b.onclick=()=>copyText(finalUrl);out.appendChild(document.createTextNode("\n"));out.appendChild(b)}
 function fillGroups(){const groups=Object.keys(channels),cur=$("groupFilter").value;$("groupFilter").innerHTML='<option value="">كل المجموعات</option>'+groups.map(g=>'<option>'+esc(g)+'</option>').join("");if(groups.includes(cur))$("groupFilter").value=cur;$("knownGroups").innerHTML=groups.map(g=>'<option value="'+esc(g)+'"></option>').join("")}
-async function copyText(value){try{await navigator.clipboard.writeText(value);notify("تم نسخ الرابط")}catch(e){const ta=document.createElement("textarea");ta.value=value;document.body.appendChild(ta);ta.select();const ok=document.execCommand("copy");ta.remove();notify(ok?"تم نسخ الرابط":"تعذر النسخ؛ انسخ الرابط يدويًا",ok?"ok":"error")}}
+async function copyText(value,label){label=label||"الرابط";try{await navigator.clipboard.writeText(value);notify("تم نسخ "+label)}catch(e){const ta=document.createElement("textarea");ta.value=value;document.body.appendChild(ta);ta.select();const ok=document.execCommand("copy");ta.remove();notify(ok?"تم نسخ "+label:"تعذر النسخ؛ انسخ يدويًا",ok?"ok":"error")}}
 
 function filteredChannels(){const q=$("search").value.trim().toLowerCase(),gf=$("groupFilter").value;return allChannels().filter(c=>(!gf||c.__group===gf)&&[c.id,c.name,c.url,c.__group].some(v=>String(v||"").toLowerCase().includes(q)))}
 function cardHtml(ch){const st=statusOf(ch),sel=selected.has(key(ch));
- return '<article class="channel'+(sel?' selected':'')+'" data-id="'+esc(ch.id)+'" data-group="'+esc(ch.__group)+'">'
- +'<div class="ch-top"><input type="checkbox" class="chk" data-act="sel" aria-label="تحديد القناة"'+(sel?' checked':'')+'>'+avatar(ch)
+ return '<article class="channel'+(sel?' selected':'')+(ch.enabled===false?' off':'')+'" draggable="true" data-id="'+esc(ch.id)+'" data-group="'+esc(ch.__group)+'">'
+ +'<div class="ch-top"><span class="handle" title="اسحب لإعادة الترتيب" aria-hidden="true">'+ico("grip",16)+'</span><input type="checkbox" class="chk" data-act="sel" aria-label="تحديد القناة"'+(sel?' checked':'')+'>'+avatar(ch)
  +'<div class="ch-name"><h3>'+esc(ch.name)+'</h3><div class="meta">ID: '+esc(ch.id)+'</div></div><span class="st st-'+st.k+'"><i></i>'+st.label+'</span></div>'
  +'<div class="ch-row"><span class="badge">'+esc(ch.__group)+'</span><span class="meta">'+esc(st.meta)+'</span></div>'
  +'<div class="url" title="رابط السيرفر النهائي">'+esc(finalChannelUrl(ch))+'</div>'
  +'<div class="actions"><button class="primary grow" data-act="copy-final"><span data-ico="copy" data-size="16"></span>نسخ الرابط</button><button class="soft" data-act="edit"><span data-ico="edit" data-size="16"></span>تعديل</button>'
- +'<div class="more"><button class="soft icon" data-act="menu" aria-label="المزيد من الإجراءات" aria-haspopup="menu"><span data-ico="dots"></span></button><div class="menu" role="menu"><button role="menuitem" data-act="test">اختبار المصدر</button><button role="menuitem" data-act="copy-source">نسخ رابط المصدر</button><button role="menuitem" data-act="move">نقل لمجموعة</button><hr><button role="menuitem" class="del" data-act="delete">حذف القناة</button></div></div></div></article>'}
-function tableHtml(rows){return '<table><thead><tr><th></th><th>القناة</th><th>المجموعة</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>'+rows.map(ch=>{const st=statusOf(ch),sel=selected.has(key(ch));return '<tr data-id="'+esc(ch.id)+'" data-group="'+esc(ch.__group)+'"><td><input type="checkbox" class="chk" data-act="sel" aria-label="تحديد القناة"'+(sel?' checked':'')+'></td><td><div class="rowname">'+avatar(ch)+'<div><b>'+esc(ch.name)+'</b><div class="meta">ID: '+esc(ch.id)+'</div></div></div></td><td><span class="badge">'+esc(ch.__group)+'</span></td><td><span class="st st-'+st.k+'"><i></i>'+st.label+'</span> <span class="meta">'+esc(st.meta)+'</span></td><td><div class="actions tight"><button class="soft icon" data-act="copy-final" aria-label="نسخ الرابط النهائي" title="نسخ الرابط النهائي"><span data-ico="copy" data-size="16"></span></button><button class="soft icon" data-act="edit" aria-label="تعديل" title="تعديل"><span data-ico="edit" data-size="16"></span></button><button class="soft icon" data-act="test" aria-label="اختبار" title="اختبار"><span data-ico="target" data-size="16"></span></button><button class="danger icon" data-act="delete" aria-label="حذف" title="حذف"><span data-ico="trash" data-size="16"></span></button></div></td></tr>'}).join("")+'</tbody></table>'}
-function renderStatusChips(){const all=allChannels();let ok=0,bad=0,idle=0;all.forEach(c=>{const k=statusOf(c).k;if(k==="ok")ok++;else if(k==="bad")bad++;else idle++});$("statusChips").innerHTML='<span class="st st-ok"><i></i>'+ok+' تعمل</span><span class="st st-bad"><i></i>'+bad+' لا تستجيب</span><span class="st st-idle"><i></i>'+idle+' لم تُفحص</span><span class="muted">'+(lastCheck?("آخر فحص: "+ago(lastCheck)):"لم يتم الفحص في هذه الجلسة")+'</span>'}
+ +'<div class="more"><button class="soft icon" data-act="menu" aria-label="المزيد من الإجراءات" aria-haspopup="menu"><span data-ico="dots"></span></button><div class="menu" role="menu"><button role="menuitem" data-act="test">اختبار المصدر</button><button role="menuitem" data-act="copy-source">نسخ رابط المصدر</button><button role="menuitem" data-act="move">نقل لمجموعة</button><button role="menuitem" data-act="up">تقديم في الترتيب</button><button role="menuitem" data-act="down">تأخير في الترتيب</button><button role="menuitem" data-act="toggle">'+(ch.enabled===false?'تفعيل القناة':'إيقاف مؤقت')+'</button><hr><button role="menuitem" class="del" data-act="delete">حذف القناة</button></div></div></div></article>'}
+function tableHtml(rows){return '<table><thead><tr><th></th><th>القناة</th><th>المجموعة</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>'+rows.map(ch=>{const st=statusOf(ch),sel=selected.has(key(ch));return '<tr data-id="'+esc(ch.id)+'" data-group="'+esc(ch.__group)+'"><td><input type="checkbox" class="chk" data-act="sel" aria-label="تحديد القناة"'+(sel?' checked':'')+'></td><td><div class="rowname">'+avatar(ch)+'<div><b>'+esc(ch.name)+'</b><div class="meta">ID: '+esc(ch.id)+'</div></div></div></td><td><span class="badge">'+esc(ch.__group)+'</span></td><td><span class="st st-'+st.k+'"><i></i>'+st.label+'</span> <span class="meta">'+esc(st.meta)+'</span></td><td><div class="actions tight"><button class="soft icon" data-act="copy-final" aria-label="نسخ الرابط النهائي" title="نسخ الرابط النهائي"><span data-ico="copy" data-size="16"></span></button><button class="soft icon" data-act="edit" aria-label="تعديل" title="تعديل"><span data-ico="edit" data-size="16"></span></button><button class="soft icon" data-act="test" aria-label="اختبار" title="اختبار"><span data-ico="target" data-size="16"></span></button><button class="soft icon" data-act="toggle" aria-label="'+(ch.enabled===false?'تفعيل':'إيقاف مؤقت')+'" title="'+(ch.enabled===false?'تفعيل':'إيقاف مؤقت')+'"><span data-ico="'+(ch.enabled===false?'play':'pause')+'" data-size="16"></span></button><button class="danger icon" data-act="delete" aria-label="حذف" title="حذف"><span data-ico="trash" data-size="16"></span></button></div></td></tr>'}).join("")+'</tbody></table>'}
+function renderStatusChips(){const all=allChannels();let ok=0,bad=0,idle=0,off=0;all.forEach(c=>{const k=statusOf(c).k;if(k==="ok")ok++;else if(k==="bad")bad++;else if(k==="off")off++;else idle++});$("statusChips").innerHTML='<span class="st st-ok"><i></i>'+ok+' تعمل</span><span class="st st-bad"><i></i>'+bad+' لا تستجيب</span><span class="st st-idle"><i></i>'+idle+' لم تُفحص</span>'+(off?'<span class="st st-off"><i></i>'+off+' متوقفة</span>':'')+'<span class="muted">'+(lastCheck?("آخر فحص: "+ago(lastCheck)):"لم يتم الفحص في هذه الجلسة")+'</span>'}
 function renderBulk(){const n=selected.size;$("bulkBar").classList.toggle("hidden",!n);$("bulkCount").textContent="تم تحديد "+n+" "+(n===1?"قناة":"قنوات")}
 function renderChannels(){
  const valid=new Set(allChannels().map(key));selected.forEach(k=>{if(!valid.has(k))selected.delete(k)});
  const rows=filteredChannels(),box=$("channelCards");
  $("chCount").textContent=allChannels().length+" قناة · "+Object.keys(channels).length+" مجموعات";
- renderStatusChips();renderBulk();
+ renderStatusChips();renderBulk();$("orderBar").classList.toggle("hidden",!orderDirty);
  if(!rows.length){box.className="cards";box.innerHTML='<div class="empty" style="grid-column:1/-1">لا توجد قنوات مطابقة</div>';return}
  box.className=viewMode==="cards"?"cards":"tablewrap";
  box.innerHTML=viewMode==="cards"?rows.map(cardHtml).join(""):tableHtml(rows);
@@ -518,7 +576,10 @@ $("channelCards").addEventListener("click",e=>{
  else if(act==="edit")editChannel(group,id);
  else if(act==="test")testSaved(group,id);
  else if(act==="delete")deleteChannel(group,id);
- else if(act==="move")moveChannels([group+"\u0000"+ch.id])
+ else if(act==="move")moveChannels([group+"\u0000"+ch.id]);
+ else if(act==="up")stepChannel(group,id,-1);
+ else if(act==="down")stepChannel(group,id,1);
+ else if(act==="toggle"){if(ch.enabled===false)delete ch.enabled;else ch.enabled=false;saveChannels(ch.enabled===false?"تم إيقاف القناة مؤقتًا":"تم تفعيل القناة")}
 });
 $("channelCards").addEventListener("change",e=>{const c=e.target.closest('[data-act="sel"]');if(!c)return;const host=c.closest("[data-id]");const k=host.dataset.group+"\u0000"+host.dataset.id;if(c.checked)selected.add(k);else selected.delete(k);host.classList.toggle("selected",c.checked);renderBulk()});
 $("search").addEventListener("input",renderChannels);$("groupFilter").addEventListener("change",renderChannels);
@@ -531,6 +592,36 @@ async function moveChannels(keys){const g=await openDialog({title:"نقل إلى
 $("bulkClear").onclick=()=>{selected.clear();renderChannels()};
 $("bulkMove").onclick=()=>moveChannels([...selected]);
 $("bulkDelete").onclick=async()=>{const n=selected.size;if(!n)return;const ok=await openDialog({title:"حذف "+n+" قناة؟",text:"سيتم حذف القنوات المحددة من ملف القنوات على GitHub، وستتوقف روابطها النهائية عن العمل داخل التطبيق.",ok:"حذف نهائيًا",danger:true});if(!ok)return;removeKeys([...selected]);selected.clear();await saveChannels("تم حذف القنوات المحددة")};
+
+/* diff / import validation */
+function flatMap(c){const m=new Map();for(const [g,a] of Object.entries(c||{}))(Array.isArray(a)?a:[]).forEach(ch=>m.set(String(ch.id),{...ch,__group:g}));return m}
+function hdrSig(ch){return JSON.stringify(Object.entries(ch.headers||{}).filter(([k,v])=>v).sort())}
+function chSig(ch){return JSON.stringify([ch.__group,ch.name,ch.url,String(ch.endpoint||"m3u8").toLowerCase(),hdrSig(ch),ch.enabled!==false])}
+function computeDiff(a,b){const A=flatMap(a),B=flatMap(b),add=[],del=[],mod=[];for(const [id,ch] of B){if(!A.has(id))add.push(ch);else if(chSig(A.get(id))!==chSig(ch))mod.push({from:A.get(id),to:ch})}for(const [id,ch] of A)if(!B.has(id))del.push(ch);return{add,del,mod}}
+function whatChanged(a,b){const t=[];if(a.__group!==b.__group)t.push("المجموعة");if(a.name!==b.name)t.push("الاسم");if(a.url!==b.url)t.push("رابط المصدر");if(String(a.endpoint||"m3u8").toLowerCase()!==String(b.endpoint||"m3u8").toLowerCase())t.push("نوع الرابط");if(hdrSig(a)!==hdrSig(b))t.push("الـ Headers");if((a.enabled!==false)!==(b.enabled!==false))t.push(b.enabled===false?"إيقاف مؤقت":"تفعيل");return t.join("، ")||"تعديل"}
+function diffHtml(d){const lim=40;const part=(cls,title,arr,fmt)=>arr.length?'<h4>'+title+' ('+arr.length+')</h4>'+arr.slice(0,lim).map(x=>'<div class="'+cls+'">'+fmt(x)+'</div>').join("")+(arr.length>lim?'<div class="muted">و '+(arr.length-lim)+' أخرى...</div>':""):"";const fmt=c=>esc(c.name)+' <span class="muted">('+esc(c.id)+' · '+esc(c.__group)+')</span>';const html=part("a","+ قنوات جديدة",d.add,fmt)+part("r","− قنوات محذوفة",d.del,fmt)+part("m","~ قنوات معدّلة",d.mod,x=>esc(x.to.name)+' <span class="muted">— '+esc(whatChanged(x.from,x.to))+'</span>');return html||'<div class="muted">لا توجد فروق في المحتوى (قد يختلف الترتيب فقط).</div>'}
+function validateImport(data){if(!data||typeof data!=="object"||Array.isArray(data))return "صيغة JSON غير صحيحة: المطلوب كائن مجموعات";const seen=new Set();for(const [g,arr] of Object.entries(data)){if(!Array.isArray(arr))return "المجموعة «"+g+"» ليست قائمة قنوات";for(const [i,c] of arr.entries()){if(!c||typeof c!=="object")return "عنصر غير صالح في «"+g+"» رقم "+(i+1);const id=String(c.id??"").trim();if(!id)return "قناة بدون ID في «"+g+"» رقم "+(i+1);if(!String(c.name??"").trim())return "القناة "+id+" بدون اسم";if(!/^https?:\/\//i.test(String(c.url||"")))return "رابط القناة "+id+" لا يبدأ بـ http:// أو https://";if(seen.has(id))return "ID مكرر: "+id;seen.add(id)}}return ""}
+
+/* order: drag & drop, steps, groups */
+function markOrder(){orderDirty=true;renderChannels()}
+function reorder(group,id,targetId){const arr=channels[group]||[];const from=arr.findIndex(c=>String(c.id)===String(id)),to=arr.findIndex(c=>String(c.id)===String(targetId));if(from<0||to<0||from===to)return;const [it]=arr.splice(from,1);arr.splice(to,0,it);markOrder()}
+function stepChannel(group,id,delta){const arr=channels[group]||[];const i=arr.findIndex(c=>String(c.id)===String(id)),j=i+delta;if(i<0||j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];markOrder()}
+let dragSrc=null;
+(function(){const box=$("channelCards");
+ box.addEventListener("dragstart",e=>{const a=e.target.closest&&e.target.closest(".channel");if(!a)return;dragSrc={id:a.dataset.id,group:a.dataset.group};a.classList.add("dragging");e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",a.dataset.id)}catch(_){}});
+ box.addEventListener("dragover",e=>{const a=e.target.closest(".channel");if(!a||!dragSrc||a.dataset.group!==dragSrc.group)return;e.preventDefault();e.dataTransfer.dropEffect="move";box.querySelectorAll(".over").forEach(x=>{if(x!==a)x.classList.remove("over")});a.classList.add("over")});
+ box.addEventListener("drop",e=>{const a=e.target.closest(".channel");if(!a||!dragSrc||a.dataset.group!==dragSrc.group)return;e.preventDefault();const s=dragSrc;dragSrc=null;reorder(s.group,s.id,a.dataset.id)});
+ box.addEventListener("dragend",()=>{dragSrc=null;box.querySelectorAll(".dragging,.over").forEach(x=>x.classList.remove("dragging","over"))});
+})();
+async function openGroupOrder(){const names=Object.keys(channels).filter(g=>(channels[g]||[]).length);if(names.length<2){notify("توجد مجموعة واحدة فقط","error");return}
+ const wrap=document.createElement("div");wrap.className="grp-list";
+ function draw(){wrap.innerHTML="";names.forEach((g,i)=>{const row=document.createElement("div");row.className="grp-row";row.innerHTML='<b class="grow"></b><span class="muted"></span><button type="button" class="soft icon sm" aria-label="تحريك للأعلى">'+ico("up",16)+'</button><button type="button" class="soft icon sm" aria-label="تحريك للأسفل">'+ico("down",16)+'</button>';row.querySelector("b").textContent=g;row.querySelector(".muted").textContent=(channels[g]||[]).length+" قناة";const [up,dn]=row.querySelectorAll("button");up.disabled=i===0;dn.disabled=i===names.length-1;up.onclick=()=>{[names[i-1],names[i]]=[names[i],names[i-1]];draw()};dn.onclick=()=>{[names[i+1],names[i]]=[names[i],names[i+1]];draw()};wrap.appendChild(row)})}
+ draw();
+ const ok=await openDialog({title:"ترتيب المجموعات",text:"حرّك المجموعات بالأسهم؛ هذا هو ترتيب ظهورها في التطبيق.",ok:"تطبيق الترتيب",body:wrap});if(!ok)return;
+ const next={};names.forEach(g=>next[g]=channels[g]);Object.keys(channels).forEach(g=>{if(!(g in next))next[g]=channels[g]});channels=next;markOrder()}
+$("groupOrderBtn").onclick=openGroupOrder;
+$("orderSave").onclick=()=>saveChannels("تم حفظ الترتيب");
+$("orderDiscard").onclick=()=>{channels=clone(lastSaved);orderDirty=false;fillGroups();renderChannels()};
 
 /* editor */
 function dupOf(id){return allChannels().find(c=>String(c.id)===String(id)&&(!editing||String(c.id)!==editing.id||c.__group!==editing.group))}
@@ -551,11 +642,12 @@ $("cancelEdit").onclick=()=>{clearEditor();showPage("channels")};
 $("channelForm").addEventListener("input",()=>{setDirty(true);validateForm(false)});
 $("chEndpoint").addEventListener("change",()=>{setDirty(true);validateForm(false)});
 $("copyPreview").onclick=()=>{const id=$("chId").value.trim();if(!id)return notify("اكتب الـ ID أولًا","error");copyText($("finalPreview").textContent)};
-window.addEventListener("beforeunload",e=>{if(dirty){e.preventDefault();e.returnValue=""}});
-function editChannel(group,id){const ch=(channels[group]||[]).find(c=>String(c.id)===String(id));if(!ch)return;editing={group,id:String(id)};$("chId").value=ch.id;$("chName").value=ch.name;$("chUrl").value=ch.url;$("chEndpoint").value=String(ch.endpoint||"m3u8").toLowerCase()==="flv"?"flv":"m3u8";$("chGroup").value=group;$("chUA").value=ch.headers?.["User-Agent"]||ch.headers?.["user-agent"]||"";$("chRef").value=ch.headers?.Referer||ch.headers?.referer||"";$("chOrigin").value=ch.headers?.Origin||ch.headers?.origin||"";$("editorTitle").textContent="تعديل: "+ch.name;$("saveChannel").textContent="حفظ التعديلات";setDirty(false);validateForm(false);showPage("editor")}
-function formChannel(){return{id:$("chId").value.trim(),name:$("chName").value.trim(),url:$("chUrl").value.trim(),endpoint:$("chEndpoint").value,headers:{"User-Agent":$("chUA").value.trim(),"Referer":$("chRef").value.trim(),"Origin":$("chOrigin").value.trim()}}}
-$("channelForm").addEventListener("submit",async e=>{e.preventDefault();if(validateForm(true)){notify("أصلح الأخطاء في النموذج قبل الحفظ","error");return}const group=$("chGroup").value.trim(),ch=formChannel();if(!channels[group])channels[group]=[];if(editing){for(const g in channels)channels[g]=channels[g].filter(c=>String(c.id)!==editing.id);if(!channels[group])channels[group]=[];channels[group].push(ch)}else channels[group].push(ch);await saveChannels("تم حفظ القناة في GitHub")});
-async function saveChannels(msg){const btn=$("saveChannel");btn.disabled=true;try{const data={};for(const [g,arr] of Object.entries(channels))if(arr.length)data[g]=arr;const result=await api("/api/admin/channels",{method:"POST",body:JSON.stringify(data)});channels=data;clearEditor();fillGroups();renderChannels();fillTestSelect();renderDonut();await loadStats();notify(result.message||msg);showPage("channels")}catch(e){notify(e.message,"error")}finally{btn.disabled=false}}
+window.addEventListener("beforeunload",e=>{if(dirty||orderDirty){e.preventDefault();e.returnValue=""}});
+function editChannel(group,id){const ch=(channels[group]||[]).find(c=>String(c.id)===String(id));if(!ch)return;editing={group,id:String(id)};$("chId").value=ch.id;$("chName").value=ch.name;$("chUrl").value=ch.url;$("chEndpoint").value=String(ch.endpoint||"m3u8").toLowerCase()==="flv"?"flv":"m3u8";$("chGroup").value=group;$("chEnabled").checked=ch.enabled!==false;$("chUA").value=ch.headers?.["User-Agent"]||ch.headers?.["user-agent"]||"";$("chRef").value=ch.headers?.Referer||ch.headers?.referer||"";$("chOrigin").value=ch.headers?.Origin||ch.headers?.origin||"";$("editorTitle").textContent="تعديل: "+ch.name;$("saveChannel").textContent="حفظ التعديلات";setDirty(false);validateForm(false);showPage("editor")}
+function formChannel(){const o=formChannelBase();if(!$("chEnabled").checked)o.enabled=false;return o}
+function formChannelBase(){return{id:$("chId").value.trim(),name:$("chName").value.trim(),url:$("chUrl").value.trim(),endpoint:$("chEndpoint").value,headers:{"User-Agent":$("chUA").value.trim(),"Referer":$("chRef").value.trim(),"Origin":$("chOrigin").value.trim()}}}
+$("channelForm").addEventListener("submit",async e=>{e.preventDefault();if(validateForm(true)){notify("أصلح الأخطاء في النموذج قبل الحفظ","error");return}const group=$("chGroup").value.trim(),ch=formChannel();if(!channels[group])channels[group]=[];if(editing){const oldArr=channels[editing.group]||[];const idx=oldArr.findIndex(c=>String(c.id)===editing.id);const old=idx>=0?oldArr[idx]:{};const merged={...old,...ch};if(ch.enabled===undefined)delete merged.enabled;if(editing.group===group&&idx>=0)oldArr[idx]=merged;else{for(const g in channels)channels[g]=channels[g].filter(c=>String(c.id)!==editing.id);if(!channels[group])channels[group]=[];channels[group].push(merged)}}else channels[group].push(ch);await saveChannels("تم حفظ القناة في GitHub")});
+async function saveChannels(msg){const btn=$("saveChannel");btn.disabled=true;try{const data={};for(const [g,arr] of Object.entries(channels))if(arr.length)data[g]=arr;const result=await api("/api/admin/channels",{method:"POST",body:JSON.stringify(data)});channels=data;lastSaved=clone(data);orderDirty=false;clearEditor();fillGroups();renderChannels();fillTestSelect();renderDonut();await loadStats();notify(result.message||msg);showPage("channels")}catch(e){channels=clone(lastSaved);orderDirty=false;fillGroups();renderChannels();fillTestSelect();renderDonut();if(e.status===409){const go=await openDialog({title:"الملف تغيّر من مكان آخر",text:"تم تعديل قائمة القنوات من جلسة أو جهاز آخر بعد تحميل هذه الصفحة. لحماية تلك التعديلات لم يتم الحفظ. حمّل أحدث نسخة ثم أعد تنفيذ تعديلك.",ok:"تحميل أحدث نسخة"});if(go)await refreshAll()}else notify(e.message+" — لم يتم الحفظ وتمت العودة لآخر نسخة محفوظة","error")}finally{btn.disabled=false}}
 async function deleteChannel(group,id){const ch=(channels[group]||[]).find(c=>String(c.id)===String(id));if(!ch)return;const ok=await openDialog({title:"حذف القناة؟",text:"سيتم حذف القناة «"+ch.name+"» من ملف القنوات على GitHub، وسيتوقف رابطها النهائي عن العمل داخل التطبيق.",ok:"حذف نهائيًا",danger:true});if(!ok)return;channels[group]=channels[group].filter(c=>String(c.id)!==String(id));selected.delete(group+"\u0000"+id);await saveChannels("تم حذف القناة")}
 
 /* tester */
@@ -572,7 +664,7 @@ $("runHealthCheck").onclick=()=>runHealthCheck();$("runFailedCheck").onclick=()=
 /* import / export */
 $("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(channels,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="super-live-tv-channels.json";a.click();URL.revokeObjectURL(a.href)};
 $("importBtn").onclick=()=>$("importFile").click();
-$("importFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("صيغة JSON غير صحيحة");const ok=await openDialog({title:"استيراد قائمة القنوات؟",text:"استيراد هذا الملف سيستبدل قائمة القنوات الحالية بالكامل ويحفظها في GitHub.",ok:"استيراد واستبدال",danger:true});if(!ok)return;channels=data;await saveChannels("تم استيراد القنوات وحفظها")}catch(err){notify("فشل الاستيراد: "+err.message,"error")}finally{e.target.value=""}});
+$("importFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());const bad=validateImport(data);if(bad)throw new Error(bad);const d=computeDiff(channels,data);if(!d.add.length&&!d.del.length&&!d.mod.length){notify("الملف مطابق للقائمة الحالية — لا توجد فروق");return}const ok=await openDialog({title:"استيراد قائمة القنوات؟",text:"سيتم استبدال القائمة الحالية بمحتوى الملف وحفظها في GitHub. هذه هي الفروق:",ok:"استيراد واستبدال",danger:true,body:diffHtml(d)});if(!ok)return;channels=data;await saveChannels("تم استيراد القنوات وحفظها")}catch(err){notify("فشل الاستيراد: "+err.message,"error")}finally{e.target.value=""}});
 
 /* server UA */
 const DEFAULT_PROXY_UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
@@ -581,9 +673,49 @@ $("loadServerUABtn").onclick=loadServerUASettings;
 $("resetServerUABtn").onclick=async()=>{const ok=await openDialog({title:"استعادة القيم الافتراضية؟",text:"سيتم ملء الحقول بالقيم الافتراضية، ولن يتم الحفظ إلا عند الضغط على «حفظ إعدادات السيرفر».",ok:"استعادة"});if(!ok)return;$("serverNewUA").value="stv2026";$("serverOldUA").value="2026stv";$("serverProxyUA").value=DEFAULT_PROXY_UA};
 $("saveServerUABtn").onclick=async()=>{const btn=$("saveServerUABtn"),out=$("serverUAStatus"),newUA=$("serverNewUA").value.trim(),oldUA=$("serverOldUA").value.trim(),proxyUA=$("serverProxyUA").value.trim();if(!newUA||!oldUA)return notify("أدخل القيمتين قبل الحفظ","error");const ok=await openDialog({title:"حفظ إعدادات السيرفر؟",text:"سيؤثر التغيير على تحقق السيرفر من طلبات التطبيق. هل تريد حفظ القيم الجديدة؟",ok:"حفظ",danger:true});if(!ok)return;btn.disabled=true;out.classList.remove("hidden");out.textContent="جار حفظ إعدادات السيرفر في GitHub...";try{const r=await api("/api/admin/server-ua",{method:"POST",body:JSON.stringify({newUA,oldUA,proxyUA})});out.textContent=r.message||"تم الحفظ";notify(r.message||"تم الحفظ")}catch(e){out.textContent="فشل الحفظ: "+e.message;notify(e.message,"error")}finally{btn.disabled=false}};
 
+/* viewers (live) */
+let viewersTimer=null,viewersData=[],viewersAuto=true,viewersServerTime=Date.now(),showFullIp=false;const revealedIps=new Set();
+function maskIp(ip){ip=String(ip||"");if(!ip)return "—";if(ip.includes(":"))return ip.split(":").slice(0,3).join(":")+":****";const p=ip.split(".");return p.length===4?p[0]+"."+p[1]+".*.*":"***"}
+function deviceOf(ua){const l=String(ua||"").toLowerCase();if(!l)return "غير معروف";if(/exoplayer|stagefright|okhttp|dalvik/.test(l))return "Android (تطبيق)";if(/android/.test(l))return "Android";if(/iphone|ipad|ios|cfnetwork|applecoremedia/.test(l))return "iOS";if(/tizen|webos|smart-?tv|hbbtv|bravia|roku|aftb|fire ?tv/.test(l))return "Smart TV";if(/vlc/.test(l))return "VLC";if(/windows/.test(l))return "Windows";if(/mac os|macintosh/.test(l))return "macOS";if(/linux/.test(l))return "Linux";return "غير معروف"}
+function dur(sec){sec=Math.max(0,Math.round(sec));if(sec<60)return sec+" ث";const m=Math.floor(sec/60);if(m<60)return m+" د";return Math.floor(m/60)+" س "+(m%60)+" د"}
+function stopViewers(){if(viewersTimer){clearInterval(viewersTimer);viewersTimer=null}}
+function startViewers(){stopViewers();loadViewers();viewersTimer=setInterval(()=>{if(viewersAuto&&document.visibilityState==="visible")loadViewers()},10000)}
+async function loadViewers(){const t=$("viewersTable");try{const r=await api("/api/admin/viewers");viewersData=Array.isArray(r.viewers)?r.viewers:[];viewersServerTime=Number(r.serverTime)||Date.now();$("liveBadge").className="pill ok";renderViewers()}catch(e){$("liveBadge").className="pill bad";$("liveText").textContent="غير متاح";viewersData=[];if(e.status===404){t.className="empty";t.textContent="هذه الصفحة تحتاج إضافة تتبّع المشاهدين (ViewerTracker) في الـ Worker. الكود جاهز في ملف worker-additions.mjs."}else{t.className="status";t.textContent=e.message}}}
+function barRows(map,withAvatar){const arr=[...map.entries()].sort((a,b)=>b[1].n-a[1].n).slice(0,8);if(!arr.length)return '<div class="empty">لا توجد بيانات</div>';const max=arr[0][1].n||1;return '<div class="bars">'+arr.map(([k,v])=>'<div class="bar-row">'+(withAvatar?avatar({name:v.label,__group:v.group}).replace('class="av"','class="av sm"'):'')+'<div class="bar-main"><div class="bar-top"><span>'+esc(v.label)+'</span><b>'+v.n+'</b></div><div class="bar"><i style="width:'+Math.max(6,Math.round(v.n/max*100))+'%"></i></div></div></div>').join("")+'</div>'}
+function renderViewers(){
+ const all=viewersData,now=viewersServerTime;
+ $("liveText").textContent=all.length+" جلسة نشطة";
+ const ips=new Set(all.map(v=>v.ip)),countries=new Set(all.map(v=>v.country).filter(Boolean));
+ const byCh=new Map(),byCo=new Map();
+ all.forEach(v=>{const k=String(v.ch);const o=byCh.get(k)||{n:0,label:v.name||k,group:v.group};o.n++;byCh.set(k,o);const c=v.country||"غير معروف";const p=byCo.get(c)||{n:0,label:c};p.n++;byCo.set(c,p)});
+ $("viewersNow").textContent=all.length;$("viewersIps").textContent=ips.size;$("viewersCountries").textContent=countries.size;
+ const top=[...byCh.values()].sort((a,b)=>b.n-a.n)[0];$("viewersTop").textContent=top?top.label:"—";$("viewersTopSub").textContent=top?top.n+" جلسة":" ";
+ $("viewersByChannel").innerHTML=barRows(byCh,true);$("viewersByCountry").innerHTML=barRows(byCo,false);
+ const sel=$("viewersChannel"),cur=sel.value;sel.innerHTML='<option value="">كل القنوات</option>'+[...byCh.entries()].map(([id,o])=>'<option value="'+esc(id)+'">'+esc(o.label)+'</option>').join("");if(byCh.has(cur))sel.value=cur;
+ const q=$("viewersSearch").value.trim().toLowerCase(),cf=sel.value;
+ const rows=all.filter(v=>(!cf||String(v.ch)===cf)&&(!q||[v.ip,v.name,v.ch,v.country,v.city,v.org].some(x=>String(x||"").toLowerCase().includes(q)))).sort((a,b)=>b.lastSeen-a.lastSeen);
+ const t=$("viewersTable");
+ if(!rows.length){t.className="empty";t.textContent=all.length?"لا توجد نتائج مطابقة":"لا يوجد مشاهدون نشطون الآن.";return}
+ t.className="tablewrap";
+ t.innerHTML='<table><thead><tr><th>القناة</th><th>عنوان IP</th><th>الموقع</th><th>الشبكة</th><th>الجهاز</th><th>مدة المشاهدة</th><th>آخر نشاط</th></tr></thead><tbody>'+rows.map(v=>{const shown=showFullIp||revealedIps.has(v.ip),idle=(now-v.lastSeen)/1000;return '<tr><td><b>'+esc(v.name||v.ch)+'</b><div class="meta">'+esc(v.group||"")+'</div></td><td><div class="ipcell" dir="ltr"><code>'+esc(shown?v.ip:maskIp(v.ip))+'</code><button type="button" class="soft icon sm" data-vact="reveal" data-ip="'+esc(v.ip)+'" aria-label="'+(shown?"إخفاء العنوان":"إظهار العنوان")+'">'+ico("eye",15)+'</button><button type="button" class="soft icon sm" data-vact="copy" data-ip="'+esc(v.ip)+'" aria-label="نسخ العنوان">'+ico("copy",15)+'</button></div></td><td>'+esc([v.country,v.city].filter(Boolean).join(" · ")||"—")+'</td><td class="meta">'+esc(v.org||"—")+'</td><td title="'+esc(v.ua||"")+'">'+esc(deviceOf(v.ua))+'</td><td>'+dur((v.lastSeen-v.firstSeen)/1000)+'</td><td><span class="st '+(idle<45?'st-ok':'st-idle')+'"><i></i>'+(idle<5?"الآن":"منذ "+dur(idle))+'</span></td></tr>'}).join("")+'</tbody></table>'}
+$("viewersTable").addEventListener("click",e=>{const b=e.target.closest("[data-vact]");if(!b)return;const ip=b.dataset.ip;if(b.dataset.vact==="copy")copyText(ip,"عنوان IP");else{if(revealedIps.has(ip))revealedIps.delete(ip);else revealedIps.add(ip);renderViewers()}});
+$("viewersAuto").onclick=()=>{viewersAuto=!viewersAuto;$("viewersAuto").setAttribute("aria-pressed",viewersAuto);$("viewersAutoTxt").textContent=viewersAuto?"إيقاف التحديث التلقائي":"تشغيل التحديث التلقائي"};
+$("viewersRefresh").onclick=loadViewers;
+$("viewersMask").onclick=()=>{showFullIp=!showFullIp;$("viewersMaskTxt").textContent=showFullIp?"إخفاء العناوين":"إظهار كل العناوين";renderViewers()};
+$("viewersSearch").addEventListener("input",renderViewers);$("viewersChannel").addEventListener("change",renderViewers);
+
+/* history & restore */
+async function loadHistory(){const out=$("historyList");out.className="status";out.textContent="جار تحميل السجل...";try{const r=await api("/api/admin/history");const rows=Array.isArray(r.commits)?r.commits:[];if(!rows.length){out.className="empty";out.textContent="لا توجد تعديلات مسجلة.";return}out.className="tablewrap";out.innerHTML='<table><thead><tr><th>التاريخ</th><th>الوصف</th><th>بواسطة</th><th>النسخة</th><th>الإجراءات</th></tr></thead><tbody>'+rows.map((c,i)=>'<tr><td>'+esc(new Date(c.date).toLocaleString("ar-EG"))+'</td><td>'+esc(c.message||"—")+(i===0?' <span class="st st-ok"><i></i>الحالية</span>':'')+'</td><td>'+esc(c.author||"—")+'</td><td><code dir="ltr">'+esc(String(c.sha||"").slice(0,7))+'</code></td><td>'+(i===0?'<span class="muted">—</span>':'<button type="button" class="soft" data-hact="restore" data-sha="'+esc(c.sha)+'">معاينة واسترجاع</button>')+'</td></tr>').join("")+'</tbody></table>'}catch(e){if(e.status===404){out.className="empty";out.textContent="هذه الصفحة تحتاج مسارات /api/admin/history و /api/admin/restore في الـ Worker. الكود جاهز في ملف worker-additions.mjs."}else{out.className="status";out.textContent=e.message}}}
+async function restoreFlow(sha){if(!/^[0-9a-f]{7,40}$/i.test(sha))return;let snap;try{const r=await api("/api/admin/history?sha="+encodeURIComponent(sha));snap=r.channels}catch(e){notify(e.message,"error");return}
+ const err=validateImport(snap);if(err){notify("النسخة المختارة غير صالحة: "+err,"error");return}
+ const d=computeDiff(channels,snap);const ok=await openDialog({title:"استرجاع النسخة "+sha.slice(0,7)+"؟",text:"سيتم استبدال القائمة الحالية بهذه النسخة وحفظها كتعديل جديد على GitHub، والتاريخ كله يبقى محفوظًا. الفروق عن الحالة الحالية:",ok:"استرجاع",danger:true,body:diffHtml(d)});if(!ok)return;
+ try{const r=await api("/api/admin/restore",{method:"POST",body:JSON.stringify({sha})});notify(r.message||"تم الاسترجاع");await refreshAll();loadHistory()}catch(e){if(e.status===409){notify("الملف تغيّر أثناء الاسترجاع، أعد المحاولة","error");await refreshAll()}else notify(e.message,"error")}}
+$("historyList").addEventListener("click",e=>{const b=e.target.closest("[data-hact]");if(b)restoreFlow(b.dataset.sha)});
+$("refreshHistory").onclick=loadHistory;
+
 /* command palette (Ctrl/Cmd + K) */
 let palOpen=false,palItems=[],palIdx=0;
-const PAGES=[["overview","نظرة عامة","grid"],["channels","إدارة القنوات","tv"],["editor","إضافة / تعديل","plus"],["tester","اختبار المصدر","target"],["health","فحص القنوات","pulse"],["smartlinks","مدير الروابط الذكي","link"],["errors","سجل الأخطاء","alert"],["security","الحماية والإعدادات","shield"],["logs","حالة النظام","log"]];
+const PAGES=[["overview","نظرة عامة","grid"],["channels","إدارة القنوات","tv"],["editor","إضافة / تعديل","plus"],["tester","اختبار المصدر","target"],["health","فحص القنوات","pulse"],["viewers","المشاهدون الآن","users"],["smartlinks","مدير الروابط الذكي","link"],["errors","سجل الأخطاء","alert"],["history","سجل التعديلات","history"],["security","الحماية والإعدادات","shield"],["logs","حالة النظام","log"]];
 function palBuild(q){q=q.trim().toLowerCase();const m=s=>!q||String(s).toLowerCase().includes(q),out=[];
  if(q)allChannels().filter(c=>[c.name,c.id,c.__group].some(v=>String(v||"").toLowerCase().includes(q))).slice(0,8).forEach(c=>out.push({g:"قنوات",av:c,label:String(c.name),sub:c.__group+" · ID: "+c.id,run:()=>editChannel(c.__group,String(c.id))}));
  PAGES.filter(p=>m(p[1])).forEach(p=>out.push({g:"صفحات",icon:p[2],label:p[1],run:()=>showPage(p[0])}));
