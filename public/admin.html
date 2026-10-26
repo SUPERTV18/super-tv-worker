@@ -36,6 +36,9 @@
 <button class="nav" data-page="channels"><span>▤</span> إدارة القنوات</button>
 <button class="nav" data-page="editor"><span>＋</span> إضافة / تعديل</button>
 <button class="nav" data-page="tester"><span>◉</span> اختبار المصدر</button>
+<button class="nav" data-page="health"><span>✓</span> فحص القنوات</button>
+<button class="nav" data-page="smartlinks"><span>↗</span> مدير الروابط الذكي</button>
+<button class="nav" data-page="errors"><span>⚠</span> سجل الأخطاء</button>
 <button class="nav" data-page="security"><span>♢</span> الحماية والإعدادات</button>
 <button class="nav" data-page="logs"><span>≋</span> حالة النظام</button>
 </aside>
@@ -73,6 +76,25 @@
 <div class="toolbar"><button class="primary" type="submit" id="saveChannel">حفظ القناة</button><button class="soft" type="button" id="testCurrent">اختبار المصدر</button><button class="soft" type="button" id="cancelEdit">إلغاء التعديل</button></div>
 <p class="notice">الحفظ يكتب إلى <b>public/data/channels.json</b> في GitHub من خلال Worker، ثم يحدّث الذاكرة المؤقتة. لا تُرسل مفاتيح GitHub إلى المتصفح.</p>
 </form></div>
+</section>
+<section class="page" id="page-health">
+<div class="pagehead"><h2>فحص القنوات</h2><button class="primary" id="runHealthCheck">بدء الفحص</button></div>
+<div class="stats">
+<div class="stat"><div class="label">تم فحصها</div><div class="num" id="healthChecked">—</div><div class="sub">آخر دفعة فحص</div></div>
+<div class="stat"><div class="label">استجابة ناجحة</div><div class="num" id="healthGood">—</div><div class="sub">HTTP 2xx</div></div>
+<div class="stat"><div class="label">تحتاج مراجعة</div><div class="num" id="healthBad">—</div><div class="sub">أخطاء HTTP أو اتصال</div></div>
+<div class="stat"><div class="label">حد الفحص</div><div class="num">25</div><div class="sub">قناة في كل دفعة لتجنب ضغط المصدر</div></div>
+</div>
+<div class="panel"><h3>نتائج فحص المصادر</h3><p class="notice">الفحص يطلب المصدر ويلغي تنزيل جسم الاستجابة بعد معرفة الحالة. نجاح HTTP لا يضمن استمرار البث أو سلامة كل مقاطع HLS.</p><div id="healthResults" class="empty">اضغط «بدء الفحص» لفحص حتى 25 قناة.</div></div>
+</section>
+<section class="page" id="page-smartlinks">
+<div class="pagehead"><h2>مدير الروابط الذكي</h2></div>
+<div class="panel"><h3>تحويل رابط المصدر إلى رابط السيرفر</h3><div class="field"><label for="smartLinkInput">رابط المصدر أو ID القناة</label><input id="smartLinkInput" placeholder="ألصق رابط المصدر أو اكتب ID القناة"></div><button class="primary" id="smartLinkConvert">تحويل الرابط</button><div id="smartLinkResult" class="status hidden"></div><p class="notice">إذا أدخلت رابط مصدر محفوظًا، تتم مطابقة الرابط مع ملف القنوات ثم استخدام ID الأصلي المسجّل للقناة. لا يتم إنشاء قناة جديدة تلقائيًا.</p></div>
+<div class="panel"><h3>اختصارات</h3><div class="toolbar"><button class="soft" data-goto="channels">فتح إدارة القنوات</button><button class="soft" data-goto="editor">إضافة مصدر جديد</button></div></div>
+</section>
+<section class="page" id="page-errors">
+<div class="pagehead"><h2>سجل الأخطاء والتنبيهات</h2><button class="soft" id="refreshErrorLogs">تحديث السجل</button></div>
+<div class="panel"><p class="notice">سجل تشخيصي مؤقت في ذاكرة Worker الحالية فقط؛ لا يستخدم KV ولا يُعد سجلًا تاريخيًا دائمًا. سجلات Cloudflare الكاملة تبقى في Logs / Tail.</p><div id="errorLogResults" class="empty">جار تحميل السجل عند فتح الصفحة.</div></div>
 </section>
 <section class="page" id="page-tester">
 <div class="pagehead"><h2>اختبار مصدر البث</h2></div>
@@ -112,7 +134,7 @@ const $=id=>document.getElementById(id);
 let adminKey="",channels={},editing=null,stats=null;
 function notify(msg,type="ok"){const el=$("toast");el.textContent=msg;el.className="toast "+type;el.classList.remove("hidden");setTimeout(()=>el.classList.add("hidden"),4200)}
 async function api(path,opts={}){const headers={...(opts.headers||{}),"X-Admin-Key":adminKey};if(opts.body&&!headers["Content-Type"])headers["Content-Type"]="application/json";const res=await fetch(path,{...opts,headers});const data=await res.json().catch(()=>({error:"استجابة غير صالحة"}));if(!res.ok)throw new Error(data.error||("HTTP "+res.status));return data}
-function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));document.querySelectorAll(".nav").forEach(b=>b.classList.toggle("active",b.dataset.page===name));if(name==="editor"&&!editing)clearEditor()}
+function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));document.querySelectorAll(".nav").forEach(b=>b.classList.toggle("active",b.dataset.page===name));if(name==="editor"&&!editing)clearEditor();if(name==="errors")loadErrorLogs()}
 document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.goto)));
 function allChannels(){return Object.entries(channels).flatMap(([group,items])=>(Array.isArray(items)?items:[]).map(ch=>({...ch,__group:group})))}
@@ -122,6 +144,9 @@ $("logoutBtn").addEventListener("click",()=>{sessionStorage.removeItem("stvAdmin
 async function refreshAll(){try{channels=await api("/api/admin/channels");renderChannels();fillGroups();fillTestSelect();await loadStats();$("connection").textContent="متصل • تم التحميل";$("lastUpdate").textContent="آخر تحديث: "+new Date().toLocaleTimeString("ar-EG");$("systemInfo").textContent="واجهة الإدارة: متصلة\nتحميل ملف القنوات: ناجح\nعدد القنوات: "+allChannels().length+"\nآخر فحص: "+new Date().toISOString()}catch(e){$("connection").textContent="خطأ في الاتصال";notify(e.message,"error")}}
 async function loadStats(){try{stats=await api("/api/admin/stats");$("statChannels").textContent=stats.channelCount??"—";$("statGroups").textContent=stats.groupCount??"—";$("statViewers").textContent=stats.activeViewerRequests??"—";const rows=(stats.viewers||[]).sort((a,b)=>b.viewers-a.viewers).slice(0,10);$("topChannels").innerHTML=rows.length?'<table><thead><tr><th>القناة</th><th>المجموعة</th><th>الطلبات المرصودة</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+esc(x.group)+'</td><td>'+x.viewers+'</td></tr>').join("")+'</tbody></table>':'<div class="empty">لا توجد بيانات مشاهدة في الذاكرة الحالية</div>'}catch(e){$("topChannels").textContent=e.message}}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+async function runHealthCheck(){const out=$("healthResults"),btn=$("runHealthCheck");btn.disabled=true;out.className="status";out.textContent="جار فحص حتى 25 قناة...";try{const r=await api("/api/admin/check-channels",{method:"POST",body:JSON.stringify({})});$("healthChecked").textContent=r.checked;$("healthGood").textContent=r.results.filter(x=>x.ok).length;$("healthBad").textContent=r.results.filter(x=>!x.ok).length;out.className="tablewrap";out.innerHTML=r.results.length?'<table><thead><tr><th>القناة</th><th>المجموعة</th><th>HTTP</th><th>الزمن</th><th>الحالة</th></tr></thead><tbody>'+r.results.map(x=>'<tr><td>'+esc(x.name)+'<div class="muted">'+esc(x.id)+'</div></td><td>'+esc(x.group)+'</td><td>'+esc(x.status||"اتصال")+'</td><td>'+esc(x.elapsedMs)+' ms</td><td><span class="badge" style="color:'+(x.ok?'#6ce8bd':'#ff9bab')+'">'+(x.ok?'استجابة ناجحة':esc(x.error||"فشل HTTP"))+'</span></td></tr>').join("")+'</tbody></table>':'<div class="empty">لا توجد قنوات للفحص</div>';if(r.limited)out.insertAdjacentHTML("beforeend",'<p class="notice">تم فحص أول 25 قناة فقط؛ اضغط بدء الفحص مرة أخرى لإعادة الفحص.</p>');notify("انتهى الفحص: "+r.checked+" قناة")}catch(e){out.className="status";out.textContent="فشل الفحص: "+e.message;notify(e.message,"error")}finally{btn.disabled=false}}
+async function loadErrorLogs(){const out=$("errorLogResults");out.className="status";out.textContent="جار تحميل السجل...";try{const r=await api("/api/admin/logs");out.className="tablewrap";out.innerHTML=r.logs.length?'<table><thead><tr><th>الوقت</th><th>النوع</th><th>القناة</th><th>الحالة</th><th>التفاصيل</th></tr></thead><tbody>'+r.logs.map(x=>'<tr><td>'+esc(new Date(x.time).toLocaleString("ar-EG"))+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.channel||x.channelId||x.host||"—")+'</td><td>'+esc(x.status??"—")+'</td><td>'+esc(x.message||"—")+'</td></tr>').join("")+'</tbody></table>':'<div class="empty">لا توجد أحداث مسجلة في ذاكرة Worker الحالية.</div>';out.insertAdjacentHTML("beforeend",'<p class="notice">'+esc(r.scope)+'</p>')}catch(e){out.className="status";out.textContent=e.message}}
+function smartConvert(){const v=$("smartLinkInput").value.trim(),out=$("smartLinkResult");out.classList.remove("hidden");let ch=null;if(/^https?:\/\//i.test(v)){ch=allChannels().find(x=>String(x.url||"").trim()===v)}else{ch=allChannels().find(x=>String(x.id)===v)}if(!ch){out.textContent="لم يتم العثور على قناة مطابقة محفوظة. افتح إدارة القنوات وتأكد من رابط المصدر أو ID.";return}const source=String(ch.url||"");const route=(/^https?:\/\/vibertv\.fun\/ind4ex\.php\?[^#]*\blive=/i.test(source)||String(ch.endpoint||"m3u8").toLowerCase()==="flv")?"play.flv":"play.m3u8";const finalUrl="https://super-tv-api.stvl.workers.dev/api/"+route+"?id="+encodeURIComponent(String(ch.id));out.textContent="القناة: "+ch.name+"\nID الأصلي: "+ch.id+"\nرابط المصدر: "+source+"\nالرابط النهائي: "+finalUrl;const b=document.createElement("button");b.className="primary";b.textContent="نسخ الرابط النهائي";b.onclick=()=>copyText(finalUrl);out.appendChild(document.createTextNode("\n"));out.appendChild(b)}
 function fillGroups(){const groups=Object.keys(channels);$("groupFilter").innerHTML='<option value="">كل المجموعات</option>'+groups.map(g=>'<option>'+esc(g)+'</option>').join("");$("knownGroups").innerHTML=groups.map(g=>'<option value="'+esc(g)+'"></option>').join("")}
 const WORKER_PLAY_BASE="https://super-tv-api.stvl.workers.dev/api/play.m3u8?id=";
 function finalChannelUrl(ch){const source=String(ch.url||"");const isViberLive=/^https?:\/\/vibertv\.fun\/ind4ex\.php\?[^#]*\blive=/i.test(source);const route=(isViberLive||String(ch.endpoint||"m3u8").toLowerCase()==="flv")?"play.flv":"play.m3u8";return "https://super-tv-api.stvl.workers.dev/api/"+route+"?id="+encodeURIComponent(String(ch.id??""))}
@@ -151,6 +176,7 @@ async function runTest(url,headers,out){out.classList.remove("hidden");out.textC
 $("testForm").addEventListener("submit",e=>{e.preventDefault();runTest($("testUrl").value.trim(),{"User-Agent":$("testUA").value.trim(),"Referer":$("testRef").value.trim(),"Origin":$("testOrigin").value.trim()},$("testResult"))});
 $("testCurrent").onclick=()=>{const ch=formChannel();if(!ch.url)return notify("أدخل رابط المصدر أولًا","error");$("testUrl").value=ch.url;$("testUA").value=ch.headers["User-Agent"];$("testRef").value=ch.headers.Referer;$("testOrigin").value=ch.headers.Origin;showPage("tester");runTest(ch.url,ch.headers,$("testResult"))};
 $("refreshBtn").onclick=refreshAll;$("systemRefresh").onclick=refreshAll;
+$("runHealthCheck").onclick=runHealthCheck;$("refreshErrorLogs").onclick=loadErrorLogs;$("smartLinkConvert").onclick=smartConvert;$("smartLinkInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();smartConvert()}});
 $("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(channels,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="super-live-tv-channels.json";a.click();URL.revokeObjectURL(a.href)};
 $("importBtn").onclick=()=>$("importFile").click();
 $("importFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());if(!data||typeof data!=="object"||Array.isArray(data))throw new Error("صيغة JSON غير صحيحة");if(!confirm("استيراد هذا الملف سيستبدل قائمة القنوات الحالية. هل تريد المتابعة؟"))return;channels=data;await saveChannels("تم استيراد القنوات وحفظها")}catch(err){notify("فشل الاستيراد: "+err.message,"error")}finally{e.target.value=""}});
