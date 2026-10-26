@@ -273,7 +273,7 @@ details.adv .formgrid{padding:6px 16px 0}
 </div>
 <div id="orderBar" class="banner hidden" role="status"><span><span data-ico="alert"></span>تم تغيير ترتيب القنوات — لم يُحفظ بعد</span><div style="display:flex;gap:8px"><button type="button" id="orderSave" style="background:linear-gradient(120deg,#35c9ff,#6f9bff);color:#04121f;border-color:transparent">حفظ الترتيب</button><button type="button" id="orderDiscard">تجاهل</button></div></div>
 <div id="statusChips" class="chips"></div>
-<div id="bulkBar" class="bulk hidden"><b id="bulkCount"></b><div><button class="soft" id="bulkMove">نقل لمجموعة</button><button class="danger" id="bulkDelete">حذف</button><button class="ghost" id="bulkClear">إلغاء التحديد</button></div></div>
+<div id="bulkBar" class="bulk hidden"><b id="bulkCount"></b><div><button class="soft" id="bulkMove">نقل لمجموعة</button><button class="soft" id="bulkEnable">تفعيل المحدد</button><button class="soft" id="bulkDisable">إيقاف المحدد</button><button class="danger" id="bulkDelete">حذف</button><button class="ghost" id="bulkClear">إلغاء التحديد</button></div></div>
 <div id="channelCards" class="cards" aria-live="polite">
 <div class="skcard"><div class="r"><div class="sk" style="width:46px;height:46px;border-radius:50%"></div><div class="c"><div class="sk" style="height:14px;width:60%"></div><div class="sk" style="height:10px;width:35%"></div></div></div><div class="sk" style="height:34px"></div><div class="sk" style="height:38px"></div></div>
 <div class="skcard"><div class="r"><div class="sk" style="width:46px;height:46px;border-radius:50%"></div><div class="c"><div class="sk" style="height:14px;width:50%"></div><div class="sk" style="height:10px;width:30%"></div></div></div><div class="sk" style="height:34px"></div><div class="sk" style="height:38px"></div></div>
@@ -599,6 +599,17 @@ function removeKeys(keys){const set=new Set(keys);for(const g of Object.keys(cha
 async function moveChannels(keys){const g=await openDialog({title:"نقل إلى مجموعة",text:"اكتب اسم المجموعة أو اختر مجموعة موجودة.",ok:"نقل",input:{label:"المجموعة",value:""}});if(!g||!g.trim())return;const target=g.trim(),set=new Set(keys),moved=[];for(const gr of Object.keys(channels)){channels[gr]=(channels[gr]||[]).filter(c=>{if(set.has(gr+"\u0000"+c.id)){moved.push(c);return false}return true})}if(!moved.length)return;if(!channels[target])channels[target]=[];channels[target].push(...moved);selected.clear();await saveChannels("تم نقل "+moved.length+" قناة")}
 $("bulkClear").onclick=()=>{selected.clear();renderChannels()};
 $("bulkMove").onclick=()=>moveChannels([...selected]);
+async function setBulkEnabled(enabled){
+ const ids=new Set([...selected].map(String));if(!ids.size)return;
+ const count=[...ids].filter(id=>allChannels().some(ch=>String(ch.id)===id&&((ch.enabled!==false)!==enabled))).length;
+ if(!count){notify(enabled?"كل القنوات المحددة مفعّلة بالفعل":"كل القنوات المحددة متوقفة بالفعل");return}
+ const ok=await openDialog({title:(enabled?"تفعيل ":"إيقاف ")+count+" قناة؟",text:"سيتم "+(enabled?"إتاحة":"إيقاف")+" القنوات المحددة بعد حفظ التغييرات في ملف القنوات. راجع التحديد قبل التأكيد.",ok:enabled?"تفعيل وحفظ":"إيقاف وحفظ",danger:!enabled});
+ if(!ok)return;
+ for(const [g,arr] of Object.entries(channels))channels[g]=arr.map(ch=>ids.has(String(ch.id))?{...ch,enabled}:ch);
+ selected.clear();renderChannels();await saveChannels(enabled?"تم تفعيل القنوات المحددة":"تم إيقاف القنوات المحددة");
+}
+$("bulkEnable").onclick=()=>setBulkEnabled(true);
+$("bulkDisable").onclick=()=>setBulkEnabled(false);
 $("bulkDelete").onclick=async()=>{const n=selected.size;if(!n)return;const ok=await openDialog({title:"حذف "+n+" قناة؟",text:"سيتم حذف القنوات المحددة من ملف القنوات على GitHub، وستتوقف روابطها النهائية عن العمل داخل التطبيق.",ok:"حذف نهائيًا",danger:true});if(!ok)return;removeKeys([...selected]);selected.clear();await saveChannels("تم حذف القنوات المحددة")};
 
 /* diff / import validation */
