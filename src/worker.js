@@ -3025,6 +3025,15 @@ async function adminApi(request, env, url) {
     } catch (e) { return json({ error: "تعذر قراءة قائمة الحظر", detail: String(e.message || e), blocked: [] }, 502); }
   }
 
+  if (url.pathname === "/api/admin/viewer-history" && request.method === "GET") {
+    if (!env.TRACKER) return json({ error: "Durable Object TRACKER غير مربوط", viewers: [] }, 503);
+    try {
+      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
+      const response = await stub.fetch("https://viewer-tracker/history?limit=" + encodeURIComponent(url.searchParams.get("limit") || "500"));
+      return new Response(await response.text(), { status: response.status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
+    } catch (e) { return json({ error: "تعذر قراءة سجل المشاهدين", detail: String(e.message || e), viewers: [] }, 502); }
+  }
+
   if (url.pathname === "/api/admin/viewers" && request.method === "GET") {
     if (!env.TRACKER) return json({ error: "Durable Object TRACKER غير مربوط بإعدادات Worker.", status: "unavailable", viewers: [] }, 503);
     try {
@@ -3519,6 +3528,9 @@ export class ViewerTracker {
           now - Number(existing.lastSeen || 0) < 15000) {
         return json({ status: "ok", throttled: true });
       }
+      const previousLastSeen = Number(existing?.lastSeen || 0);
+      const isNewVisit = !existing || now - previousLastSeen > ACTIVE_MS;
+      const dateKey = new Date(Number(body.now) || now).toISOString().slice(0, 10);
       const record = {
         sessionId,
         ip: String(body.ip || existing?.ip || ""),
@@ -3537,22 +3549,57 @@ export class ViewerTracker {
         name: channelId,
         group: ""
       };
+      record.visitCount = Number(existing?.visitCount || 0) + (isNewVisit ? 1 : 0);
+      record.channelsSeen = Array.isArray(existing?.channelsSeen) ? existing.channelsSeen : [];
+      if (channelId && !record.channelsSeen.includes(channelId)) record.channelsSeen.push(channelId);
+      record.channelsSeen = record.channelsSeen.slice(-100);
       await this.state.storage.put(key, record);
-      return json({ status: "ok" });
+      if (isNewVisit) {
+        const visitKey = "visit:" + String(Number(body.now) || now).padStart(13, "0") + ":" + sessionId;
+        await this.state.storage.put(visitKey, {
+          sessionId, at: Number(body.now) || now, date: dateKey, channelId: channelId || existing?.ch || "",
+          ip: record.ip, ua: record.ua, device: record.device, app: record.app,
+          country: record.country, city: record.city, org: record.org
+        });
+      }
+      await this.state.storage.put("day:" + dateKey + ":" + sessionId, { sessionId, date: dateKey });
+      return json({ status: "ok", newVisit: isNewVisit });
+    }
+
+    if (url.pathname === "/history" && request.method === "GET") {
+      const all = await this.state.storage.list({ prefix: "viewer:", limit: 10000 });
+      const viewers = [...all.values()].filter(v => v && v.sessionId)
+        .sort((a, b) => Number(b.lastSeen || 0) - Number(a.lastSeen || 0));
+      const limit = Math.max(1, Math.min(2000, Number(url.searchParams.get("limit")) || 500));
+      const visits = await this.state.storage.list({ prefix: "visit:", limit: 10000 });
+      const nowMs = Date.now(), dayMs = 24 * 60 * 60 * 1000, weekMs = 7 * dayMs;
+      let todayVisits = 0, weekVisits = 0;
+      const todayUnique = new Set(), weekUnique = new Set();
+      for (const v of visits.values()) {
+        const at = Number(v.at || 0);
+        if (at >= nowMs - dayMs) { todayVisits++; todayUnique.add(v.sessionId); }
+        if (at >= nowMs - weekMs) { weekVisits++; weekUnique.add(v.sessionId); }
+      }
+      const dailyKeys = await this.state.storage.list({ prefix: "day:" + new Date().toISOString().slice(0, 10) + ":", limit: 10000 });
+      const weekDates = new Set(Array.from({length: 7}, (_, i) => new Date(nowMs - i * dayMs).toISOString().slice(0, 10)));
+      const dailyUnique = new Set(dailyKeys.values().map(v => v.sessionId));
+      const weekDaily = await this.state.storage.list({ prefix: "day:", limit: 10000 });
+      for (const v of weekDaily.values()) if (weekDates.has(v.date)) weekUnique.add(v.sessionId);
+      return json({
+        status: "ok", totalHistoricalViewers: viewers.length, totalVisits: visits.size,
+        todayVisits, weekVisits, todayUniqueViewers: dailyUnique.size, weekUniqueViewers: weekUnique.size,
+        viewers: viewers.slice(0, limit).map(v => ({...v, device: v.device || classifyViewerDevice(v.ua), app: v.app || classifyViewerApp(v.ua)})),
+        timestamp: new Date().toISOString()
+      });
     }
 
     if (url.pathname === "/list" && request.method === "GET") {
       const all = await this.state.storage.list({ prefix: "viewer:", limit: 2000 });
       const viewers = [];
-      const remove = [];
-      for (const [key, v] of all) {
-        if (!v || now - Number(v.lastSeen || 0) > ACTIVE_MS) {
-          remove.push(key);
-          continue;
-        }
+      for (const [, v] of all) {
+        if (!v || now - Number(v.lastSeen || 0) > ACTIVE_MS) continue;
         viewers.push(v);
       }
-      if (remove.length) await this.state.storage.delete(remove);
       viewers.sort((a, b) => Number(b.lastSeen) - Number(a.lastSeen));
       return json({ serverTime: now, viewers, activeSessions: viewers.length });
     }
