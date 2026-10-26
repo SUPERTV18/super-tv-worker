@@ -2893,9 +2893,13 @@ async function adminApi(request, env, url) {
 
   // Protected in-admin HLS preview. Accept a saved channel ID/group only;
   // never accept an arbitrary upstream URL from the browser.
-  if (url.pathname === "/api/admin/preview" && request.method === "POST") {
-    let body;
-    try { body = await request.json(); } catch { return json({ error: "بيانات غير صالحة" }, 400); }
+  if (url.pathname === "/api/admin/preview" && (request.method === "POST" || request.method === "GET")) {
+    let body = {};
+    if (request.method === "GET") {
+      body = { id: url.searchParams.get("id") || "", group: url.searchParams.get("group") || "" };
+    } else {
+      try { body = await request.json(); } catch { return json({ error: "بيانات غير صالحة" }, 400); }
+    }
     const id = String(body.id || "").trim();
     const group = String(body.group || "").trim();
     if (!id || !group || id.length > 160 || group.length > 160) {
