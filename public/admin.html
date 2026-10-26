@@ -407,7 +407,7 @@ details.adv .formgrid{padding:6px 16px 0}
 </div>
 <div class="dash">
 <div class="panel"><h3>حسب القناة</h3><div id="viewersByChannel"><div class="empty">—</div></div></div>
-<div class="panel"><h3>حسب الدولة</h3><div id="viewersByCountry"><div class="empty">—</div></div></div>
+<div class="panel"><h3>خريطة المشاهدين حسب الدولة</h3><div id="viewersByCountry"><div class="empty">—</div></div></div>
 </div>
 <div class="panel"><h3>الجلسات النشطة</h3>
 <div class="toolbar"><label class="searchbox"><span data-ico="search"></span><input id="viewersSearch" aria-label="بحث في المشاهدين" placeholder="ابحث بالـ IP أو القناة أو الدولة أو الشبكة..."></label><select id="viewersChannel" aria-label="القناة"><option value="">كل القنوات</option></select></div>
@@ -950,6 +950,29 @@ function stopViewers(){if(viewersTimer){clearInterval(viewersTimer);viewersTimer
 function startViewers(){stopViewers();loadViewers();loadViewerHistory();viewersTimer=setInterval(()=>{if(viewersAuto&&document.visibilityState==="visible")loadViewers()},10000)}
 async function loadViewers(){const t=$("viewersTable");t.className="cards";t.setAttribute("aria-busy","true");t.innerHTML=Array.from({length:4},()=>'<div class="skcard" aria-hidden="true"><div class="sk" style="height:14px;width:44%"></div><div class="sk" style="height:12px;width:82%"></div><div class="sk" style="height:12px;width:58%"></div></div>').join("");try{const r=await api("/api/admin/viewers");t.removeAttribute("aria-busy");viewersData=Array.isArray(r.viewers)?r.viewers:[];viewersServerTime=Number(r.serverTime)||Date.now();$("liveBadge").className="pill ok";renderViewers()}catch(e){$("liveBadge").className="pill bad";$("liveText").textContent="غير متاح";viewersData=[];if(e.status===404){t.className="empty";t.textContent="تتبّع الجلسات الفعلية غير مفعّل حاليًا؛ العداد المتاح يقيس طلبات القنوات فقط."}else{t.className="status";t.textContent=e.message}}}
 function barRows(map,withAvatar){const arr=[...map.entries()].sort((a,b)=>b[1].n-a[1].n).slice(0,8);if(!arr.length)return '<div class="empty">لا توجد بيانات</div>';const max=arr[0][1].n||1;return '<div class="bars">'+arr.map(([k,v])=>'<div class="bar-row">'+(withAvatar?avatar({name:v.label,__group:v.group}).replace('class="av"','class="av sm"'):'')+'<div class="bar-main"><div class="bar-top"><span>'+esc(v.label)+'</span><b>'+v.n+'</b></div><div class="bar"><i style="width:'+Math.max(6,Math.round(v.n/max*100))+'%"></i></div></div></div>').join("")+'</div>'}
+function renderCountryMap(byCo){
+ const el=$("viewersByCountry");if(!el)return;
+ const coords={US:[-98,39],CA:[-106,56],MX:[-102,23],BR:[-52,-10],AR:[-64,-34],CL:[-71,-30],CO:[-74,4],GB:[-3,55],IE:[-8,53],FR:[2,46],ES:[-4,40],PT:[-8,39],DE:[10,51],IT:[12,42],NL:[5,52],BE:[4,51],CH:[8,47],AT:[14,47],PL:[19,52],UA:[32,49],TR:[35,39],RU:[90,60],MA:[-7,32],DZ:[3,28],TN:[9,34],LY:[17,25],EG:[30,27],SD:[30,13],ET:[40,9],KE:[38,0],NG:[8,9],GH:[-2,8],ZA:[24,-29],SA:[45,24],AE:[54,24],QA:[51,25],KW:[47,29],BH:[50,26],OM:[57,21],JO:[36,31],IL:[35,31],IQ:[44,33],IR:[53,32],PK:[70,30],IN:[79,22],BD:[90,24],LK:[81,7],CN:[104,35],JP:[138,37],KR:[128,36],TH:[101,16],VN:[108,16],MY:[102,4],SG:[104,1],ID:[118,-2],PH:[122,12],AU:[134,-25],NZ:[172,-41]};
+ const total=[...byCo.values()].reduce((n,x)=>n+x.n,0);
+ if(!total){el.className="empty";el.textContent="لا توجد مواقع دول مسجلة للمشاهدين النشطين الآن.";return}
+ const W=720,H=300,project=([lon,lat])=>[W*(lon+180)/360,H*(90-lat)/180];
+ const continents=[
+ "M 55 70 L 93 38 150 30 188 52 178 82 145 95 126 124 100 112 83 91 Z",
+ "M 143 127 L 168 139 177 169 163 201 153 236 137 215 128 179 Z",
+ "M 306 56 L 337 40 366 50 383 73 364 91 337 86 320 72 Z",
+ "M 339 101 L 370 91 400 108 411 140 393 180 376 220 355 190 342 150 Z",
+ "M 377 49 L 433 31 507 36 559 58 632 69 657 98 618 119 563 109 524 133 475 113 438 89 400 80 Z",
+ "M 532 169 L 572 158 615 177 630 210 603 239 565 229 540 202 Z",
+ "M 628 233 L 663 227 681 245 662 263 635 255 Z"
+ ];
+ const mapBg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="خريطة تقريبية لتوزيع المشاهدين حسب الدولة" style="width:100%;display:block;max-height:300px">'+continents.map(d=>'<path d="'+d+'" fill="var(--line)" stroke="var(--muted)" stroke-opacity=".28" stroke-width="1"/>').join("");
+ const max=Math.max(...[...byCo.values()].map(x=>x.n),1);
+ const dots=[...byCo.entries()].map(([code,o])=>{const c=coords[String(code).toUpperCase()];if(!c)return "";const [x,y]=project(c),r=4+Math.sqrt(o.n/max)*9;return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="'+r.toFixed(1)+'" fill="var(--accent)" fill-opacity=".75" stroke="var(--bg)" stroke-width="1.5"><title>'+esc(o.label)+': '+o.n+' جلسة نشطة</title></circle><text x="'+x.toFixed(1)+'" y="'+(y+r+11).toFixed(1)+'" font-size="10" text-anchor="middle" fill="var(--text)">'+esc(String(code).toUpperCase())+'</text>'}).join("");
+ el.className="";
+ const unmapped=[...byCo.entries()].filter(([code])=>!coords[String(code).toUpperCase()]).sort((a,b)=>b[1].n-a[1].n);
+ const legend=[...byCo.entries()].sort((a,b)=>b[1].n-a[1].n).slice(0,6).map(([code,o])=>'<span style="display:inline-flex;gap:5px;align-items:center;padding:4px 8px;border:1px solid var(--line);border-radius:8px;font-size:12px"><b>'+esc(o.label)+'</b><span>'+o.n+'</span></span>').join("");
+ el.innerHTML=mapBg+dots+'</svg><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">'+legend+'</div>'+(unmapped.length?'<p class="notice">الدول غير الموضحة على الخريطة: '+unmapped.map(([code,o])=>esc(o.label)+' ('+o.n+')').join("، ")+'</p>':"")+'<p class="notice">إجمالي الجلسات النشطة حسب الدولة: '+total.toLocaleString("ar-EG")+'. مواقع النقاط تقريبية، ويعتمد التوزيع على رمز الدولة المرسل من Cloudflare.</p>';
+}
 function renderViewers(){
  const all=viewersData,now=viewersServerTime;
  $("liveText").textContent=all.length+" جلسة نشطة";
@@ -958,7 +981,7 @@ function renderViewers(){
  all.forEach(v=>{const k=String(v.ch);const o=byCh.get(k)||{n:0,label:v.name||k,group:v.group};o.n++;byCh.set(k,o);const c=v.country||"غير معروف";const p=byCo.get(c)||{n:0,label:c};p.n++;byCo.set(c,p)});
  $("viewersNow").textContent=all.length;$("viewersIps").textContent=ips.size;$("viewersCountries").textContent=countries.size;
  const top=[...byCh.values()].sort((a,b)=>b.n-a.n)[0];$("viewersTop").textContent=top?top.label:"—";$("viewersTopSub").textContent=top?top.n+" جلسة":" ";
- $("viewersByChannel").innerHTML=barRows(byCh,true);$("viewersByCountry").innerHTML=barRows(byCo,false);
+ $("viewersByChannel").innerHTML=barRows(byCh,true);renderCountryMap(byCo);
  const sel=$("viewersChannel"),cur=sel.value;sel.innerHTML='<option value="">كل القنوات</option>'+[...byCh.entries()].map(([id,o])=>'<option value="'+esc(id)+'">'+esc(o.label)+'</option>').join("");if(byCh.has(cur))sel.value=cur;
  const q=$("viewersSearch").value.trim().toLowerCase(),cf=sel.value;
  const rows=all.filter(v=>(!cf||String(v.ch)===cf)&&(!q||[v.ip,v.name,v.ch,v.country,v.city,v.org].some(x=>String(x||"").toLowerCase().includes(q)))).sort((a,b)=>b.lastSeen-a.lastSeen);
