@@ -3100,7 +3100,7 @@ async function adminApi(request, env, url) {
         if (target.protocol !== "http:" && target.protocol !== "https:") throw new Error("Unsupported protocol");
         const uaSettings = await getServerUASettings();
         const headers = getUpstreamHeaders(target.href, ch.headers, uaSettings.proxyUA);
-        const response = await fetch(target.href, { method: "GET", redirect: "follow", headers });
+        const response = await fetch(target.href, { method: "GET", redirect: "follow", headers, signal: AbortSignal.timeout(8000) });
         const contentType = response.headers.get("content-type") || "";
         let playlistText = "";
         let playlistDetected = false;
@@ -3148,7 +3148,8 @@ async function adminApi(request, env, url) {
             const mediaResponse = await fetch(mediaUrl.href, {
               method: "GET",
               redirect: "follow",
-              headers: { ...headers, Range: "bytes=0-0" }
+              headers: { ...headers, Range: "bytes=0-0" },
+              signal: AbortSignal.timeout(5000)
             });
             segmentStatus = mediaResponse.status;
             segmentElapsedMs = Date.now() - mediaStarted;
@@ -3188,7 +3189,9 @@ async function adminApi(request, env, url) {
         results.push(result);
         recordAdminEvent({ type: "channel_check", channelId: ch.id, channel: ch.name, status: result.status, ok: result.ok, elapsedMs: result.elapsedMs, message: result.ok ? "فحص المصدر نجح" : "استجابة HTTP غير ناجحة" });
       } catch (e) {
-        const result = { id: ch.id, name: ch.name, group: ch.group, status: 0, ok: false, category: "connection_error", categoryLabel: "فشل اتصال بالمصدر", contentType: "", elapsedMs: Date.now() - started, error: String(e.message || e), checkedAt: new Date().toISOString() };
+        const errorMessage = String(e.message || e);
+        const timedOut = /timeout|timed out|abort/i.test(errorMessage) || e?.name === "TimeoutError";
+        const result = { id: ch.id, name: ch.name, group: ch.group, status: 0, ok: false, category: timedOut ? "timeout" : "connection_error", categoryLabel: timedOut ? "انتهت مهلة الفحص" : "فشل اتصال بالمصدر", contentType: "", elapsedMs: Date.now() - started, error: timedOut ? "لم يستجب المصدر خلال المهلة المحددة" : errorMessage, checkedAt: new Date().toISOString() };
         results.push(result);
         recordAdminEvent({ type: "channel_check", channelId: ch.id, channel: ch.name, status: 0, ok: false, elapsedMs: result.elapsedMs, message: result.error });
       }
@@ -3239,7 +3242,7 @@ async function adminApi(request, env, url) {
     try {
       const uaSettings = await getServerUASettings();
       const headers = getUpstreamHeaders(target.href, body.headers || {}, uaSettings.proxyUA);
-      const response = await fetch(target.href, { method: "GET", redirect: "follow", headers });
+      const response = await fetch(target.href, { method: "GET", redirect: "follow", headers, signal: AbortSignal.timeout(8000) });
       const result = {
         status: response.status,
         ok: response.ok,
