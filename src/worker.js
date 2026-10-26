@@ -2844,6 +2844,104 @@ async function adminApi(request, env, url) {
     return json({ status: "ok", scope: "ذاكرة Worker الحالية فقط؛ السجلات تُمسح عند تبديل النسخة أو إعادة تشغيلها", logs: ADMIN_EVENT_LOGS.slice(0, 100), timestamp: new Date().toISOString() });
   }
 
+
+  // GitHub-backed channel history; admin authorization is enforced above.
+  if (url.pathname === "/api/admin/history" && request.method === "GET") {
+    if (!env.GITHUB_TOKEN) return json({ error: "يجب ضبط GITHUB_TOKEN لعرض سجل التعديلات." }, 503);
+    const apiBase = "https://api.github.com/repos/SUPERTV18/super-tv-worker";
+    const headers = {
+      "Authorization": "Bearer " + env.GITHUB_TOKEN,
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "SUPER-TV-Admin"
+    };
+    const requestedSha = url.searchParams.get("sha");
+    try {
+      if (requestedSha) {
+        if (!/^[0-9a-f]{7,40}$/i.test(requestedSha)) return json({ error: "معرّف النسخة غير صالح." }, 400);
+        const response = await fetch(apiBase + "/contents/public/data/channels.json?ref=" + encodeURIComponent(requestedSha), { headers });
+        const payload = await response.json();
+        if (!response.ok) return json({ error: response.status === 404 ? "ملف القنوات غير موجود في هذه النسخة." : "تعذر قراءة النسخة من GitHub.", detail: payload.message }, response.status === 404 ? 404 : 502);
+        const binary = atob(String(payload.content || "").replace(/\s/g, ""));
+        const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
+        const channels = JSON.parse(new TextDecoder().decode(bytes));
+        if (!validateChannelsData(channels)) return json({ error: "النسخة التاريخية تحتوي بيانات قنوات غير صالحة." }, 422);
+        return json({ sha: requestedSha, channels });
+      }
+      const response = await fetch(apiBase + "/commits?path=public/data/channels.json&per_page=30", { headers });
+      const payload = await response.json();
+      if (!response.ok) return json({ error: "تعذر تحميل سجل GitHub.", detail: payload.message }, 502);
+      const commits = payload.map(item => ({
+        sha: item.sha,
+        message: item.commit?.message || "",
+        date: item.commit?.committer?.date || item.commit?.author?.date || "",
+        author: item.author?.login || item.commit?.author?.name || "غير معروف"
+      }));
+      return json({ status: "ok", commits });
+    } catch (e) {
+      return json({ error: "فشل الاتصال بسجل GitHub.", detail: String(e.message || e) }, 502);
+    }
+  }
+
+  if (url.pathname === "/api/admin/restore" && request.method === "POST") {
+    if (!env.GITHUB_TOKEN) return json({ error: "يجب ضبط GITHUB_TOKEN لاسترجاع النسخ." }, 503);
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "بيانات الطلب غير صالحة." }, 400); }
+    const sha = String(body.sha || "");
+    if (!/^[0-9a-f]{7,40}$/i.test(sha)) return json({ error: "معرّف النسخة غير صالح." }, 400);
+    const apiUrl = "https://api.github.com/repos/SUPERTV18/super-tv-worker/contents/public/data/channels.json";
+    const headers = {
+      "Authorization": "Bearer " + env.GITHUB_TOKEN,
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "SUPER-TV-Admin"
+    };
+    try {
+      const historicalResponse = await fetch(apiUrl + "?ref=" + encodeURIComponent(sha), { headers });
+      const historical = await historicalResponse.json();
+      if (!historicalResponse.ok) return json({ error: "تعذر قراءة النسخة المختارة.", detail: historical.message }, historicalResponse.status === 404 ? 404 : 502);
+      const binary = atob(String(historical.content || "").replace(/\s/g, ""));
+      const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
+      let data;
+      try { data = JSON.parse(new TextDecoder().decode(bytes)); } catch { return json({ error: "النسخة المختارة ليست JSON صالحًا." }, 422); }
+      if (!validateChannelsData(data)) return json({ error: "النسخة المختارة تحتوي بيانات قنوات غير صالحة." }, 422);
+
+      const currentResponse = await fetch(apiUrl, { headers });
+      const current = await currentResponse.json();
+      if (!currentResponse.ok) return json({ error: "تعذر قراءة النسخة الحالية.", detail: current.message }, 502);
+      const encoded = btoa(Array.from(new TextEncoder().encode(JSON.stringify(data, null, 2)), b => String.fromCharCode(b)).join(""));
+      const saveResponse = await fetch(apiUrl, {
+        method: "PUT",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "Restore channels from commit " + sha.slice(0, 7) + " via SUPER LIVE TV Admin",
+          content: encoded,
+          sha: current.sha,
+          branch: "main"
+        })
+      });
+      const saved = await saveResponse.json();
+      if (!saveResponse.ok) return json({ error: "فشل حفظ النسخة المسترجعة.", detail: saved.message }, saveResponse.status === 409 ? 409 : 502);
+      CHANNELS_MEMORY_CACHE = data;
+      CHANNELS_MEMORY_CACHE_TIME = Date.now();
+      try { await caches.default.delete(new Request(CHANNELS_GITHUB_URL, { method: "GET" })); } catch {}
+      return json({ status: "ok", sha: saved.commit?.sha || null, message: "تم استرجاع القنوات وحفظها كتعديل جديد في GitHub." });
+    } catch (e) {
+      return json({ error: "فشل استرجاع النسخة.", detail: String(e.message || e) }, 502);
+    }
+  }
+
+  // The current Worker tracks per-channel request counts only, not viewer sessions/IPs.
+  // Return an explicit unavailable status rather than fabricating live viewer records.
+  if (url.pathname === "/api/admin/viewers" && request.method === "GET") {
+    return json({
+      error: "تتبّع الجلسات الفعلية غير مفعّل في هذه النسخة. المتاح حاليًا هو عدّاد طلبات مؤقت لكل قناة.",
+      status: "unavailable",
+      serverTime: Date.now(),
+      viewers: []
+    }, 503);
+  }
+
   if (url.pathname === "/api/admin/check-channels" && request.method === "POST") {
     let body = {};
     try { body = await request.json(); } catch {}
@@ -2891,7 +2989,7 @@ async function adminApi(request, env, url) {
           }
           playlistDetected = playlistText.trimStart().startsWith("#EXTM3U");
           if (playlistDetected) {
-            const lines = playlistText.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean);
+            const lines = playlistText.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
             playlistKind = lines.some(line => line.startsWith("#EXT-X-STREAM-INF")) ? "master"
               : lines.some(line => line.startsWith("#EXTINF")) ? "media" : "playlist";
             const afterExtinf = lines.findIndex(line => line.startsWith("#EXTINF"));
