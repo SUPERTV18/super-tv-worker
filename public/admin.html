@@ -217,6 +217,7 @@ details.adv .formgrid{padding:6px 16px 0}
 .login{margin:7vh 12px;padding:22px}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.viewer-history-table{min-width:1150px}.viewer-history-table tbody tr{transition:background .15s}.viewer-history-table tbody tr:hover{background:var(--surface-2,rgba(90,120,170,.08))}.viewer-device{display:flex;align-items:center;gap:10px;min-width:150px}.viewer-device-icon{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:rgba(0,191,255,.12);font-size:19px}.visit-count{display:inline-flex;min-width:32px;justify-content:center;padding:5px 10px;border-radius:10px;background:rgba(0,191,255,.12);font-weight:800}.ua-details{margin-top:6px;font-size:11px}.ua-details summary{cursor:pointer;color:var(--muted,#7c8798)}.ua-details code{display:block;max-width:260px;white-space:normal;overflow-wrap:anywhere;padding:8px}.blocked-label{color:#e05252;font-weight:700;margin-top:5px}.viewer-history-table button{white-space:nowrap}
 </style></head>
 <body>
 <section id="loginView" class="panel login">
@@ -713,7 +714,7 @@ $("viewersSearch").addEventListener("input",renderViewers);$("viewersChannel").a
 
 /* persistent viewer history */
 async function loadViewerHistory(){
- const out=$("viewerHistoryTable");out.className="status";out.textContent="جار تحميل السجل الدائم...";
+ const out=$("viewerHistoryTable");out.className="status";out.textContent="جار تحميل سجل المشاهدين...";
  try{
   const r=await api("/api/admin/viewer-history?limit=1000");
   $("histTotalViewers").textContent=Number(r.totalHistoricalViewers||0).toLocaleString("ar-EG");
@@ -725,10 +726,28 @@ async function loadViewerHistory(){
   const rows=Array.isArray(r.viewers)?r.viewers:[];
   if(!rows.length){out.className="empty";out.textContent="لا يوجد سجل بعد. سيظهر المشاهد بعد بدء مشاهدة قناة عبر السيرفر.";return}
   out.className="tablewrap";
-  out.innerHTML='<table><thead><tr><th>أول مشاهدة</th><th>آخر مشاهدة</th><th>القنوات التي شاهدها</th><th>الجهاز / التطبيق</th><th>User-Agent</th><th>الموقع</th><th>عدد الزيارات</th><th>IP</th></tr></thead><tbody>'+rows.map(v=>'<tr><td>'+esc(v.firstSeen?new Date(v.firstSeen).toLocaleString("ar-EG"):"—")+'</td><td>'+esc(v.lastSeen?new Date(v.lastSeen).toLocaleString("ar-EG"):"—")+'</td><td>'+esc((v.channelsSeen||[v.ch]).filter(Boolean).join(", ")||"—")+'</td><td>'+esc(v.device||deviceOf(v.ua))+'<div class="meta">'+esc(v.app||"غير معروف")+'</div></td><td><code dir="ltr" title="'+esc(v.ua||"")+'">'+esc(String(v.ua||"").slice(0,100)||"—")+'</code></td><td>'+esc([v.country,v.city,v.org].filter(Boolean).join(" · ")||"—")+'</td><td>'+esc(String(v.visitCount||1))+'</td><td><code dir="ltr">'+esc(maskIp(v.ip))+'</code></td></tr>').join("")+'</tbody></table>';
- }catch(e){out.className="status";out.textContent="تعذر تحميل السجل التاريخي: "+e.message}
+  out.innerHTML='<table class="viewer-history-table"><thead><tr><th>المشاهد / الجهاز</th><th>التطبيق</th><th>القنوات</th><th>أول مشاهدة</th><th>آخر مشاهدة</th><th>الزيارات</th><th>الموقع / الشبكة</th><th>IP</th><th>إدارة الحظر</th></tr></thead><tbody>'+rows.map(v=>{
+   const ua=String(v.ua||""),device=v.device&&v.device!=="غير معروف"?v.device:deviceOf(ua),app=v.app&&v.app!=="غير معروف"?v.app:appOf(ua);
+   const blocked=!!v.blocked;
+   return '<tr><td><div class="viewer-device"><span class="viewer-device-icon">'+deviceIcon(device)+'</span><div><b>'+esc(device)+'</b><div class="meta">ID: '+esc(String(v.sessionId||"").slice(0,10)||"—")+'</div></div></div></td><td><b>'+esc(app)+'</b><details class="ua-details"><summary>عرض User-Agent</summary><code dir="ltr">'+esc(ua||"غير متوفر")+'</code></details></td><td>'+esc((v.channelsSeen||[v.ch]).filter(Boolean).join("، ")||"—")+'</td><td>'+esc(v.firstSeen?new Date(v.firstSeen).toLocaleString("ar-EG"):"—")+'</td><td>'+esc(v.lastSeen?new Date(v.lastSeen).toLocaleString("ar-EG"):"—")+'</td><td><span class="visit-count">'+esc(String(v.visitCount||1))+'</span></td><td>'+esc([v.country,v.city].filter(Boolean).join(" · ")||"—")+'<div class="meta">'+esc(v.org||"")+'</div></td><td><code dir="ltr">'+esc(maskIp(v.ip))+'</code></td><td><button type="button" class="'+(blocked?'success':'danger')+'" data-hvact="'+(blocked?'unblock':'block')+'" data-session="'+esc(v.sessionId||"")+'">'+(blocked?'فك الحظر':'حظر الجهاز')+'</button>'+(blocked?'<div class="meta blocked-label">محظور</div>':'')+'</td></tr>'
+  }).join("")+'</tbody></table>';
+ }catch(e){out.className="status";out.textContent="تعذر تحميل سجل المشاهدين: "+e.message}
 }
+function appOf(ua){const l=String(ua||"").toLowerCase();if(/vlc/.test(l))return "VLC";if(/iptv smarters|smarters/.test(l))return "IPTV Smarters";if(/tivimate/.test(l))return "TiviMate";if(/kodi/.test(l))return "Kodi";if(/ott navigator|ottplayer/.test(l))return "OTT Player";if(/exoplayer/.test(l))return "مشغّل ExoPlayer";if(/stagefright|okhttp|dalvik/.test(l))return "تطبيق Android";if(/chrome|firefox|safari|edg\//.test(l))return "متصفح";return "غير معروف"}
+function deviceIcon(device){const d=String(device||"").toLowerCase();if(/android|iphone|ios|mobile/.test(d))return "📱";if(/tv|تلفزيون|smart/.test(d))return "📺";if(/windows|macos|linux/.test(d))return "💻";return "🖥️"}
 $("viewerHistoryRefresh").onclick=loadViewerHistory;
+$("viewerHistoryTable").addEventListener("click",async e=>{
+ const b=e.target.closest("[data-hvact]");if(!b)return;
+ const sid=b.dataset.session;if(!sid)return notify("معرّف الجهاز غير متاح لهذا السجل القديم","error");
+ const act=b.dataset.hvact,blocked=act==="block";
+ if(!confirm(blocked?"تأكيد حظر هذا الجهاز من تشغيل البث؟":"تأكيد فك الحظر عن هذا الجهاز؟"))return;
+ b.disabled=true;
+ try{
+  await api("/api/admin/block",{method:blocked?"POST":"DELETE",body:JSON.stringify({sessionId:sid,note:"إجراء من السجل الدائم"})});
+  notify(blocked?"تم حظر الجهاز":"تم فك الحظر","success");
+  await loadViewerHistory();await loadViewers();
+ }catch(err){notify(err.message||"تعذر تنفيذ الحظر","error");b.disabled=false}
+});
 
 /* history & restore */
 async function loadHistory(){const out=$("historyList");out.className="status";out.textContent="جار تحميل السجل...";try{const r=await api("/api/admin/history");const rows=Array.isArray(r.commits)?r.commits:[];if(!rows.length){out.className="empty";out.textContent="لا توجد تعديلات مسجلة.";return}out.className="tablewrap";out.innerHTML='<table><thead><tr><th>التاريخ</th><th>الوصف</th><th>بواسطة</th><th>النسخة</th><th>الإجراءات</th></tr></thead><tbody>'+rows.map((c,i)=>'<tr><td>'+esc(new Date(c.date).toLocaleString("ar-EG"))+'</td><td>'+esc(c.message||"—")+(i===0?' <span class="st st-ok"><i></i>الحالية</span>':'')+'</td><td>'+esc(c.author||"—")+'</td><td><code dir="ltr">'+esc(String(c.sha||"").slice(0,7))+'</code></td><td>'+(i===0?'<span class="muted">—</span>':'<button type="button" class="soft" data-hact="restore" data-sha="'+esc(c.sha)+'">معاينة واسترجاع</button>')+'</td></tr>').join("")+'</tbody></table>'}catch(e){if(e.status===404){out.className="empty";out.textContent="تعذر تحميل سجل التعديلات. تأكد من ضبط GITHUB_TOKEN في إعدادات Worker وصلاحية الوصول للمستودع."}else{out.className="status";out.textContent=e.message}}}
