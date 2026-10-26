@@ -124,7 +124,7 @@ async function loadStats(){try{stats=await api("/api/admin/stats");$("statChanne
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function fillGroups(){const groups=Object.keys(channels);$("groupFilter").innerHTML='<option value="">كل المجموعات</option>'+groups.map(g=>'<option>'+esc(g)+'</option>').join("");$("knownGroups").innerHTML=groups.map(g=>'<option value="'+esc(g)+'"></option>').join("")}
 const WORKER_PLAY_BASE="https://super-tv-api.stvl.workers.dev/api/play.m3u8?id=";
-function finalChannelUrl(ch){const route=String(ch.endpoint||"m3u8").toLowerCase()==="flv"?"play.flv":"play.m3u8";return "https://super-tv-api.stvl.workers.dev/api/"+route+"?id="+encodeURIComponent(String(ch.id??""))}
+function finalChannelUrl(ch){const source=String(ch.url||"");const isViberLive=/^https?:\/\/vibertv\.fun\/ind4ex\.php\?[^#]*\blive=/i.test(source);const route=(isViberLive||String(ch.endpoint||"m3u8").toLowerCase()==="flv")?"play.flv":"play.m3u8";return "https://super-tv-api.stvl.workers.dev/api/"+route+"?id="+encodeURIComponent(String(ch.id??""))}
 async function copyText(value){try{await navigator.clipboard.writeText(value);notify("تم نسخ الرابط")}catch(e){const ta=document.createElement("textarea");ta.value=value;document.body.appendChild(ta);ta.select();const ok=document.execCommand("copy");ta.remove();notify(ok?"تم نسخ الرابط":"تعذر النسخ؛ انسخ الرابط يدويًا",ok?"success":"error")}}
 function renderChannels(){
  const q=$("search").value.trim().toLowerCase(),gf=$("groupFilter").value;
