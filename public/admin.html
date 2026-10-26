@@ -985,7 +985,7 @@ async function renderViewerActivityHeatmap(matrix){
  el.className="";
  el.innerHTML='<div style="overflow-x:auto"><div style="min-width:560px"><div style="display:grid;grid-template-columns:54px repeat(24,minmax(12px,1fr));gap:3px;align-items:center;margin-bottom:6px"><div></div>'+heads+'</div>'+rows+'</div></div><p class="notice">إجمالي الجلسات المسجلة خلال آخر 7 أيام: '+total.toLocaleString("ar-EG")+' · أعلى كثافة: '+max.toLocaleString("ar-EG")+' زيارة في ساعة واحدة.</p>';
 }
-function loadViewerHistory(){
+async function loadViewerHistory(){
  const out=$("viewerHistoryTable");out.className="cards";out.setAttribute("aria-busy","true");out.innerHTML=Array.from({length:4},()=>'<div class="skcard" aria-hidden="true"><div class="sk" style="height:14px;width:42%"></div><div class="sk" style="height:12px;width:90%"></div><div class="sk" style="height:12px;width:68%"></div></div>').join("");
  try{
   const r=await api("/api/admin/viewer-history?limit=1000");
