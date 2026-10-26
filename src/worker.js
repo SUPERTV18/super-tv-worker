@@ -3591,10 +3591,16 @@ export class ViewerTracker {
       const nowMs = Date.now(), dayMs = 24 * 60 * 60 * 1000, weekMs = 7 * dayMs;
       let todayVisits = 0, weekVisits = 0;
       const todayUnique = new Set(), weekUnique = new Set();
+      const activityHeatmap = Array.from({ length: 7 }, () => Array(24).fill(0));
       for (const v of visits.values()) {
         const at = Number(v.at || 0);
         if (at >= nowMs - dayMs) { todayVisits++; todayUnique.add(v.sessionId); }
-        if (at >= nowMs - weekMs) { weekVisits++; weekUnique.add(v.sessionId); }
+        if (at >= nowMs - weekMs) {
+          weekVisits++;
+          weekUnique.add(v.sessionId);
+          const date = new Date(at);
+          if (at > 0 && at <= nowMs) activityHeatmap[date.getUTCDay()][date.getUTCHours()]++;
+        }
       }
       const dailyKeys = await this.state.storage.list({ prefix: "day:" + new Date().toISOString().slice(0, 10) + ":", limit: 10000 });
       const weekDates = new Set(Array.from({length: 7}, (_, i) => new Date(nowMs - i * dayMs).toISOString().slice(0, 10)));
@@ -3604,6 +3610,7 @@ export class ViewerTracker {
       return json({
         status: "ok", totalHistoricalViewers: viewers.length, totalVisits: visits.size,
         todayVisits, weekVisits, todayUniqueViewers: dailyUnique.size, weekUniqueViewers: weekUnique.size,
+        activityHeatmap, activityHeatmapTimezone: "UTC",
         viewers: viewers.slice(0, limit).map(v => ({...v, device: v.device || classifyViewerDevice(v.ua), app: v.app || classifyViewerApp(v.ua)})),
         timestamp: new Date().toISOString()
       });
