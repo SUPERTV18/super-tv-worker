@@ -2867,9 +2867,22 @@ async function adminApi(request, env, url) {
         const uaSettings = await getServerUASettings();
         const headers = getUpstreamHeaders(target.href, ch.headers, uaSettings.proxyUA);
         const response = await fetch(target.href, { method: "GET", redirect: "follow", headers });
+        const category = response.status === 403 ? "source_forbidden"
+          : response.status === 401 ? "source_unauthorized"
+          : response.status === 404 ? "source_not_found"
+          : response.status >= 500 ? "upstream_server_error"
+          : response.status >= 400 ? "http_error"
+          : response.ok ? "http_ok" : "http_redirect_or_other";
+        const categoryLabel = response.status === 403 ? "رفض المصدر (403)"
+          : response.status === 401 ? "يتطلب صلاحية (401)"
+          : response.status === 404 ? "المصدر غير موجود (404)"
+          : response.status >= 500 ? "خطأ في خادم المصدر"
+          : response.status >= 400 ? "خطأ HTTP"
+          : response.ok ? "استجابة HTTP ناجحة — البث غير مضمون" : "استجابة غير متوقعة";
         const result = {
           id: ch.id, name: ch.name, group: ch.group, status: response.status,
-          ok: response.ok, contentType: response.headers.get("content-type") || "",
+          ok: response.ok, category, categoryLabel,
+          contentType: response.headers.get("content-type") || "",
           elapsedMs: Date.now() - started,
           finalHost: (() => { try { return new URL(response.url || target.href).hostname; } catch { return ""; } })(),
           checkedAt: new Date().toISOString()
@@ -2878,7 +2891,7 @@ async function adminApi(request, env, url) {
         results.push(result);
         recordAdminEvent({ type: "channel_check", channelId: ch.id, channel: ch.name, status: result.status, ok: result.ok, elapsedMs: result.elapsedMs, message: result.ok ? "فحص المصدر نجح" : "استجابة HTTP غير ناجحة" });
       } catch (e) {
-        const result = { id: ch.id, name: ch.name, group: ch.group, status: 0, ok: false, contentType: "", elapsedMs: Date.now() - started, error: String(e.message || e), checkedAt: new Date().toISOString() };
+        const result = { id: ch.id, name: ch.name, group: ch.group, status: 0, ok: false, category: "connection_error", categoryLabel: "فشل اتصال بالمصدر", contentType: "", elapsedMs: Date.now() - started, error: String(e.message || e), checkedAt: new Date().toISOString() };
         results.push(result);
         recordAdminEvent({ type: "channel_check", channelId: ch.id, channel: ch.name, status: 0, ok: false, elapsedMs: result.elapsedMs, message: result.error });
       }
