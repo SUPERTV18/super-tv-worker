@@ -420,6 +420,7 @@ details.adv .formgrid{padding:6px 16px 0}
 <div class="stat"><div class="label">إجمالي جلسات المشاهدة</div><div class="num" id="histTotalVisits">—</div><div class="sub">جلسات جديدة مسجلة</div></div>
 </div>
 <div class="panel"><h3>نشاط آخر 24 ساعة حسب آخر ظهور مسجّل</h3><p class="notice">يعرض توزيع أوقات آخر ظهور للأجهزة الموجودة في السجل، وليس عدد المشاهدين الفعلي لكل ساعة؛ قد يتأثر بمدة الاحتفاظ بالسجل.</p><div id="viewerActivity24" aria-live="polite"><div class="empty">جار تجهيز الرسم…</div></div></div>
+<div class="panel"><h3>خريطة كثافة الزيارات — آخر 7 أيام</h3><p class="notice">كل مربع يمثل عدد جلسات الزيارة المسجلة في ساعة محددة من يوم الأسبوع. الأوقات بتوقيت UTC، والبيانات من سجل الزيارات الموجود بالفعل.</p><div id="viewerActivityHeatmap" aria-live="polite"><div class="empty">جار تجهيز خريطة النشاط…</div></div></div>
 <div class="panel"><div class="pagehead" style="margin:0 0 12px"><div><h3 style="margin:0">كل المشاهدين — السجل الدائم</h3><p class="notice" style="margin:6px 0 0">يحتفظ بأول وآخر مشاهدة والجهاز والتطبيق والقنوات التي شوهدت. السجل يبدأ من نشر هذه النسخة ولا يمكن استرجاع مشاهدين سابقين لم تُسجّل بياناتهم.</p></div><button class="soft" id="viewerHistoryRefresh" type="button">تحديث السجل</button></div><div id="viewerHistoryTable" class="empty">جار تحميل السجل التاريخي...</div></div>
 </section>
 
@@ -973,7 +974,18 @@ $("viewersSearch").addEventListener("input",renderViewers);$("viewersChannel").a
 
 /* persistent viewer history */
 async function renderViewerActivity24(rows){const el=$("viewerActivity24");if(!el)return;const now=Date.now(),hour=3600000,counts=Array(24).fill(0);for(const v of rows){const raw=v.lastSeen||v.firstSeen||0;const t=typeof raw==="number"?raw:new Date(raw).getTime();if(!Number.isFinite(t)||t<=0||t>now||now-t>=24*hour)continue;counts[Math.floor((now-t)/hour)]++}const total=counts.reduce((a,b)=>a+b,0);if(!total){el.className="empty";el.textContent="لا توجد أوقات ظهور مسجلة خلال آخر 24 ساعة.";return}const max=Math.max(...counts,1),W=720,H=190,L=32,R=12,T=14,B=38,iw=W-L-R,ih=H-T-B,bw=iw/24;const grid=[0,.5,1].map(k=>{const y=T+ih-ih*k;return '<line x1="'+L+'" y1="'+y+'" x2="'+(W-R)+'" y2="'+y+'" stroke="var(--line)" stroke-dasharray="3 4"/><text x="'+(L-7)+'" y="'+(y+4)+'" text-anchor="end" fill="var(--muted)" font-size="10">'+Math.round(max*k)+'</text>'}).join("");const bars=counts.map((v,age)=>{const x=L+(23-age)*bw+1,h=v/max*ih,y=T+ih-h,label=age===0?"آخر ساعة":age+" ساعة مضت";return '<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+Math.max(1,bw-3).toFixed(1)+'" height="'+Math.max(0,h).toFixed(1)+'" rx="2" fill="var(--accent)" opacity="'+(v ? .9 : .22)+'"><title>'+esc(label)+': '+v+' آخر ظهور</title></rect>'}).join("");const labels=[0,6,12,18,23].map(age=>'<text x="'+(L+(23-age+.5)*bw).toFixed(1)+'" y="'+(H-12)+'" text-anchor="middle" fill="var(--muted)" font-size="10">'+(age===0?"الآن":age+"س")+'</text>').join("");const peak=counts.indexOf(max);el.className="";el.innerHTML='<div style="width:100%;overflow-x:auto"><svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="توزيع آخر ظهور مسجل خلال 24 ساعة" style="width:100%;min-width:320px;display:block">'+grid+bars+labels+'</svg></div><p class="notice">أعلى فترة: '+(peak===0?"آخر ساعة":peak+" ساعة مضت")+' · '+max+' جهازًا آخر ظهور له في هذه الفترة · إجمالي السجلات ضمن الرسم: '+total+'</p>'}
-async function loadViewerHistory(){
+async function renderViewerActivityHeatmap(matrix){
+ const el=$("viewerActivityHeatmap");if(!el)return;
+ const days=["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+ if(!Array.isArray(matrix)||matrix.length!==7||!matrix.some(row=>Array.isArray(row)&&row.some(n=>Number(n)>0))){el.className="empty";el.textContent="لا توجد زيارات مسجلة كافية لعرض خريطة النشاط.";return}
+ const values=matrix.flat().map(n=>Math.max(0,Number(n)||0)),max=Math.max(...values,1);
+ const heads=Array.from({length:24},(_,h)=>'<div style="font-size:10px;color:var(--muted);text-align:center;min-width:16px">'+(h%3===0?String(h).padStart(2,"0"):"")+'</div>').join("");
+ const rows=days.map((day,d)=>'<div style="display:grid;grid-template-columns:54px repeat(24,minmax(12px,1fr));gap:3px;align-items:center;margin:4px 0"><div style="font-size:11px;color:var(--muted)">'+day+'</div>'+Array.from({length:24},(_,h)=>{const n=Math.max(0,Number(matrix[d]?.[h])||0),opacity=n?(.16+.84*n/max):.06;return '<div title="'+esc(day+'، الساعة '+String(h).padStart(2,"0")+':00 UTC — '+n+' زيارة')+'" aria-label="'+esc(day+' الساعة '+h+' UTC: '+n+' زيارة')+'" style="height:18px;border-radius:3px;background:var(--accent);opacity:'+opacity.toFixed(2)+';outline:1px solid var(--line)"></div>'}).join("")+'</div>').join("");
+ const total=values.reduce((a,b)=>a+b,0);
+ el.className="";
+ el.innerHTML='<div style="overflow-x:auto"><div style="min-width:560px"><div style="display:grid;grid-template-columns:54px repeat(24,minmax(12px,1fr));gap:3px;align-items:center;margin-bottom:6px"><div></div>'+heads+'</div>'+rows+'</div></div><p class="notice">إجمالي الجلسات المسجلة خلال آخر 7 أيام: '+total.toLocaleString("ar-EG")+' · أعلى كثافة: '+max.toLocaleString("ar-EG")+' زيارة في ساعة واحدة.</p>';
+}
+function loadViewerHistory(){
  const out=$("viewerHistoryTable");out.className="cards";out.setAttribute("aria-busy","true");out.innerHTML=Array.from({length:4},()=>'<div class="skcard" aria-hidden="true"><div class="sk" style="height:14px;width:42%"></div><div class="sk" style="height:12px;width:90%"></div><div class="sk" style="height:12px;width:68%"></div></div>').join("");
  try{
   const r=await api("/api/admin/viewer-history?limit=1000");
@@ -985,6 +997,7 @@ async function loadViewerHistory(){
   $("histTotalVisits").textContent=Number(r.totalVisits||0).toLocaleString("ar-EG");
   const rows=Array.isArray(r.viewers)?r.viewers:[];
   renderViewerActivity24(rows);
+  renderViewerActivityHeatmap(r.activityHeatmap);
   if(!rows.length){out.className="empty";out.textContent="لا يوجد سجل بعد. سيظهر المشاهد بعد بدء مشاهدة قناة عبر السيرفر.";return}
   out.className="tablewrap";
   out.innerHTML='<table class="viewer-history-table"><thead><tr><th>المشاهد / الجهاز</th><th>التطبيق</th><th>القنوات</th><th>أول مشاهدة</th><th>آخر مشاهدة</th><th>الزيارات</th><th>الموقع / الشبكة</th><th>IP</th><th>إدارة الحظر</th></tr></thead><tbody>'+rows.map(v=>{
