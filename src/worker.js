@@ -3449,6 +3449,8 @@ async function serveAsset(
 
 function classifyViewerDevice(ua) {
   const s = String(ua || "").toLowerCase();
+  // The official AppCreator24 app uses a custom User-Agent instead of a normal Android UA.
+  if (/stv2026|2026stv/.test(s)) return "Android (تطبيق SUPER LIVE TV)";
   if (/android|dalvik|exoplayer|stagefright/.test(s)) return "Android";
   if (/iphone|ipad|ipod|cfnetwork|applecoremedia/.test(s)) return "iPhone / iPad";
   if (/tizen|webos|smart-?tv|hbbtv|bravia|roku|aftb|fire ?tv/.test(s)) return "Smart TV";
@@ -3459,6 +3461,8 @@ function classifyViewerDevice(ua) {
 }
 function classifyViewerApp(ua) {
   const s = String(ua || "").toLowerCase();
+  // Recognize the app's configured security User-Agent.
+  if (/stv2026|2026stv/.test(s)) return "SUPER LIVE TV";
   if (/vlc/.test(s)) return "VLC";
   if (/iptv smarters|smarters/.test(s)) return "IPTV Smarters";
   if (/tivimate/.test(s)) return "TiviMate";
