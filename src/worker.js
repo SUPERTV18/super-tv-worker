@@ -2925,7 +2925,7 @@ async function adminApi(request, env, url) {
       const contentType = upstream.headers.get("content-type") || "";
       const finalUrl = upstream.url || target.href;
       const bodyText = await upstream.text();
-      if (!bodyText.replace(/^\\uFEFF/, "").trimStart().startsWith("#EXTM3U")) {
+      if (!bodyText.replace(/^\uFEFF/, "").trimStart().startsWith("#EXTM3U")) {
         return json({ error: "المصدر لم يُرجع قائمة HLS بصيغة M3U8؛ هذه المعاينة تدعم HLS فقط.", contentType }, 415);
       }
       const manifest = await rewriteHLSManifest(env, bodyText, finalUrl, url.origin, channel.headers || {}, "/api/admin/preview-hls");
@@ -2962,7 +2962,7 @@ async function adminApi(request, env, url) {
       const isManifest = isProbablyM3U8(finalUrl, contentType);
       if (isManifest) {
         const bodyText = await upstream.text();
-        if (bodyText.replace(/^\\uFEFF/, "").trimStart().startsWith("#EXTM3U")) {
+        if (bodyText.replace(/^\uFEFF/, "").trimStart().startsWith("#EXTM3U")) {
           const manifest = await rewriteHLSManifest(env, bodyText, finalUrl, url.origin, decoded.headers, "/api/admin/preview-hls");
           return new Response(manifest, { status: upstream.status, headers: {
             "Content-Type": "application/vnd.apple.mpegurl; charset=utf-8",
