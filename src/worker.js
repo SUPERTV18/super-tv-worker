@@ -3311,6 +3311,19 @@ async function serveAsset(
 // MAIN WORKER
 // ============================================================
 
+// Kept to preserve the existing Durable Object migration history.
+// The admin currently reports viewer-session tracking as unavailable; this class is not called by playback.
+export class ViewerTracker {
+  constructor(state, env) {
+    this.state = state;
+    this.env = env;
+  }
+
+  async fetch() {
+    return json({ error: "Viewer session tracking is not enabled." }, 503);
+  }
+}
+
 export default {
 
   async fetch(
