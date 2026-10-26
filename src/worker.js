@@ -1946,9 +1946,32 @@ async function playApi(
     // VIEWER
     // ========================================================
 
-    incrementViewer(
-      id
-    );
+    incrementViewer(id);
+    try {
+      if (env.TRACKER) {
+        const ip = getClientIP(request);
+        const ua = request.headers.get("User-Agent") || "";
+        const sessionHash = await sha256(ip + "|" + ua);
+        const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
+        await stub.fetch("https://viewer-tracker/heartbeat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: sessionHash,
+            ip,
+            ua,
+            channelId: String(id),
+            firstName: "",
+            country: request.cf?.country || "",
+            city: request.cf?.city || "",
+            org: request.cf?.asOrganization || "",
+            now: Date.now()
+          })
+        });
+      }
+    } catch (viewerError) {
+      console.warn("VIEWER_TRACKING_ERROR", String(viewerError.message || viewerError));
+    }
 
     // ========================================================
     // ADMIN API
@@ -2931,15 +2954,16 @@ async function adminApi(request, env, url) {
     }
   }
 
-  // The current Worker tracks per-channel request counts only, not viewer sessions/IPs.
-  // Return an explicit unavailable status rather than fabricating live viewer records.
   if (url.pathname === "/api/admin/viewers" && request.method === "GET") {
-    return json({
-      error: "تتبّع الجلسات الفعلية غير مفعّل في هذه النسخة. المتاح حاليًا هو عدّاد طلبات مؤقت لكل قناة.",
-      status: "unavailable",
-      serverTime: Date.now(),
-      viewers: []
-    }, 503);
+    if (!env.TRACKER) return json({ error: "Durable Object TRACKER غير مربوط بإعدادات Worker.", status: "unavailable", viewers: [] }, 503);
+    try {
+      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
+      const response = await stub.fetch("https://viewer-tracker/list", { method: "GET" });
+      const data = await response.json();
+      return json({ ...data, status: response.ok ? "ok" : "unavailable" }, response.status);
+    } catch (e) {
+      return json({ error: "تعذر قراءة جلسات المشاهدة", detail: String(e.message || e), viewers: [] }, 502);
+    }
   }
 
   if (url.pathname === "/api/admin/check-channels" && request.method === "POST") {
@@ -3083,7 +3107,7 @@ async function adminApi(request, env, url) {
         channelCount,
         groupCount,
         activeViewerRequests: viewerTotal,
-        viewerStatsScope: "ذاكرة نسخة Worker الحالية فقط وقد تختلف بين النسخ",
+        viewerStatsScope: "عداد طلبات مؤقت داخل ذاكرة Worker؛ الجلسات الفعلية تُعرض من Durable Object",
         viewers,
         timestamp: new Date().toISOString()
       });
@@ -3311,16 +3335,63 @@ async function serveAsset(
 // MAIN WORKER
 // ============================================================
 
-// Kept to preserve the existing Durable Object migration history.
-// The admin currently reports viewer-session tracking as unavailable; this class is not called by playback.
+// Durable Object-backed viewer sessions. Uses Durable Object storage only, never KV.
 export class ViewerTracker {
   constructor(state, env) {
     this.state = state;
     this.env = env;
   }
 
-  async fetch() {
-    return json({ error: "Viewer session tracking is not enabled." }, 503);
+  async fetch(request) {
+    const url = new URL(request.url);
+    const now = Date.now();
+    const ACTIVE_MS = 2 * 60 * 1000;
+
+    if (url.pathname === "/heartbeat" && request.method === "POST") {
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+      const sessionId = String(body.sessionId || "");
+      const channelId = String(body.channelId || "");
+      if (!/^[a-f0-9]{64}$/i.test(sessionId) || !channelId) {
+        return json({ error: "Invalid session data" }, 400);
+      }
+
+      const key = "viewer:" + sessionId;
+      const existing = await this.state.storage.get(key);
+      const record = {
+        sessionId,
+        ip: String(body.ip || ""),
+        ua: String(body.ua || "").slice(0, 512),
+        ch: channelId,
+        firstSeen: existing?.firstSeen || Number(body.now) || now,
+        lastSeen: Number(body.now) || now,
+        country: String(body.country || existing?.country || "").slice(0, 80),
+        city: String(body.city || existing?.city || "").slice(0, 100),
+        org: String(body.org || existing?.org || "").slice(0, 160),
+        name: channelId,
+        group: ""
+      };
+      await this.state.storage.put(key, record);
+      return json({ status: "ok" });
+    }
+
+    if (url.pathname === "/list" && request.method === "GET") {
+      const all = await this.state.storage.list({ prefix: "viewer:", limit: 2000 });
+      const viewers = [];
+      const remove = [];
+      for (const [key, v] of all) {
+        if (!v || now - Number(v.lastSeen || 0) > ACTIVE_MS) {
+          remove.push(key);
+          continue;
+        }
+        viewers.push(v);
+      }
+      if (remove.length) await this.state.storage.delete(remove);
+      viewers.sort((a, b) => Number(b.lastSeen) - Number(a.lastSeen));
+      return json({ serverTime: now, viewers, activeSessions: viewers.length });
+    }
+
+    return json({ error: "Not found" }, 404);
   }
 }
 
