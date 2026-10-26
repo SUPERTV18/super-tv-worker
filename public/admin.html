@@ -289,6 +289,32 @@ details.adv .formgrid{padding:6px 16px 0}
 .preview-toolbar-spacer{flex:1}
 .preview-footer-note{margin-top:10px}
 @media(max-width:600px){.preview-video-wrap{aspect-ratio:16/10}.preview-player-toolbar{left:8px;right:8px;bottom:8px;padding:7px;gap:6px}.preview-tool{width:34px;height:33px;min-height:33px}.preview-corner-mark{top:9px;left:9px;padding:5px 7px}.preview-player-topline{padding-bottom:9px}}
+/* Premium broadcast player v2 */
+.preview-card{width:min(980px,100%);padding:22px;background:radial-gradient(ellipse at 50% -15%,#10344a 0%,#0a131e 45%,#070b11 100%);border:1px solid #254458;box-shadow:0 30px 100px #000b}
+.preview-head{border-bottom:1px solid #ffffff12;padding-bottom:15px;margin-bottom:16px}
+.preview-brand-mark{background:linear-gradient(145deg,#00c8ff,#0875b7);color:#03111b;box-shadow:0 6px 22px #00bfff28}
+.preview-player-topline{padding:0 3px 13px}
+.preview-signal-icon{width:38px;height:38px;border-radius:12px;font-size:0;position:relative}
+.preview-signal-icon:before{content:"";width:13px;height:13px;border:2px solid currentColor;border-radius:3px;position:absolute;left:10px;top:10px;box-shadow:5px 5px 0 -2px #00c4ff}
+.preview-video-wrap{border-radius:18px;border-color:#2a4a5c;box-shadow:0 20px 65px #0009,inset 0 0 0 1px #ffffff08}
+.preview-video-vignette{background:linear-gradient(180deg,#02070ca8 0%,transparent 22%,transparent 52%,#02070c20 70%,#02070cf0 100%)}
+.preview-corner-mark{display:flex;align-items:center;gap:8px;letter-spacing:1.2px}
+.preview-corner-mark b{font-size:12px;color:#00c8ff;letter-spacing:1px}
+.preview-corner-mark span{font-size:9px;color:#d9edf7;letter-spacing:1.4px}
+.preview-live-overlay{position:absolute;z-index:4;right:15px;top:14px;display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:7px;background:#080f18c9;border:1px solid #ffffff20;color:#fff;font-size:11px;font-weight:800;backdrop-filter:blur(10px)}
+.preview-live-overlay i{width:7px;height:7px;border-radius:50%;background:#ff4257;box-shadow:0 0 12px #ff4257;animation:previewPulse 1.5s infinite}
+.preview-center-play{position:absolute;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);width:70px;height:70px;border:1px solid #ffffff8a;border-radius:50%;background:#00bfffdf;color:#03121c;font-size:25px;display:grid;place-items:center;box-shadow:0 0 0 10px #00bfff20,0 12px 35px #0008;backdrop-filter:blur(10px);cursor:pointer;transition:transform .18s,opacity .18s,background .18s}
+.preview-center-play:hover{transform:translate(-50%,-50%) scale(1.08);background:#49d5ff}
+.preview-video-wrap.is-playing .preview-center-play{opacity:0;pointer-events:none;transform:translate(-50%,-46%) scale(.92)}
+.preview-player-toolbar{left:14px;right:14px;bottom:14px;padding:9px 11px;background:linear-gradient(180deg,#101d2cdd,#070d15f5);border-color:#ffffff25;border-radius:14px}
+.preview-tool{width:40px;height:38px;min-height:38px;border-radius:10px;font-size:16px}
+.preview-tool-primary{width:42px;height:40px}
+.preview-tool:hover{background:#ffffff1c;border-color:#00bfff80}
+.preview-tool-primary:hover{background:#4bd6ff}
+.preview-connection-pill{font-size:10px;letter-spacing:.1px}
+.preview-status{background:#0b1722;border-color:#1d3546}
+.preview-footer-note{padding:2px 2px 0}
+@media(max-width:600px){.preview-card{padding:12px}.preview-video-wrap{aspect-ratio:16/10;border-radius:13px}.preview-center-play{width:54px;height:54px;font-size:20px}.preview-live-overlay{top:9px;right:9px;padding:5px 7px;font-size:9px}.preview-player-toolbar{left:8px;right:8px;bottom:8px;padding:7px;gap:6px}.preview-tool{width:34px;height:33px;min-height:33px}.preview-tool-primary{width:36px;height:35px}.preview-player-topline{gap:7px}.preview-connection-pill{max-width:118px;white-space:nowrap}}
 </style></head>
 <body>
 <section id="loginView" class="panel login">
@@ -497,7 +523,7 @@ details.adv .formgrid{padding:6px 16px 0}
 <div id="channelPreview" class="preview-scrim hidden" role="dialog" aria-modal="true" aria-labelledby="channelPreviewTitle">
   <div class="preview-card">
     <div class="preview-head"><div class="preview-title-wrap"><div class="preview-brand-mark" aria-hidden="true">STV</div><div><h3 id="channelPreviewTitle">معاينة بث القناة</h3><div class="preview-subtitle" id="channelPreviewSubtitle">SUPER LIVE TV · مشغل المعاينة الاحترافي</div></div></div><div style="display:flex;align-items:center;gap:10px"><span class="preview-live-pill"><i></i> LIVE</span><button class="soft icon" type="button" id="closeChannelPreview" aria-label="إغلاق المعاينة">✕</button></div></div>
-    <div class="preview-player-shell"><div class="preview-player-topline"><span class="preview-player-channel"><span class="preview-signal-icon">▰</span><span><b id="previewChannelName">اختر قناة للمعاينة</b><small id="previewChannelMeta">معاينة مباشرة داخل لوحة الإدارة</small></span></span><span class="preview-connection-pill" id="previewConnectionPill"><i></i><b id="previewConnectionText">جاهز للاختبار</b></span></div><div class="preview-video-wrap" id="previewVideoFrame"><video id="channelPreviewVideo" playsinline preload="none" aria-label="مشغل معاينة القناة"></video><div class="preview-video-vignette" aria-hidden="true"></div><div class="preview-corner-mark" aria-hidden="true">STV <span>LIVE PREVIEW</span></div><div class="preview-player-toolbar" aria-label="عناصر التحكم في المشغل"><button class="preview-tool preview-tool-primary" type="button" id="playChannelPreview" title="تشغيل أو إيقاف مؤقت" aria-label="تشغيل أو إيقاف مؤقت">▶</button><button class="preview-tool" type="button" id="stopChannelPreview" title="إيقاف البث" aria-label="إيقاف البث">■</button><button class="preview-tool" type="button" id="muteChannelPreview" title="كتم الصوت" aria-label="كتم الصوت">◖</button><button class="preview-tool" type="button" id="fitChannelPreview" title="تبديل ملاءمة الصورة" aria-label="تبديل ملاءمة الصورة">▣</button><span class="preview-toolbar-spacer"></span><button class="preview-tool preview-tool-full" type="button" id="fullscreenChannelPreview" title="ملء الشاشة" aria-label="ملء الشاشة">⛶</button></div></div></div>
+    <div class="preview-player-shell"><div class="preview-player-topline"><span class="preview-player-channel"><span class="preview-signal-icon">▰</span><span><b id="previewChannelName">اختر قناة للمعاينة</b><small id="previewChannelMeta">معاينة مباشرة داخل لوحة الإدارة</small></span></span><span class="preview-connection-pill" id="previewConnectionPill"><i></i><b id="previewConnectionText">جاهز للاختبار</b></span></div><div class="preview-video-wrap" id="previewVideoFrame"><video id="channelPreviewVideo" playsinline preload="none" aria-label="مشغل معاينة القناة"></video><div class="preview-video-vignette" aria-hidden="true"></div><div class="preview-corner-mark" aria-hidden="true"><b>STV</b><span>LIVE PREVIEW</span></div><button class="preview-center-play" id="previewCenterPlay" type="button" aria-label="تشغيل البث">▶</button><div class="preview-live-overlay"><i></i> بث مباشر</div><div class="preview-player-toolbar" aria-label="عناصر التحكم في المشغل"><button class="preview-tool preview-tool-primary" type="button" id="playChannelPreview" title="تشغيل أو إيقاف مؤقت" aria-label="تشغيل أو إيقاف مؤقت">▶</button><button class="preview-tool" type="button" id="stopChannelPreview" title="إيقاف البث" aria-label="إيقاف البث">■</button><button class="preview-tool" type="button" id="muteChannelPreview" title="كتم الصوت" aria-label="كتم الصوت">◖</button><button class="preview-tool" type="button" id="fitChannelPreview" title="تبديل ملاءمة الصورة" aria-label="تبديل ملاءمة الصورة">▣</button><span class="preview-toolbar-spacer"></span><button class="preview-tool preview-tool-full" type="button" id="fullscreenChannelPreview" title="ملء الشاشة" aria-label="ملء الشاشة">⛶</button></div></div></div>
     <div id="channelPreviewStatus" class="preview-status" role="status" aria-live="polite">اختر قناة محفوظة لبدء المعاينة.</div>
     <div class="preview-footer-note"><span>●</span> المعاينة تستخدم مسار الإدارة المحمي ولا تحفظ أي تغييرات على القناة.</div>
     <p class="notice">المعاينة محمية بمفتاح الإدارة. لا يظهر مفتاح التطبيق أو رابط المصدر الخام في رابط المشغل. أغلق النافذة لإيقاف البث وقطع طلبات المقاطع.</p>
@@ -896,7 +922,7 @@ async function startChannelPreview(){
  $("previewChannelMeta").textContent=previewChannel.group+" · معاينة بث محفوظ";
  $("previewConnectionPill").dataset.state="";$("previewConnectionText").textContent="جارٍ الاتصال";
  $("previewVideoFrame").classList.remove("fit-cover");$("previewVideoFrame").classList.add("fit-contain");
- $("playChannelPreview").innerHTML="▶ <span>تشغيل</span>";
+ $("playChannelPreview").innerHTML="▶";$("previewVideoFrame").classList.remove("is-playing");
  $("channelPreview").classList.remove("hidden");
  previewStatus("جارٍ تجهيز المصدر وتحميل مشغل HLS…");
  const video=$("channelPreviewVideo");
@@ -920,11 +946,13 @@ async function startChannelPreview(){
  }catch(e){previewStatus(e.message||"تعذر بدء المعاينة.","error");notify(e.message||"تعذر بدء المعاينة","error")}
 }
 $("startChannelPreview").addEventListener("click",startChannelPreview);
-$("playChannelPreview").addEventListener("click",()=>{const v=$("channelPreviewVideo");if(!previewHls)return startChannelPreview();if(v.paused){v.play().then(()=>{previewStatus("جارٍ تشغيل المعاينة.","ok");$("playChannelPreview").innerHTML="Ⅱ <span>إيقاف مؤقت</span>"}).catch(()=>previewStatus("اضغط تشغيل داخل الفيديو أو تحقق من الصوت والاتصال.","error"))}else{v.pause();$("playChannelPreview").innerHTML="▶ <span>استئناف</span>";previewStatus("تم إيقاف العرض مؤقتًا.")}});
-$("channelPreviewVideo").addEventListener("playing",()=>{$("previewConnectionPill").dataset.state="playing";$("previewConnectionText").textContent="البث يعمل";$("playChannelPreview").innerHTML="Ⅱ <span>إيقاف مؤقت</span>"});
+function toggleChannelPreviewPlayback(){const v=$("channelPreviewVideo");if(!previewHls)return startChannelPreview();if(v.paused){v.play().then(()=>{previewStatus("جارٍ تشغيل المعاينة.","ok");$("playChannelPreview").innerHTML="Ⅱ";$("previewVideoFrame").classList.add("is-playing")}).catch(()=>previewStatus("تعذر تشغيل البث. تحقق من الاتصال ثم حاول مرة أخرى.","error"))}else{v.pause();$("playChannelPreview").innerHTML="▶";$("previewVideoFrame").classList.remove("is-playing");previewStatus("تم إيقاف العرض مؤقتًا.")}}
+$("playChannelPreview").addEventListener("click",toggleChannelPreviewPlayback);
+$("previewCenterPlay").addEventListener("click",toggleChannelPreviewPlayback);
+$("channelPreviewVideo").addEventListener("playing",()=>{$("previewConnectionPill").dataset.state="playing";$("previewConnectionText").textContent="البث يعمل";$("playChannelPreview").innerHTML="Ⅱ";$("previewVideoFrame").classList.add("is-playing")});
 $("channelPreviewVideo").addEventListener("waiting",()=>{$("previewConnectionPill").dataset.state="";$("previewConnectionText").textContent="تحميل البيانات";});
-$("channelPreviewVideo").addEventListener("pause",()=>{if(previewHls)$("playChannelPreview").innerHTML="▶ <span>استئناف</span>"});
-$("stopChannelPreview").addEventListener("click",()=>{stopChannelPreview(false);$("previewConnectionPill").dataset.state="";$("previewConnectionText").textContent="متوقف";$("playChannelPreview").innerHTML="▶ <span>تشغيل مجددًا</span>"});
+$("channelPreviewVideo").addEventListener("pause",()=>{if(previewHls)$("playChannelPreview").innerHTML="▶";$("previewVideoFrame").classList.remove("is-playing")});
+$("stopChannelPreview").addEventListener("click",()=>{stopChannelPreview(false);$("previewConnectionPill").dataset.state="";$("previewConnectionText").textContent="متوقف";$("playChannelPreview").innerHTML="▶";$("previewVideoFrame").classList.remove("is-playing")});
 $("fitChannelPreview").addEventListener("click",()=>{const frame=$("previewVideoFrame"),cover=frame.classList.contains("fit-contain");frame.classList.toggle("fit-contain",!cover);frame.classList.toggle("fit-cover",cover);$("fitChannelPreview").innerHTML="▣ <span>"+(cover?"ملء الإطار":"ملاءمة")+"</span>"});
 $("closeChannelPreview").addEventListener("click",()=>stopChannelPreview(true));
 $("channelPreview").addEventListener("click",e=>{if(e.target===$("channelPreview"))stopChannelPreview(true)});
