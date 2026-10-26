@@ -684,7 +684,7 @@ $("saveServerUABtn").onclick=async()=>{const btn=$("saveServerUABtn"),out=$("ser
 /* viewers (live) */
 let viewersTimer=null,viewersData=[],viewersAuto=true,viewersServerTime=Date.now(),showFullIp=false;const revealedIps=new Set();
 function maskIp(ip){ip=String(ip||"");if(!ip)return "—";if(ip.includes(":"))return ip.split(":").slice(0,3).join(":")+":****";const p=ip.split(".");return p.length===4?p[0]+"."+p[1]+".*.*":"***"}
-function deviceOf(ua){const l=String(ua||"").toLowerCase();if(!l)return "غير معروف";if(/exoplayer|stagefright|okhttp|dalvik/.test(l))return "Android (تطبيق)";if(/android/.test(l))return "Android";if(/iphone|ipad|ios|cfnetwork|applecoremedia/.test(l))return "iOS";if(/tizen|webos|smart-?tv|hbbtv|bravia|roku|aftb|fire ?tv/.test(l))return "Smart TV";if(/vlc/.test(l))return "VLC";if(/windows/.test(l))return "Windows";if(/mac os|macintosh/.test(l))return "macOS";if(/linux/.test(l))return "Linux";return "غير معروف"}
+function deviceOf(ua){const l=String(ua||"").toLowerCase();if(!l)return "غير معروف";if(/stv2026|2026stv/.test(l))return "Android (تطبيق SUPER LIVE TV)";if(/exoplayer|stagefright|okhttp|dalvik/.test(l))return "Android (تطبيق)";if(/android/.test(l))return "Android";if(/iphone|ipad|ios|cfnetwork|applecoremedia/.test(l))return "iOS";if(/tizen|webos|smart-?tv|hbbtv|bravia|roku|aftb|fire ?tv/.test(l))return "Smart TV";if(/vlc/.test(l))return "VLC";if(/windows/.test(l))return "Windows";if(/mac os|macintosh/.test(l))return "macOS";if(/linux/.test(l))return "Linux";return "غير معروف"}
 function dur(sec){sec=Math.max(0,Math.round(sec));if(sec<60)return sec+" ث";const m=Math.floor(sec/60);if(m<60)return m+" د";return Math.floor(m/60)+" س "+(m%60)+" د"}
 function stopViewers(){if(viewersTimer){clearInterval(viewersTimer);viewersTimer=null}}
 function startViewers(){stopViewers();loadViewers();loadViewerHistory();viewersTimer=setInterval(()=>{if(viewersAuto&&document.visibilityState==="visible")loadViewers()},10000)}
@@ -733,7 +733,7 @@ async function loadViewerHistory(){
   }).join("")+'</tbody></table>';
  }catch(e){out.className="status";out.textContent="تعذر تحميل سجل المشاهدين: "+e.message}
 }
-function appOf(ua){const l=String(ua||"").toLowerCase();if(/vlc/.test(l))return "VLC";if(/iptv smarters|smarters/.test(l))return "IPTV Smarters";if(/tivimate/.test(l))return "TiviMate";if(/kodi/.test(l))return "Kodi";if(/ott navigator|ottplayer/.test(l))return "OTT Player";if(/exoplayer/.test(l))return "مشغّل ExoPlayer";if(/stagefright|okhttp|dalvik/.test(l))return "تطبيق Android";if(/chrome|firefox|safari|edg\//.test(l))return "متصفح";return "غير معروف"}
+function appOf(ua){const l=String(ua||"").toLowerCase();if(/stv2026|2026stv/.test(l))return "SUPER LIVE TV";if(/vlc/.test(l))return "VLC";if(/iptv smarters|smarters/.test(l))return "IPTV Smarters";if(/tivimate/.test(l))return "TiviMate";if(/kodi/.test(l))return "Kodi";if(/ott navigator|ottplayer/.test(l))return "OTT Player";if(/exoplayer/.test(l))return "مشغّل ExoPlayer";if(/stagefright|okhttp|dalvik/.test(l))return "تطبيق Android";if(/chrome|firefox|safari|edg\//.test(l))return "متصفح";return "غير معروف"}
 function deviceIcon(device){const d=String(device||"").toLowerCase();if(/android|iphone|ios|mobile/.test(d))return "📱";if(/tv|تلفزيون|smart/.test(d))return "📺";if(/windows|macos|linux/.test(d))return "💻";return "🖥️"}
 $("viewerHistoryRefresh").onclick=loadViewerHistory;
 $("viewerHistoryTable").addEventListener("click",async e=>{
