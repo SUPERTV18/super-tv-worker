@@ -19,6 +19,20 @@
 .sidebar{background:linear-gradient(165deg,#101d30,#0b1422 80%);border-color:#263d57}.sidebar .nav{min-height:48px}.panel h3{display:flex;align-items:center;gap:9px}.panel h3:before{content:"";width:4px;height:17px;border-radius:4px;background:linear-gradient(#29d8ff,#6b69ff);display:inline-block}
 @media(max-width:850px){.welcome{padding:22px}.welcome-art{width:145px;flex-basis:145px;transform:scale(.82);margin-left:-12px}.welcome-copy{max-width:calc(100% - 130px)}}
 @media(max-width:560px){.welcome{min-height:0;padding:20px 17px}.welcome-art{display:none}.welcome-copy{max-width:100%}.welcome-copy h2{font-size:22px}.welcome-actions button{font-size:12px;padding:10px 12px}.welcome-tag{font-size:9px;letter-spacing:1px}}
+
+/* Premium admin login styling */
+#loginView.login{max-width:520px;margin:8vh auto;padding:36px 38px 34px;border:1px solid #27617d;border-radius:28px;background:linear-gradient(145deg,#111f34,#091321);box-shadow:0 30px 100px #0008,0 0 0 1px #37cfff0c;position:relative;overflow:hidden}
+#loginView.login:before{width:320px;height:230px;top:-140px;left:-95px;background:#00cfff32;filter:blur(48px)}
+#loginView.login:after{content:"";position:absolute;inset:auto 24px 0;height:2px;background:linear-gradient(90deg,transparent,#27d6ff,#586dff,transparent)}
+#loginView .brand{gap:16px;margin-bottom:26px}
+#loginView .logo{width:66px;height:66px;border-radius:21px;font-size:20px;box-shadow:0 0 0 7px #1bbfff0b,0 12px 35px #008cff40}
+#loginView .brand h1{font-size:23px;letter-spacing:.3px}
+#loginView .notice{padding:15px 16px;border:1px solid #25465f;border-radius:15px;background:linear-gradient(120deg,#10283a,#10192b);line-height:2}
+#loginView .field{margin:22px 0 18px}
+#loginView input{width:100%;min-height:50px;border:1px solid #294661;border-radius:14px;background:#070f1c;color:#fff;padding:13px 15px;outline:none}
+#loginView input:focus{border-color:#30cfff;box-shadow:0 0 0 4px #22c8ff18}
+#loginView #loginBtn{min-height:51px;border-radius:14px;font-size:15px;background:linear-gradient(115deg,#08bfe8,#3d72ff 62%,#7659f5);box-shadow:0 12px 30px #1c79ff35}
+@media(max-width:600px){#loginView.login{margin:6vh 14px;padding:26px 22px;border-radius:22px}#loginView .brand h1{font-size:20px}#loginView .logo{width:58px;height:58px}}
 </style></head>
 <body>
 <section id="loginView" class="panel login">
