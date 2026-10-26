@@ -3030,7 +3030,16 @@ async function adminApi(request, env, url) {
     try {
       const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
       const response = await stub.fetch("https://viewer-tracker/history?limit=" + encodeURIComponent(url.searchParams.get("limit") || "500"));
-      return new Response(await response.text(), { status: response.status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
+      const data = await response.json();
+      if (response.ok && Array.isArray(data.viewers)) {
+        const blockedResponse = await stub.fetch("https://viewer-tracker/blocked");
+        const blockedData = blockedResponse.ok ? await blockedResponse.json() : { blocked: [] };
+        const blockedIds = new Set((blockedData.blocked || []).map(v => String(v.sessionId)));
+        data.viewers = data.viewers.map(v => ({ ...v, blocked: blockedIds.has(String(v.sessionId)),
+          device: v.device || classifyViewerDevice(v.ua), app: v.app || classifyViewerApp(v.ua) }));
+        data.blockedCount = blockedIds.size;
+      }
+      return json(data, response.status);
     } catch (e) { return json({ error: "تعذر قراءة سجل المشاهدين", detail: String(e.message || e), viewers: [] }, 502); }
   }
 
