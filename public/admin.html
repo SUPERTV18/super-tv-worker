@@ -897,7 +897,7 @@ async function startChannelPreview(){
    let message="حدث خطأ أثناء تشغيل البث.";
    if(data.type===Hls.ErrorTypes.NETWORK_ERROR)message="تعذر تحميل قائمة التشغيل أو أحد المقاطع. قد يكون المصدر منتهي الصلاحية أو يرفض طلب المعاينة.";
    else if(data.type===Hls.ErrorTypes.MEDIA_ERROR)message="حدث خطأ في فك الفيديو؛ تتم محاولة استعادة المشغل.";
-   previewStatus(message+" ( "+String(data.details||data.type||"خطأ")+" )","error");$("previewConnectionPill").dataset.state="error";$("previewConnectionText").textContent="خطأ في البث");
+   previewStatus(message+" ( "+String(data.details||data.type||"خطأ")+" )","error");$("previewConnectionPill").dataset.state="error";$("previewConnectionText").textContent="خطأ في البث";
    if(data.type===Hls.ErrorTypes.MEDIA_ERROR){try{previewHls.recoverMediaError()}catch{}}
   });
   previewHls.loadSource(streamUrl);
