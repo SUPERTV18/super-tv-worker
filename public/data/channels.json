@@ -345,12 +345,13 @@
     {
       "id": "b6_SD",
       "name": "Bein Sports 6 SD",
-      "url": "http://het2.2depannage.cyou/196194/tracks-v1a1/mono.m3u8",
+      "url": "http://assets.pushyourcss.world:8080/assets/res2/java2/1544.css?x=/hls/",
       "headers": {
-        "User-Agent": "",
+        "User-Agent": "OSCARTV2021",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "b7_SD",
