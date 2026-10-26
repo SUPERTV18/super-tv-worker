@@ -3149,6 +3149,29 @@ export default {
         request.url
       );
 
+    // Always serve the latest admin HTML directly and prevent browser/CDN caching.
+    // This only affects the admin page; playback routes and KV bindings are unchanged.
+    if (
+      url.pathname === "/admin" ||
+      url.pathname === "/admin/" ||
+      url.pathname === "/admin.html"
+    ) {
+      const assetUrl = new URL(request.url);
+      assetUrl.pathname = "/admin.html";
+      const assetResponse = await env.ASSETS.fetch(
+        new Request(assetUrl.toString(), request)
+      );
+      const headers = new Headers(assetResponse.headers);
+      headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+      headers.set("Pragma", "no-cache");
+      headers.set("Expires", "0");
+      return new Response(assetResponse.body, {
+        status: assetResponse.status,
+        statusText: assetResponse.statusText,
+        headers
+      });
+    }
+
     // ========================================================
     // CLEAN OLD MEMORY DATA
     // ========================================================
