@@ -3401,6 +3401,13 @@ export class ViewerTracker {
       const existing = await this.state.storage.get(key);
       // Segment requests refresh activity but do not create an unknown session.
       if (!channelId && !existing) return json({ status: "ignored", reason: "session-not-found" });
+      // Avoid a durable storage write for every HLS segment. Refresh at most once per
+      // 15 seconds unless the viewer switches channels.
+      if (existing &&
+          (!channelId || channelId === String(existing.ch || "")) &&
+          now - Number(existing.lastSeen || 0) < 15000) {
+        return json({ status: "ok", throttled: true });
+      }
       const record = {
         sessionId,
         ip: String(body.ip || existing?.ip || ""),
