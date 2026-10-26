@@ -832,7 +832,43 @@ $("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(channels,null,2)
 $("importBtn").onclick=()=>$("importFile").click();
 $("importM3uBtn").onclick=()=>$("importM3uFile").click();
 function parseM3U(text){const lines=String(text||"").replace(/^\uFEFF/,"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean),out=[];let meta=null;const attr=(line,key)=>{const re=new RegExp(key+'="([^"]*)"',"i"),m=line.match(re);return m?m[1]:""};for(const line of lines){if(line.startsWith("#EXTINF:")){const comma=line.indexOf(",");const attrs=comma>=0?line.slice(0,comma):line;meta={name:(comma>=0?line.slice(comma+1).trim():"")||attr(attrs,"tvg-name")||attr(attrs,"tvg-id"),id:attr(attrs,"tvg-id"),group:attr(attrs,"group-title")||"مستوردة",logo:attr(attrs,"tvg-logo")};continue}if(/^https?:\/\//i.test(line)){meta=meta||{name:"",id:"",group:"مستوردة"};out.push({name:meta.name||"قناة "+(out.length+1),url:line,group:meta.group||"مستوردة",requestedId:meta.id,logo:meta.logo});meta=null}}return out}
-function importM3UPreview(items){if(!items.length){notify("لم يتم العثور على روابط HTTP/HTTPS صالحة في الملف","error");return}const existing=new Set(allChannels().map(c=>String(c.id))),seen=new Set(existing),ready=[];const slug=v=>String(v||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"_").replace(/^_+|_+$/g,"").slice(0,48);for(const item of items){if(item.requestedId&&existing.has(String(item.requestedId)))continue;const base=slug(item.requestedId)||slug(item.name)||"imported_"+(ready.length+1);let id=base,n=2;while(seen.has(id))id=base+"_"+n++;seen.add(id);ready.push({id,name:item.name,url:item.url,endpoint:/\.flv(?:$|\?)/i.test(item.url)?"flv":"m3u8",...(item.logo?{logo:item.logo}:{}),__group:item.group})}const preview='<p>تم العثور على <b>'+items.length+'</b> رابطًا، صالح للإضافة <b>'+ready.length+'</b>.</p><div class="tablewrap" style="max-height:280px;overflow:auto"><table><thead><tr><th>القناة</th><th>المجموعة</th><th>الرابط</th></tr></thead><tbody>'+ready.slice(0,50).map(c=>'<tr><td>'+esc(c.name)+'<div class="muted">'+esc(c.id)+'</div></td><td>'+esc(c.__group)+'</td><td style="max-width:220px;overflow-wrap:anywhere">'+esc(c.url)+'</td></tr>').join("")+'</tbody></table></div>'+(ready.length>50?'<p class="notice">يتم عرض أول 50 قناة فقط في المعاينة.</p>':"")+'<p class="notice">ستُضاف القنوات دون استبدال القائمة الحالية. لن يتم الحفظ قبل تأكيدك.</p>';openDialog({title:"معاينة استيراد M3U",text:"راجع القنوات قبل إضافتها.",ok:"إضافة "+ready.length+" قناة",body:preview}).then(async ok=>{if(!ok||!ready.length)return;for(const c of ready){const g=c.__group;delete c.__group;if(!channels[g])channels[g]=[];channels[g].push(c)}await saveChannels("تم استيراد "+ready.length+" قناة من M3U")})}
+function importM3UPreview(items){
+if(!items.length){notify("لم يتم العثور على روابط HTTP/HTTPS صالحة في الملف","error");return}
+const existingChannels=allChannels().map(c=>({...c,__group:c.__group||c.group||""}));
+const existingIds=new Set(existingChannels.map(c=>String(c.id||"")));
+const seenUrls=new Map(),seenNames=new Map(),seenRequestedIds=new Set();
+const normalizeUrl=v=>String(v||"").trim().replace(/\\s+/g,"");
+const normalizeName=v=>String(v||"").trim().replace(/\\s+/g," ").toLocaleLowerCase();
+const nameKey=(name,group)=>normalizeName(name)+"\\u0000"+normalizeName(group);
+for(const c of existingChannels){
+const url=normalizeUrl(c.url);if(url&&!seenUrls.has(url))seenUrls.set(url,{name:c.name,group:c.__group,source:"القائمة الحالية"});
+const nk=nameKey(c.name,c.__group);if(normalizeName(c.name)&&!seenNames.has(nk))seenNames.set(nk,{name:c.name,group:c.__group,source:"القائمة الحالية"});
+}
+const ready=[],duplicates=[];
+const slug=v=>String(v||"").normalize("NFKD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-zA-Z0-9_-]+/g,"_").replace(/^_+|_+$/g,"").slice(0,48);
+for(let i=0;i<items.length;i++){
+const item=items[i],url=normalizeUrl(item.url),nk=nameKey(item.name,item.group),rid=String(item.requestedId||"").trim();
+let reason="",match=null;
+if(url&&seenUrls.has(url)){reason="رابط المصدر موجود بالفعل";match=seenUrls.get(url)}
+else if(rid&&existingIds.has(rid)){reason="معرّف القناة موجود بالفعل";match={name:rid,group:"",source:"القائمة الحالية"}}
+else if(normalizeName(item.name)&&seenNames.has(nk)){reason="الاسم موجود في المجموعة نفسها";match=seenNames.get(nk)}
+else if(rid&&seenRequestedIds.has(rid)){reason="معرّف مكرر داخل الملف";match={name:rid,group:item.group,source:"الملف المستورد"}}
+if(reason){duplicates.push({...item,__reason:reason,__match:match});continue}
+const base=slug(rid)||slug(item.name)||"imported_"+(i+1);let id=base,n=2;
+while(existingIds.has(id)||ready.some(c=>c.id===id))id=base+"_"+n++;
+ready.push({id,name:item.name,url:item.url,endpoint:/\\.flv(?:$|\\?)/i.test(item.url)?"flv":"m3u8",...(item.logo?{logo:item.logo}:{}),__group:item.group});
+if(url)seenUrls.set(url,{name:item.name,group:item.group,source:"الملف المستورد"});
+if(normalizeName(item.name))seenNames.set(nk,{name:item.name,group:item.group,source:"الملف المستورد"});
+if(rid)seenRequestedIds.add(rid);
+}
+const rowHtml=c=>'<tr><td>'+esc(c.name)+'<div class="muted">'+esc(c.id||c.requestedId||"بدون ID")+'</div></td><td>'+esc(c.__group||c.group||"مستوردة")+'</td><td style="max-width:220px;overflow-wrap:anywhere">'+esc(c.url)+'</td></tr>';
+const preview='<p>إجمالي الروابط: <b>'+items.length+'</b> — جديدة: <b>'+ready.length+'</b> — مكررة مستبعدة: <b>'+duplicates.length+'</b>.</p>'+
+(duplicates.length?'<details style="margin:10px 0"><summary>عرض القنوات المكررة ('+duplicates.length+')</summary><div class="tablewrap" style="max-height:200px;overflow:auto"><table><thead><tr><th>القناة</th><th>المجموعة</th><th>سبب الاستبعاد</th></tr></thead><tbody>'+duplicates.slice(0,50).map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+esc(c.group)+'</td><td>'+esc(c.__reason)+'</td></tr>').join("")+'</tbody></table></div>'+(duplicates.length>50?'<p class="notice">يتم عرض أول 50 قناة مكررة فقط.</p>':"")+'</details>':'<p class="notice">لم يتم العثور على قنوات مكررة.</p>')+
+'<div class="tablewrap" style="max-height:280px;overflow:auto"><table><thead><tr><th>القناة الجديدة</th><th>المجموعة</th><th>الرابط</th></tr></thead><tbody>'+ready.slice(0,50).map(rowHtml).join("")+'</tbody></table></div>'+
+(ready.length>50?'<p class="notice">يتم عرض أول 50 قناة جديدة فقط في المعاينة.</p>':"")+
+'<p class="notice">القنوات المكررة مستبعدة تلقائيًا. لن يتم حفظ أي شيء قبل تأكيدك.</p>';
+openDialog({title:"معاينة استيراد M3U",text:"راجع القنوات الجديدة والمكررة قبل الإضافة.",ok:"إضافة "+ready.length+" قناة جديدة",body:preview}).then(async ok=>{if(!ok||!ready.length)return;for(const c of ready){const g=c.__group;delete c.__group;if(!channels[g])channels[g]=[];channels[g].push(c)}await saveChannels("تم استيراد "+ready.length+" قناة جديدة من M3U")})
+}
 $("importFile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{const data=JSON.parse(await f.text());const bad=validateImport(data);if(bad)throw new Error(bad);const d=computeDiff(channels,data);if(!d.add.length&&!d.del.length&&!d.mod.length){notify("الملف مطابق للقائمة الحالية — لا توجد فروق");return}const ok=await openDialog({title:"استيراد قائمة القنوات؟",text:"سيتم استبدال القائمة الحالية بمحتوى الملف وحفظها في GitHub. هذه هي الفروق:",ok:"استيراد واستبدال",danger:true,body:diffHtml(d)});if(!ok)return;channels=data;await saveChannels("تم استيراد القنوات وحفظها")}catch(err){notify("فشل الاستيراد: "+err.message,"error")}finally{e.target.value=""}});
 
 /* server UA */
