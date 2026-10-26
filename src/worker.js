@@ -3033,6 +3033,12 @@ async function adminApi(request, env, url) {
       const data = await response.json();
       if (response.ok && Array.isArray(data.viewers)) {
         try {
+          const blockResponse = await stub.fetch("https://viewer-tracker/blocked");
+          const blockData = blockResponse.ok ? await blockResponse.json() : { blocked: [] };
+          const blockedIds = new Set((blockData.blocked || []).map(v => String(v.sessionId)));
+          data.viewers = data.viewers.map(v => ({ ...v, blocked: blockedIds.has(String(v.sessionId)) }));
+        } catch {}
+        try {
           const channels = await loadChannels(env);
           const index = new Map();
           for (const [group, items] of Object.entries(channels)) {
