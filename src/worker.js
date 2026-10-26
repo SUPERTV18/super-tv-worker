@@ -1632,6 +1632,18 @@ async function hlsApi(
 
   }
 
+  // Check block list on every HLS request, including playlist and segment requests.
+  try {
+    if (env.TRACKER) {
+      const sessionHash = await sha256(getClientIP(request) + "|" + (request.headers.get("User-Agent") || ""));
+      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
+      const check = await stub.fetch("https://viewer-tracker/is-blocked", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: sessionHash })
+      });
+      if (check.ok && (await check.json()).blocked) return text("هذا الجهاز محظور من تشغيل البث", 403);
+    }
+  } catch (e) { console.warn("BLOCK_CHECK_ERROR", String(e.message || e)); }
+
   // Refresh the viewer heartbeat from HLS segment/playlist requests.
   // Durable Object throttles writes per session; no KV operations are used.
   try {
@@ -1966,6 +1978,15 @@ async function playApi(
 
       return security.response;
 
+    }
+
+    if (env.TRACKER) {
+      const sessionHash = await sha256(getClientIP(request) + "|" + (request.headers.get("User-Agent") || ""));
+      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
+      const check = await stub.fetch("https://viewer-tracker/is-blocked", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: sessionHash })
+      });
+      if (check.ok && (await check.json()).blocked) return text("هذا الجهاز محظور من تشغيل البث", 403);
     }
 
     // ========================================================
@@ -2980,6 +3001,30 @@ async function adminApi(request, env, url) {
     }
   }
 
+  if (url.pathname === "/api/admin/block" && (request.method === "POST" || request.method === "DELETE")) {
+    let body = {}; try { body = await request.json(); } catch { return json({ error: "بيانات غير صالحة" }, 400); }
+    const sessionId = String(body.sessionId || "");
+    if (!/^[a-f0-9]{64}$/i.test(sessionId)) return json({ error: "معرّف الجهاز غير صالح" }, 400);
+    if (!env.TRACKER) return json({ error: "Durable Object TRACKER غير مربوط" }, 503);
+    try {
+      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
+      const response = await stub.fetch("https://viewer-tracker/" + (request.method === "POST" ? "block" : "unblock"), {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, note: String(body.note || "").slice(0, 200), now: Date.now() })
+      });
+      return new Response(await response.text(), { status: response.status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
+    } catch (e) { return json({ error: "تعذر تحديث الحظر", detail: String(e.message || e) }, 502); }
+  }
+
+  if (url.pathname === "/api/admin/blocked" && request.method === "GET") {
+    if (!env.TRACKER) return json({ error: "Durable Object TRACKER غير مربوط", blocked: [] }, 503);
+    try {
+      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
+      const response = await stub.fetch("https://viewer-tracker/blocked");
+      return new Response(await response.text(), { status: response.status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
+    } catch (e) { return json({ error: "تعذر قراءة قائمة الحظر", detail: String(e.message || e), blocked: [] }, 502); }
+  }
+
   if (url.pathname === "/api/admin/viewers" && request.method === "GET") {
     if (!env.TRACKER) return json({ error: "Durable Object TRACKER غير مربوط بإعدادات Worker.", status: "unavailable", viewers: [] }, 503);
     try {
@@ -2996,6 +3041,8 @@ async function adminApi(request, env, url) {
           }
           data.viewers = data.viewers.map(v => ({
             ...v,
+            device: v.device || classifyViewerDevice(v.ua),
+            app: v.app || classifyViewerApp(v.ua),
             name: index.get(String(v.ch))?.name || String(v.ch),
             group: index.get(String(v.ch))?.group || ""
           }));
@@ -3376,7 +3423,31 @@ async function serveAsset(
 // MAIN WORKER
 // ============================================================
 
-// Durable Object-backed viewer sessions. Uses Durable Object storage only, never KV.
+function classifyViewerDevice(ua) {
+  const s = String(ua || "").toLowerCase();
+  if (/android|dalvik|exoplayer|stagefright/.test(s)) return "Android";
+  if (/iphone|ipad|ipod|cfnetwork|applecoremedia/.test(s)) return "iPhone / iPad";
+  if (/tizen|webos|smart-?tv|hbbtv|bravia|roku|aftb|fire ?tv/.test(s)) return "Smart TV";
+  if (/windows/.test(s)) return "Windows";
+  if (/macintosh|mac os/.test(s)) return "macOS";
+  if (/linux/.test(s)) return "Linux";
+  return "غير معروف";
+}
+function classifyViewerApp(ua) {
+  const s = String(ua || "").toLowerCase();
+  if (/vlc/.test(s)) return "VLC";
+  if (/iptv smarters|smarters/.test(s)) return "IPTV Smarters";
+  if (/tivimate/.test(s)) return "TiviMate";
+  if (/kodi/.test(s)) return "Kodi";
+  if (/ott navigator|ottplayer/.test(s)) return "OTT Player";
+  if (/exoplayer/.test(s)) return "مشغّل يعتمد ExoPlayer";
+  if (/stagefright/.test(s)) return "مشغّل Android";
+  if (/okhttp|dalvik/.test(s)) return "تطبيق Android (غير محدد)";
+  if (/chrome|firefox|safari|edg\//.test(s)) return "متصفح";
+  return "غير معروف";
+}
+
+// Durable Object-backed viewer sessions and persistent block list. No KV writes.
 export class ViewerTracker {
   constructor(state, env) {
     this.state = state;
@@ -3388,6 +3459,38 @@ export class ViewerTracker {
     const now = Date.now();
     const ACTIVE_MS = 2 * 60 * 1000;
 
+    if (url.pathname === "/block" && request.method === "POST") {
+      let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+      const sessionId = String(body.sessionId || "");
+      if (!/^[a-f0-9]{64}$/i.test(sessionId)) return json({ error: "Invalid sessionId" }, 400);
+      const viewer = await this.state.storage.get("viewer:" + sessionId);
+      const record = { sessionId, ip: String(viewer?.ip || ""), ua: String(viewer?.ua || ""),
+        device: classifyViewerDevice(viewer?.ua || ""), app: classifyViewerApp(viewer?.ua || ""),
+        ch: String(viewer?.ch || ""), country: String(viewer?.country || ""), city: String(viewer?.city || ""),
+        org: String(viewer?.org || ""), blockedAt: Number(body.now) || now, note: String(body.note || "").slice(0, 200) };
+      await this.state.storage.put("blocked:" + sessionId, record);
+      return json({ status: "ok", blocked: true });
+    }
+    if (url.pathname === "/unblock" && request.method === "POST") {
+      let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+      const sessionId = String(body.sessionId || "");
+      if (!/^[a-f0-9]{64}$/i.test(sessionId)) return json({ error: "Invalid sessionId" }, 400);
+      await this.state.storage.delete("blocked:" + sessionId);
+      return json({ status: "ok", blocked: false });
+    }
+    if (url.pathname === "/blocked" && request.method === "GET") {
+      const all = await this.state.storage.list({ prefix: "blocked:", limit: 2000 });
+      const blocked = [...all.values()].sort((a, b) => Number(b.blockedAt) - Number(a.blockedAt));
+      return json({ status: "ok", blocked, count: blocked.length });
+    }
+    if (url.pathname === "/is-blocked" && request.method === "POST") {
+      let body; try { body = await request.json(); } catch { return json({ blocked: false }, 400); }
+      const sessionId = String(body.sessionId || "");
+      if (!/^[a-f0-9]{64}$/i.test(sessionId)) return json({ blocked: false });
+      const record = await this.state.storage.get("blocked:" + sessionId);
+      return json({ blocked: Boolean(record), record: record || null });
+    }
+
     if (url.pathname === "/heartbeat" && request.method === "POST") {
       let body;
       try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
@@ -3397,6 +3500,8 @@ export class ViewerTracker {
         return json({ error: "Invalid session data" }, 400);
       }
 
+      const blocked = await this.state.storage.get("blocked:" + sessionId);
+      if (blocked) return json({ error: "الجهاز محظور", blocked: true }, 403);
       const key = "viewer:" + sessionId;
       const existing = await this.state.storage.get(key);
       // Segment requests refresh activity but do not create an unknown session.
@@ -3412,6 +3517,8 @@ export class ViewerTracker {
         sessionId,
         ip: String(body.ip || existing?.ip || ""),
         ua: String(body.ua || existing?.ua || "").slice(0, 512),
+        device: classifyViewerDevice(body.ua || existing?.ua || ""),
+        app: classifyViewerApp(body.ua || existing?.ua || ""),
         ch: channelId || existing?.ch,
         firstSeen: existing?.firstSeen || Number(body.now) || now,
         // Throttle durable writes to once every 15 seconds per viewer session.
