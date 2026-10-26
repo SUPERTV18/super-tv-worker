@@ -3582,7 +3582,7 @@ export class ViewerTracker {
       }
       const dailyKeys = await this.state.storage.list({ prefix: "day:" + new Date().toISOString().slice(0, 10) + ":", limit: 10000 });
       const weekDates = new Set(Array.from({length: 7}, (_, i) => new Date(nowMs - i * dayMs).toISOString().slice(0, 10)));
-      const dailyUnique = new Set(dailyKeys.values().map(v => v.sessionId));
+      const dailyUnique = new Set(Array.from(dailyKeys.values(), v => v.sessionId));
       const weekDaily = await this.state.storage.list({ prefix: "day:", limit: 10000 });
       for (const v of weekDaily.values()) if (weekDates.has(v.date)) weekUnique.add(v.sessionId);
       return json({
