@@ -272,7 +272,8 @@ details.adv .formgrid{padding:6px 16px 0}
 @keyframes skeletonSweep{to{transform:translateX(100%)}}
 .toast .toast-action{border:1px solid currentColor;background:transparent;color:inherit;border-radius:8px;padding:5px 9px;font:inherit;font-weight:800;cursor:pointer;margin-inline-start:8px}
 @media(prefers-reduced-motion:reduce){.page,.cards .channel-card,.cards .card,.loading-skeleton:after{animation:none!important}}
-.log-filter{margin:14px 0 18px;max-width:620px}.log-filter input{width:100%}.log-filter small{display:block;margin-top:7px}.log-no-match{padding:18px;text-align:center;color:var(--muted)}#errorLogResults tbody tr[hidden]{display:none}
+ .log-filter{margin:14px 0 18px;max-width:620px}.log-filter input{width:100%}.log-filter small{display:block;margin-top:7px}.log-no-match{padding:18px;text-align:center;color:var(--muted)}#errorLogResults tbody tr[hidden]{display:none}
+.preview-scrim{position:fixed;inset:0;z-index:1200;background:#020711dc;backdrop-filter:blur(8px);display:grid;place-items:center;padding:16px}.preview-card{width:min(900px,100%);max-height:92vh;overflow:auto;border:1px solid var(--border);border-radius:20px;background:var(--panel);box-shadow:0 28px 90px #0009;padding:18px}.preview-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.preview-head h3{margin:0;font-size:18px}.preview-video-wrap{background:#000;border:1px solid var(--line);border-radius:14px;overflow:hidden;aspect-ratio:16/9;display:grid;place-items:center}.preview-video-wrap video{display:block;width:100%;height:100%;max-height:65vh;background:#000;object-fit:contain}.preview-status{margin-top:12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line);padding:12px;font-size:13px;line-height:1.8;white-space:pre-wrap}.preview-status[data-kind="error"]{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,var(--line))}.preview-status[data-kind="ok"]{color:var(--green)}.preview-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.preview-status:empty{display:none}@media(max-width:600px){.preview-card{padding:12px}.preview-head h3{font-size:15px}.preview-video-wrap{aspect-ratio:16/10}}
 </style></head>
 <body>
 <section id="loginView" class="panel login">
@@ -447,7 +448,7 @@ details.adv .formgrid{padding:6px 16px 0}
 <div class="formgrid">
 <div class="field"><label for="testUA">User-Agent</label><input id="testUA"></div><div class="field"><label for="testRef">Referer</label><input id="testRef"></div><div class="field"><label for="testOrigin">Origin</label><input id="testOrigin"></div>
 </div><button class="primary" type="submit" id="testBtn"><span data-ico="target" data-size="16"></span>فحص المصدر</button><div id="testResult" class="status hidden"></div></form></div>
-<div class="panel"><h3>اختبار قناة محفوظة</h3><div class="toolbar" style="margin:0"><select id="testChannelSelect" aria-label="اختر قناة"><option value="">اختر قناة</option></select><button class="soft" id="loadTestChannel" type="button">تحميل بيانات القناة</button><button class="primary" id="testSavedDirect" type="button">اختبار القناة مباشرة</button><button class="soft" id="previewSavedLinks" type="button">معاينة روابط التشغيل</button></div><p class="notice">الاختبار المباشر يفحص المصدر المحفوظ بنفس إعدادات User-Agent وReferer وOrigin، دون تعديل بيانات القناة. معاينة الروابط لا تحفظ أي تغيير.</p><div id="savedLinksPreview" class="status hidden"></div><div id="savedTestResult" class="status hidden"></div></div>
+<div class="panel"><h3>اختبار قناة محفوظة</h3><div class="toolbar" style="margin:0"><select id="testChannelSelect" aria-label="اختر قناة"><option value="">اختر قناة</option></select><button class="soft" id="loadTestChannel" type="button">تحميل بيانات القناة</button><button class="primary" id="testSavedDirect" type="button">اختبار القناة مباشرة</button><button class="soft" id="previewSavedLinks" type="button">معاينة روابط التشغيل</button><button class="primary" id="startChannelPreview" type="button">▶ معاينة البث داخل اللوحة</button></div><p class="notice">الاختبار المباشر يفحص استجابة المصدر فقط. معاينة البث تشغّل HLS داخل لوحة الإدارة، وتتطلب اتصالًا بمكتبة المشغل الخارجية. لا يتم حفظ أي تغيير على القناة.</p><div id="savedLinksPreview" class="status hidden"></div><div id="savedTestResult" class="status hidden"></div></div>
 </section>
 
 <section class="page" id="page-security">
@@ -477,6 +478,16 @@ details.adv .formgrid{padding:6px 16px 0}
 </section>
 
 </main></div></div></div>
+
+<div id="channelPreview" class="preview-scrim hidden" role="dialog" aria-modal="true" aria-labelledby="channelPreviewTitle">
+  <div class="preview-card">
+    <div class="preview-head"><h3 id="channelPreviewTitle">معاينة بث القناة</h3><button class="soft icon" type="button" id="closeChannelPreview" aria-label="إغلاق المعاينة">✕</button></div>
+    <div class="preview-video-wrap"><video id="channelPreviewVideo" controls playsinline preload="none" aria-label="مشغل معاينة القناة"></video></div>
+    <div id="channelPreviewStatus" class="preview-status" role="status" aria-live="polite">اختر قناة محفوظة لبدء المعاينة.</div>
+    <div class="preview-actions"><button class="primary" type="button" id="playChannelPreview">▶ تشغيل</button><button class="soft" type="button" id="stopChannelPreview">إيقاف البث</button><button class="soft" type="button" id="muteChannelPreview">كتم الصوت</button><button class="soft" type="button" id="fullscreenChannelPreview">ملء الشاشة</button></div>
+    <p class="notice">المعاينة محمية بمفتاح الإدارة. لا يظهر مفتاح التطبيق أو رابط المصدر الخام في رابط المشغل. أغلق النافذة لإيقاف البث وقطع طلبات المقاطع.</p>
+  </div>
+</div>
 
 <div id="modal" class="scrim hidden"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgTitle" aria-describedby="dlgText">
 <div class="dlg-head"><span class="dlg-ic info" id="dlgIc"></span><h3 id="dlgTitle"></h3></div>
@@ -586,7 +597,7 @@ function allChannels(){return Object.entries(channels).flatMap(([group,items])=>
 async function login(){const btn=$("loginBtn"),status=$("loginStatus");if(btn.disabled)return;adminKey=$("loginKey").value.trim();if(!adminKey){status.textContent="أدخل مفتاح الإدارة";status.classList.remove("hidden");$("loginKey").focus();return}btn.disabled=true;btn.setAttribute("aria-busy","true");btn.dataset.originalText=btn.textContent;btn.textContent="جارٍ التحقق من المفتاح...";status.classList.add("hidden");try{await api("/api/admin/channels");sessionStorage.setItem("stvAdminKey",adminKey);$("loginView").classList.add("hidden");$("app").classList.remove("hidden");await refreshAll();notify("تم تسجيل الدخول بأمان")}catch(e){status.textContent=e.message||"تعذر تسجيل الدخول؛ تحقق من الاتصال ومفتاح الإدارة";status.classList.remove("hidden");adminKey="";$("loginKey").focus()}finally{btn.disabled=false;btn.removeAttribute("aria-busy");btn.textContent=btn.dataset.originalText||"دخول آمن";delete btn.dataset.originalText}}
 $("loginBtn").addEventListener("click",login);$("loginKey").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
 $("toggleKey").onclick=()=>{const i=$("loginKey");i.type=i.type==="password"?"text":"password"};
-$("logoutBtn").addEventListener("click",()=>{sessionStorage.removeItem("stvAdminKey");adminKey="";healthMap={};baseSha="";stopViewers();$("app").classList.add("hidden");$("loginView").classList.remove("hidden");$("loginKey").value=""});
+$("logoutBtn").addEventListener("click",()=>{stopChannelPreview(true);sessionStorage.removeItem("stvAdminKey");adminKey="";healthMap={};baseSha="";stopViewers();$("app").classList.add("hidden");$("loginView").classList.remove("hidden");$("loginKey").value=""});
 function setConn(ok,t){$("connText").textContent=t;$("connection").className="pill "+(ok?"ok":"bad")}
 async function refreshAll(){const channelBox=$("channelCards");if(channelBox&&!allChannels().length)renderChannelSkeletons();try{channels=await api("/api/admin/channels");lastSaved=clone(channels);orderDirty=false;fillGroups();renderChannels();fillTestSelect();renderDonut();renderHealthHistory();await loadStats();setConn(true,"متصل • تم التحميل");$("lastUpdate").textContent="آخر تحديث: "+new Date().toLocaleTimeString("ar-EG");$("systemInfo").textContent="واجهة الإدارة: متصلة\nتحميل ملف القنوات: ناجح\nعدد القنوات: "+allChannels().length+"\nآخر فحص: "+new Date().toISOString()}catch(e){setConn(false,"خطأ في الاتصال");notify(e.message,"error")}}
 
@@ -831,6 +842,70 @@ $("chLogoImage").addEventListener("error",()=>{$("chLogoPreview").style.display=
 $("channelForm").addEventListener("submit",async e=>{e.preventDefault();if(validateForm(true)){notify("أصلح الأخطاء في النموذج قبل الحفظ","error");return}const group=$("chGroup").value.trim(),ch=formChannel();if(!channels[group])channels[group]=[];if(editing){const oldArr=channels[editing.group]||[];const idx=oldArr.findIndex(c=>String(c.id)===editing.id);const old=idx>=0?oldArr[idx]:{};const merged={...old,...ch};if(ch.enabled===undefined)delete merged.enabled;if(editing.group===group&&idx>=0)oldArr[idx]=merged;else{for(const g in channels)channels[g]=channels[g].filter(c=>String(c.id)!==editing.id);if(!channels[group])channels[group]=[];channels[group].push(merged)}}else channels[group].push(ch);await saveChannels("تم حفظ القناة في GitHub")});
 async function saveChannels(msg){const btn=$("saveChannel");btn.disabled=true;try{const data={};for(const [g,arr] of Object.entries(channels))if(arr.length)data[g]=arr;const result=await api("/api/admin/channels",{method:"POST",body:JSON.stringify(data)});channels=data;lastSaved=clone(data);orderDirty=false;clearEditor();fillGroups();renderChannels();fillTestSelect();renderDonut();await loadStats();notify(result.message||msg);showPage("channels");return true}catch(e){channels=clone(lastSaved);orderDirty=false;fillGroups();renderChannels();fillTestSelect();renderDonut();if(e.status===409){const go=await openDialog({title:"الملف تغيّر من مكان آخر",text:"تم تعديل قائمة القنوات من جلسة أو جهاز آخر بعد تحميل هذه الصفحة. لحماية تلك التعديلات لم يتم الحفظ. حمّل أحدث نسخة ثم أعد تنفيذ تعديلك.",ok:"تحميل أحدث نسخة"});if(go)await refreshAll()}else notify(e.message+" — لم يتم الحفظ وتمت العودة لآخر نسخة محفوظة","error");return false}finally{btn.disabled=false}}
 async function deleteChannel(group,id){const ch=(channels[group]||[]).find(c=>String(c.id)===String(id));if(!ch)return;const snapshot=clone(channels);const ok=await openDialog({title:"حذف القناة؟",text:"سيتم حذف القناة «"+ch.name+"» من ملف القنوات على GitHub، وسيتوقف رابطها النهائي عن العمل داخل التطبيق.",ok:"حذف نهائيًا",danger:true});if(!ok)return;channels[group]=channels[group].filter(c=>String(c.id)!==String(id));selected.delete(group+"\u0000"+id);const saved=await saveChannels("تم حذف القناة");if(saved){notifyWithAction("تم حذف "+ch.name+" بنجاح","تراجع",async()=>{channels=clone(snapshot);await saveChannels("تم استرجاع القناة");notify("تم استرجاع القناة","success")})}}
+
+/* secure HLS preview */
+let previewHls=null,previewChannel=null,previewScriptPromise=null;
+function previewStatus(message,kind=""){const el=$("channelPreviewStatus");el.textContent=message;el.dataset.kind=kind}
+function loadHlsLibrary(){
+ if(window.Hls)return Promise.resolve(window.Hls);
+ if(previewScriptPromise)return previewScriptPromise;
+ previewScriptPromise=new Promise((resolve,reject)=>{
+  const script=document.createElement("script");
+  script.src="https://cdn.jsdelivr.net/npm/hls.js@1.6.13/dist/hls.min.js";
+  script.async=true;
+  script.onload=()=>window.Hls?resolve(window.Hls):reject(new Error("تعذر تحميل مكتبة HLS.js"));
+  script.onerror=()=>reject(new Error("تعذر تحميل مكتبة HLS.js من CDN؛ تحقق من اتصال الإنترنت أو حجب النطاق."));
+  document.head.appendChild(script);
+ });
+ return previewScriptPromise;
+}
+function stopChannelPreview(close=true){
+ const video=$("channelPreviewVideo");
+ try{if(previewHls){previewHls.destroy();previewHls=null}}catch{}
+ try{video.pause();video.removeAttribute("src");video.load()}catch{}
+ previewChannel=null;
+ if(close)$("channelPreview").classList.add("hidden");
+ previewStatus("تم إيقاف المعاينة.");
+}
+async function startChannelPreview(){
+ const opt=$("testChannelSelect").selectedOptions[0];
+ if(!opt||!opt.value){notify("اختر قناة محفوظة أولًا","error");return}
+ const ch=(channels[opt.dataset.group]||[]).find(c=>String(c.id)===String(opt.value));
+ if(!ch){notify("القناة غير موجودة في البيانات الحالية","error");return}
+ if(ch.enabled===false){notify("هذه القناة متوقفة. فعّلها أولًا لمعاينة البث.","error");return}
+ stopChannelPreview(false);
+ previewChannel={id:String(ch.id),group:opt.dataset.group,name:String(ch.name||ch.id)};
+ $("channelPreviewTitle").textContent="معاينة البث · "+previewChannel.name;
+ $("channelPreview").classList.remove("hidden");
+ previewStatus("جارٍ تجهيز المصدر وتحميل مشغل HLS…");
+ const video=$("channelPreviewVideo");
+ try{
+  const Hls=await loadHlsLibrary();
+  if(!Hls.isSupported())throw new Error("المتصفح الحالي لا يدعم تشغيل HLS.js عبر Media Source Extensions.");
+  const streamUrl="/api/admin/preview?id="+encodeURIComponent(previewChannel.id)+"&group="+encodeURIComponent(previewChannel.group);
+  previewHls=new Hls({enableWorker:true,lowLatencyMode:true,backBufferLength:30,xhrSetup(xhr){xhr.setRequestHeader("X-Admin-Key",adminKey)}});
+  previewHls.on(Hls.Events.MANIFEST_LOADING,()=>previewStatus("جارٍ الاتصال بالمصدر وتحميل قائمة التشغيل…"));
+  previewHls.on(Hls.Events.MANIFEST_PARSED,()=>{previewStatus("تم تحميل قائمة التشغيل. اضغط تشغيل لبدء المعاينة.","ok");video.play().catch(()=>previewStatus("المصدر جاهز. اضغط زر تشغيل لبدء المعاينة.","ok"))});
+  previewHls.on(Hls.Events.ERROR,(_event,data)=>{
+   if(!data.fatal)return;
+   let message="حدث خطأ أثناء تشغيل البث.";
+   if(data.type===Hls.ErrorTypes.NETWORK_ERROR)message="تعذر تحميل قائمة التشغيل أو أحد المقاطع. قد يكون المصدر منتهي الصلاحية أو يرفض طلب المعاينة.";
+   else if(data.type===Hls.ErrorTypes.MEDIA_ERROR)message="حدث خطأ في فك الفيديو؛ تتم محاولة استعادة المشغل.";
+   previewStatus(message+" ( "+String(data.details||data.type||"خطأ")+" )","error");
+   if(data.type===Hls.ErrorTypes.MEDIA_ERROR){try{previewHls.recoverMediaError()}catch{}}
+  });
+  previewHls.loadSource(streamUrl);
+  previewHls.attachMedia(video);
+ }catch(e){previewStatus(e.message||"تعذر بدء المعاينة.","error");notify(e.message||"تعذر بدء المعاينة","error")}
+}
+$("startChannelPreview").addEventListener("click",startChannelPreview);
+$("playChannelPreview").addEventListener("click",()=>{const v=$("channelPreviewVideo");if(!previewHls)return startChannelPreview();v.play().then(()=>previewStatus("جارٍ تشغيل المعاينة.","ok")).catch(()=>previewStatus("اضغط تشغيل داخل الفيديو أو تحقق من الصوت والاتصال.","error"))});
+$("stopChannelPreview").addEventListener("click",()=>stopChannelPreview(false));
+$("closeChannelPreview").addEventListener("click",()=>stopChannelPreview(true));
+$("channelPreview").addEventListener("click",e=>{if(e.target===$("channelPreview"))stopChannelPreview(true)});
+$("muteChannelPreview").addEventListener("click",()=>{const v=$("channelPreviewVideo");v.muted=!v.muted;$("muteChannelPreview").textContent=v.muted?"إلغاء كتم الصوت":"كتم الصوت"});
+$("fullscreenChannelPreview").addEventListener("click",()=>{const el=$("channelPreviewVideo");if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});else if(el.webkitEnterFullscreen)el.webkitEnterFullscreen()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("channelPreview").classList.contains("hidden"))stopChannelPreview(true)});
 
 /* tester */
 function fillTestSelect(){const all=allChannels();$("testChannelSelect").innerHTML='<option value="">اختر قناة</option>'+all.map(c=>'<option value="'+esc(c.id)+'" data-group="'+esc(c.__group)+'">'+esc(c.name+' — '+c.__group)+'</option>').join("")}
