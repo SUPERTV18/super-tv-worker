@@ -249,18 +249,19 @@ details.adv .formgrid{padding:6px 16px 0}
 <main class="content">
 
 <section class="page active" id="page-overview">
-<div class="pagehead"><div><div class="crumb">لوحة التحكم<i>/</i><b>نظرة عامة</b></div><h2>نظرة عامة</h2></div><span class="muted" id="lastUpdate">—</span></div>
-<div class="stats">
+<div class="pagehead"><div><div class="crumb">لوحة التحكم<i>/</i><b>نظرة عامة</b></div><h2>نظرة عامة</h2></div><div class="toolbar" style="margin:0;align-items:center"><span class="muted" id="lastUpdate">—</span><button class="soft" id="dashboardCustomize" type="button"><span data-ico="shield" data-size="16"></span>تخصيص الواجهة</button></div></div>
+<div class="panel hidden" id="dashboardPrefs" style="margin-bottom:16px"><div class="pagehead" style="margin:0 0 12px"><div><h3 style="margin:0">تخصيص الصفحة الرئيسية</h3><p class="muted" style="margin:5px 0 0">اختياراتك محفوظة في هذا المتصفح فقط ولا تغيّر بيانات القنوات أو KV.</p></div><div class="toolbar" style="margin:0"><button class="primary" id="saveDashboardPrefs" type="button">حفظ الترتيب</button><button class="soft" id="resetDashboardPrefs" type="button">استعادة الافتراضي</button></div></div><div class="grid2" id="dashboardPrefsList"><label class="checkline"><input type="checkbox" data-dashboard-widget="stats" checked> بطاقات الإحصائيات</label><label class="checkline"><input type="checkbox" data-dashboard-widget="distribution" checked> توزيع القنوات على المجموعات</label><label class="checkline"><input type="checkbox" data-dashboard-widget="topChannels" checked> أكثر القنوات طلبًا</label><label class="checkline"><input type="checkbox" data-dashboard-widget="shortcuts" checked> الاختصارات السريعة</label></div></div>
+<div class="stats" data-dashboard-widget="stats">
 <div class="stat"><div class="stat-top"><span class="label">إجمالي القنوات</span><span class="sic" data-ico="tv"></span></div><div class="num" id="statChannels">—</div><div class="sub">من ملف القنوات الرئيسي</div></div>
 <div class="stat"><div class="stat-top"><span class="label">المجموعات</span><span class="sic" data-ico="folder"></span></div><div class="num" id="statGroups">—</div><div class="sub">تصنيفات القنوات</div></div>
 <div class="stat"><div class="stat-top"><span class="label">طلبات المشاهدة المرصودة</span><span class="sic" data-ico="pulse"></span></div><div class="num" id="statViewers">—</div><div class="sub">ذاكرة نسخة Worker الحالية فقط</div></div>
 <div class="stat"><div class="stat-top"><span class="label">مصادر تعمل</span><span class="sic" data-ico="check"></span></div><div class="num" id="statHealthy">—</div><div class="sub" id="statHealthySub">اضغط «فحص الحالة» في إدارة القنوات</div></div>
 </div>
 <div class="dash">
-<div class="panel"><h3>توزيع القنوات على المجموعات</h3><div id="groupDonut"><div class="empty">جار التحميل...</div></div></div>
-<div class="panel"><h3>أكثر القنوات طلبًا في الذاكرة الحالية</h3><div id="topChannels"><div class="empty">اضغط تحديث لتحميل الإحصائيات</div></div><p class="notice">ملاحظة: إحصائيات المشاهدين الحالية تقريبية ومؤقتة، ولا تمثل عدد المشاهدين الفريدين على مستوى جميع نسخ Cloudflare.</p></div>
+<div class="panel" data-dashboard-widget="distribution"><h3>توزيع القنوات على المجموعات</h3><div id="groupDonut"><div class="empty">جار التحميل...</div></div></div>
+<div class="panel" data-dashboard-widget="topChannels"><h3>أكثر القنوات طلبًا في الذاكرة الحالية</h3><div id="topChannels"><div class="empty">اضغط تحديث لتحميل الإحصائيات</div></div><p class="notice">ملاحظة: إحصائيات المشاهدين الحالية تقريبية ومؤقتة، ولا تمثل عدد المشاهدين الفريدين على مستوى جميع نسخ Cloudflare.</p></div>
 </div>
-<div class="panel"><h3>اختصارات سريعة</h3><div class="toolbar" style="margin:0"><button class="primary" data-goto="editor"><span data-ico="plus" data-size="16"></span>إضافة قناة</button><button class="soft" data-goto="channels">عرض القنوات</button><button class="soft" data-goto="tester">اختبار رابط بث</button></div></div>
+<div class="panel" data-dashboard-widget="shortcuts"><h3>اختصارات سريعة</h3><div class="toolbar" style="margin:0"><button class="primary" data-goto="editor"><span data-ico="plus" data-size="16"></span>إضافة قناة</button><button class="soft" data-goto="channels">عرض القنوات</button><button class="soft" data-goto="tester">اختبار رابط بث</button></div></div>
 </section>
 
 <section class="page" id="page-ops">
@@ -504,6 +505,16 @@ function openDialog(o){return new Promise(resolve=>{
 })}
 
 async function api(path,opts={}){const headers={...(opts.headers||{}),"X-Admin-Key":adminKey};if(opts.body&&!headers["Content-Type"])headers["Content-Type"]="application/json";const isCh=path.startsWith("/api/admin/channels");if(isCh&&opts.method==="POST"&&baseSha)headers["X-Base-Sha"]=baseSha;const res=await fetch(path,{...opts,headers});const sh=res.headers.get("X-File-Sha");if(isCh&&sh)baseSha=sh;const data=await res.json().catch(()=>({error:"استجابة غير صالحة"}));if(!res.ok){const err=new Error(data.error||("HTTP "+res.status));err.status=res.status;throw err}if(data&&data.sha&&(isCh||path.startsWith("/api/admin/restore")))baseSha=data.sha;return data}
+
+const DASH_PREF_KEY="stvAdminDashboardPrefsV1";
+const DASH_WIDGET_DEFAULTS={stats:true,distribution:true,topChannels:true,shortcuts:true};
+function readDashboardPrefs(){try{return Object.assign({},DASH_WIDGET_DEFAULTS,JSON.parse(localStorage.getItem(DASH_PREF_KEY)||"{}"))}catch(e){return Object.assign({},DASH_WIDGET_DEFAULTS)}}
+function applyDashboardPrefs(prefs=readDashboardPrefs()){document.querySelectorAll("#page-overview [data-dashboard-widget]").forEach(el=>{el.classList.toggle("hidden",prefs[el.dataset.dashboardWidget]===false)});document.querySelectorAll("#dashboardPrefsList [data-dashboard-widget]").forEach(el=>{el.checked=prefs[el.dataset.dashboardWidget]!==false})}
+function saveDashboardPrefs(){const prefs={};document.querySelectorAll("#dashboardPrefsList [data-dashboard-widget]").forEach(el=>prefs[el.dataset.dashboardWidget]=el.checked);try{localStorage.setItem(DASH_PREF_KEY,JSON.stringify(prefs));applyDashboardPrefs(prefs);$("dashboardPrefs").classList.add("hidden");notify("تم حفظ تخصيص الصفحة الرئيسية على هذا المتصفح")}catch(e){notify("تعذر حفظ التفضيلات في المتصفح","error")}}
+$("dashboardCustomize").addEventListener("click",()=>{$("dashboardPrefs").classList.toggle("hidden");applyDashboardPrefs()});
+$("saveDashboardPrefs").addEventListener("click",saveDashboardPrefs);
+$("resetDashboardPrefs").addEventListener("click",()=>{try{localStorage.removeItem(DASH_PREF_KEY)}catch(e){}applyDashboardPrefs(DASH_WIDGET_DEFAULTS);notify("تمت استعادة الواجهة الافتراضية")});
+applyDashboardPrefs();
 function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));document.querySelectorAll(".nav").forEach(b=>{const on=b.dataset.page===name;b.classList.toggle("active",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});if(name==="editor"&&!editing)clearEditor();if(name==="errors")loadErrorLogs();if(name==="ops")refreshOperations();if(name==="viewers")startViewers();else stopViewers();if(name==="history")loadHistory();window.scrollTo({top:0})}
 document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.goto)));
