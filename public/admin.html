@@ -473,6 +473,7 @@ async function runHealthCheck(ids=null,triggerBtn=null){
   notify(e.message,"error");
  }finally{btn.disabled=false;if(failedBtn)failedBtn.disabled=false}
 }
+function checkAll(){return runHealthCheck(null,$("checkAllBtn"))}
 async function loadErrorLogs(){const out=$("errorLogResults");out.className="status";out.textContent="جار تحميل السجل...";try{const r=await api("/api/admin/logs");out.className="tablewrap";out.innerHTML=r.logs.length?'<table><thead><tr><th>الوقت</th><th>النوع</th><th>القناة</th><th>الحالة</th><th>التفاصيل</th></tr></thead><tbody>'+r.logs.map(x=>'<tr><td>'+esc(new Date(x.time).toLocaleString("ar-EG"))+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.channel||x.channelId||x.host||"—")+'</td><td>'+esc(x.status??"—")+'</td><td>'+esc(x.message||"—")+'</td></tr>').join("")+'</tbody></table>':'<div class="empty">لا توجد أحداث مسجلة في ذاكرة Worker الحالية.</div>';out.insertAdjacentHTML("beforeend",'<p class="notice">'+esc(r.scope)+'</p>')}catch(e){out.className="status";out.textContent=e.message}}
 
 function finalChannelUrl(ch){const source=String(ch.url||"");const isViberLive=/^https?:\/\/vibertv\.fun\/ind4ex\.php\?[^#]*\blive=/i.test(source);const route=(isViberLive||String(ch.endpoint||"m3u8").toLowerCase()==="flv")?"play.flv":"play.m3u8";return WORKER_BASE+route+"?id="+encodeURIComponent(String(ch.id??""))}
