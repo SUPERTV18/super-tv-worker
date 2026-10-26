@@ -822,7 +822,34 @@ async function deleteChannel(group,id){const ch=(channels[group]||[]).find(c=>St
 function fillTestSelect(){const all=allChannels();$("testChannelSelect").innerHTML='<option value="">اختر قناة</option>'+all.map(c=>'<option value="'+esc(c.id)+'" data-group="'+esc(c.__group)+'">'+esc(c.name+' — '+c.__group)+'</option>').join("")}
 function testSaved(group,id){const ch=(channels[group]||[]).find(c=>String(c.id)===String(id));if(!ch)return;$("testUrl").value=ch.url;$("testUA").value=ch.headers?.["User-Agent"]||"";$("testRef").value=ch.headers?.Referer||"";$("testOrigin").value=ch.headers?.Origin||"";showPage("tester")}
 $("loadTestChannel").onclick=()=>{const opt=$("testChannelSelect").selectedOptions[0];if(!opt||!opt.value)return;testSaved(opt.dataset.group,opt.value)};
-async function runTest(url,headers,out){out.classList.remove("hidden");out.textContent="جار فحص المصدر...";try{const r=await api("/api/admin/test",{method:"POST",body:JSON.stringify({url,headers})});out.textContent=JSON.stringify(r,null,2);notify(r.ok?"استجاب المصدر بنجاح":"المصدر ردّ برمز HTTP غير ناجح",r.ok?"ok":"error")}catch(e){out.textContent="فشل الفحص: "+e.message;notify(e.message,"error")}}
+async function runTest(url,headers,out){
+ out.classList.remove("hidden");
+ out.innerHTML='<div style="padding:12px">جار فحص المصدر... <span class="muted">قد يستغرق الفحص حتى 8 ثوانٍ.</span></div>';
+ const started=Date.now();
+ try{
+  const r=await api("/api/admin/test",{method:"POST",body:JSON.stringify({url,headers})});
+  const elapsed=Date.now()-started;
+  const good=!!r.ok;
+  const status=Number.isFinite(Number(r.status))?String(r.status):"—";
+  const type=String(r.contentType||"غير محدد");
+  const host=String(r.finalHost||"غير متاح");
+  const length=r.contentLength?String(r.contentLength):"غير معلن";
+  const items=[
+   ["النتيجة",good?"استجابة HTTP ناجحة":"استجابة غير ناجحة"],
+   ["رمز HTTP",status],
+   ["زمن الفحص",elapsed+" ms"],
+   ["نوع المحتوى",type],
+   ["حجم المحتوى",length],
+   ["الخادم النهائي",host],
+   ["إعادة توجيه",r.redirected?"نعم":"لا"]
+  ];
+  out.innerHTML='<div style="padding:14px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px"><span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:'+(good?'rgba(34,197,94,.14)':'rgba(239,68,68,.14)')+';color:'+(good?'#16a34a':'#dc2626')+';font-weight:700">'+(good?'✓ المصدر استجاب':'✕ فشل استجابة المصدر')+'</span><span class="muted">نتيجة اتصال لحظية وليست ضمانًا لاستمرار البث</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:9px">'+items.map(([k,v])=>'<div style="padding:10px;border:1px solid var(--line,#ddd);border-radius:10px;min-width:0"><div class="muted" style="font-size:12px;margin-bottom:5px">'+esc(k)+'</div><div style="font-weight:650;overflow-wrap:anywhere;direction:auto">'+esc(v)+'</div></div>').join("")+'</div><details style="margin-top:12px"><summary style="cursor:pointer">عرض تفاصيل الاستجابة الخام</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;direction:ltr;text-align:left;padding:10px;border-radius:8px;background:var(--soft-bg,rgba(127,127,127,.08))">'+esc(JSON.stringify(r,null,2))+'</pre></details></div>';
+  notify(good?"استجاب المصدر بنجاح":"المصدر ردّ برمز HTTP غير ناجح",good?"ok":"error");
+ }catch(e){
+  out.innerHTML='<div style="padding:14px"><div style="font-weight:700;color:#dc2626;margin-bottom:8px">تعذر إكمال الفحص</div><div>'+esc(e.message||"خطأ غير معروف")+'</div><p class="muted" style="margin:8px 0 0">قد يكون السبب انتهاء المهلة أو رفض الاتصال أو مشكلة في إعدادات المصدر.</p><details style="margin-top:10px"><summary style="cursor:pointer">تفاصيل الخطأ</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;direction:ltr;text-align:left">'+esc(String(e.stack||e.message||e))+'</pre></details></div>';
+  notify(e.message||"فشل الفحص","error");
+ }
+}
 $("testForm").addEventListener("submit",e=>{e.preventDefault();runTest($("testUrl").value.trim(),{"User-Agent":$("testUA").value.trim(),"Referer":$("testRef").value.trim(),"Origin":$("testOrigin").value.trim()},$("testResult"))});
 $("testCurrent").onclick=()=>{const ch=formChannel();if(!ch.url)return notify("أدخل رابط المصدر أولًا","error");$("testUrl").value=ch.url;$("testUA").value=ch.headers["User-Agent"];$("testRef").value=ch.headers.Referer;$("testOrigin").value=ch.headers.Origin;showPage("tester");runTest(ch.url,ch.headers,$("testResult"))};
 async function refreshWithFeedback(btn){if(!btn||btn.disabled)return;const oldHtml=btn.innerHTML;btn.disabled=true;btn.setAttribute("aria-busy","true");btn.innerHTML=ico("refresh",16)+'<span class="refresh-label">جارٍ التحديث...</span>';try{await refreshAll()}finally{btn.disabled=false;btn.removeAttribute("aria-busy");btn.innerHTML=oldHtml;paintIcons()}}
