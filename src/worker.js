@@ -2867,27 +2867,90 @@ async function adminApi(request, env, url) {
         const uaSettings = await getServerUASettings();
         const headers = getUpstreamHeaders(target.href, ch.headers, uaSettings.proxyUA);
         const response = await fetch(target.href, { method: "GET", redirect: "follow", headers });
+        const contentType = response.headers.get("content-type") || "";
+        let playlistText = "";
+        let playlistDetected = false;
+        let firstMediaUri = "";
+        let playlistKind = "";
+        // Read only a small prefix, then cancel; never download a full playlist.
+        if (response.ok && response.body) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let bytes = 0;
+          try {
+            while (bytes < 16384) {
+              const part = await reader.read();
+              if (part.done) break;
+              bytes += part.value.byteLength;
+              playlistText += decoder.decode(part.value, { stream: true });
+              if (playlistText.includes("#EXTM3U") && playlistText.includes("\\n")) break;
+              if (bytes >= 16384) break;
+            }
+          } finally {
+            try { await reader.cancel(); } catch {}
+          }
+          playlistDetected = playlistText.trimStart().startsWith("#EXTM3U");
+          if (playlistDetected) {
+            const lines = playlistText.split(/\\r?\\n/).map(line => line.trim()).filter(Boolean);
+            playlistKind = lines.some(line => line.startsWith("#EXT-X-STREAM-INF")) ? "master"
+              : lines.some(line => line.startsWith("#EXTINF")) ? "media" : "playlist";
+            const afterExtinf = lines.findIndex(line => line.startsWith("#EXTINF"));
+            const nextUri = afterExtinf >= 0 ? lines.slice(afterExtinf + 1).find(line => !line.startsWith("#")) : "";
+            const variantIndex = lines.findIndex(line => line.startsWith("#EXT-X-STREAM-INF"));
+            const nextVariant = variantIndex >= 0 ? lines.slice(variantIndex + 1).find(line => !line.startsWith("#")) : "";
+            firstMediaUri = nextUri || nextVariant || "";
+          }
+        } else {
+          try { await response.body?.cancel(); } catch {}
+        }
+        let segmentStatus = null;
+        let segmentElapsedMs = null;
+        let segmentError = "";
+        if (response.ok && playlistDetected && firstMediaUri) {
+          try {
+            const mediaUrl = new URL(firstMediaUri, response.url || target.href);
+            if (mediaUrl.protocol !== "http:" && mediaUrl.protocol !== "https:") throw new Error("Unsupported media URL protocol");
+            const mediaStarted = Date.now();
+            const mediaResponse = await fetch(mediaUrl.href, {
+              method: "GET",
+              redirect: "follow",
+              headers: { ...headers, Range: "bytes=0-0" }
+            });
+            segmentStatus = mediaResponse.status;
+            segmentElapsedMs = Date.now() - mediaStarted;
+            try { await mediaResponse.body?.cancel(); } catch {}
+            if (!mediaResponse.ok && mediaResponse.status !== 206) segmentError = "أول ملف تابع للقائمة لم يستجب بنجاح";
+          } catch (mediaError) {
+            segmentError = String(mediaError.message || mediaError);
+          }
+        }
         const category = response.status === 403 ? "source_forbidden"
           : response.status === 401 ? "source_unauthorized"
           : response.status === 404 ? "source_not_found"
           : response.status >= 500 ? "upstream_server_error"
           : response.status >= 400 ? "http_error"
+          : !response.ok ? "http_redirect_or_other"
+          : playlistDetected && segmentStatus !== null && !(segmentStatus >= 200 && segmentStatus < 300) ? "hls_media_error"
           : response.ok ? "http_ok" : "http_redirect_or_other";
         const categoryLabel = response.status === 403 ? "رفض المصدر (403)"
           : response.status === 401 ? "يتطلب صلاحية (401)"
           : response.status === 404 ? "المصدر غير موجود (404)"
           : response.status >= 500 ? "خطأ في خادم المصدر"
           : response.status >= 400 ? "خطأ HTTP"
-          : response.ok ? "استجابة HTTP ناجحة — البث غير مضمون" : "استجابة غير متوقعة";
+          : !response.ok ? "استجابة غير متوقعة"
+          : playlistDetected && segmentStatus !== null && !(segmentStatus >= 200 && segmentStatus < 300) ? "قائمة HLS موجودة لكن أول ملف تابع فشل"
+          : playlistDetected && segmentStatus !== null ? "قائمة HLS وأول ملف تابع استجابا"
+          : playlistDetected ? "قائمة HLS موجودة؛ لم يُحدد ملف تابع للفحص"
+          : "استجابة HTTP ناجحة — نوع البث غير مؤكد";
         const result = {
           id: ch.id, name: ch.name, group: ch.group, status: response.status,
-          ok: response.ok, category, categoryLabel,
-          contentType: response.headers.get("content-type") || "",
-          elapsedMs: Date.now() - started,
+          ok: response.ok && !(playlistDetected && segmentStatus !== null && !(segmentStatus >= 200 && segmentStatus < 300)),
+          category, categoryLabel, playlistDetected, playlistKind,
+          segmentStatus, segmentElapsedMs, segmentError,
+          contentType, elapsedMs: Date.now() - started,
           finalHost: (() => { try { return new URL(response.url || target.href).hostname; } catch { return ""; } })(),
           checkedAt: new Date().toISOString()
         };
-        try { await response.body?.cancel(); } catch {}
         results.push(result);
         recordAdminEvent({ type: "channel_check", channelId: ch.id, channel: ch.name, status: result.status, ok: result.ok, elapsedMs: result.elapsedMs, message: result.ok ? "فحص المصدر نجح" : "استجابة HTTP غير ناجحة" });
       } catch (e) {
