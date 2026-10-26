@@ -130,6 +130,14 @@ const RATE_LIMIT_MEMORY = new Map();
 
 const VIEWERS_MEMORY = new Map();
 
+// Recent diagnostic events are isolate-memory only: no KV writes.
+const ADMIN_EVENT_LOGS = [];
+const ADMIN_EVENT_LOG_LIMIT = 150;
+function recordAdminEvent(event) {
+  ADMIN_EVENT_LOGS.unshift({ time: new Date().toISOString(), ...event });
+  if (ADMIN_EVENT_LOGS.length > ADMIN_EVENT_LOG_LIMIT) ADMIN_EVENT_LOGS.length = ADMIN_EVENT_LOG_LIMIT;
+}
+
 // ============================================================
 // RESPONSE HELPERS
 // ============================================================
@@ -2113,6 +2121,9 @@ async function playApi(
         redirected: response.redirected
       })
     );
+    if (!response.ok) {
+      recordAdminEvent({ type: "play_error", channelId: String(id), status: response.status, ok: false, host: finalTargetHost, message: "فشل المصدر أثناء التشغيل" });
+    }
 
     // If the upstream explicitly reports a tiny body, inspect a clone only.
     // The live response body remains untouched for normal playback.
@@ -2829,6 +2840,52 @@ async function adminApi(request, env, url) {
     }
   }
 
+  if (url.pathname === "/api/admin/logs" && request.method === "GET") {
+    return json({ status: "ok", scope: "ذاكرة Worker الحالية فقط؛ السجلات تُمسح عند تبديل النسخة أو إعادة تشغيلها", logs: ADMIN_EVENT_LOGS.slice(0, 100), timestamp: new Date().toISOString() });
+  }
+
+  if (url.pathname === "/api/admin/check-channels" && request.method === "POST") {
+    let body = {};
+    try { body = await request.json(); } catch {}
+    let data;
+    try { data = await loadChannels(env); } catch (e) { return json({ error: "تعذر تحميل القنوات", detail: e.message }, 500); }
+    const wanted = Array.isArray(body.ids) ? new Set(body.ids.map(String)) : null;
+    const candidates = [];
+    for (const [group, items] of Object.entries(data)) {
+      if (!Array.isArray(items)) continue;
+      for (const ch of items) {
+        if (ch && ch.url && (!wanted || wanted.has(String(ch.id)))) candidates.push({ id: String(ch.id), name: String(ch.name || ch.id), group, url: String(ch.url), headers: ch.headers || {} });
+      }
+    }
+    const batch = candidates.slice(0, 25);
+    const results = [];
+    for (const ch of batch) {
+      const started = Date.now();
+      try {
+        const target = new URL(ch.url);
+        if (target.protocol !== "http:" && target.protocol !== "https:") throw new Error("Unsupported protocol");
+        const uaSettings = await getServerUASettings();
+        const headers = getUpstreamHeaders(target.href, ch.headers, uaSettings.proxyUA);
+        const response = await fetch(target.href, { method: "GET", redirect: "follow", headers });
+        const result = {
+          id: ch.id, name: ch.name, group: ch.group, status: response.status,
+          ok: response.ok, contentType: response.headers.get("content-type") || "",
+          elapsedMs: Date.now() - started,
+          finalHost: (() => { try { return new URL(response.url || target.href).hostname; } catch { return ""; } })(),
+          checkedAt: new Date().toISOString()
+        };
+        try { await response.body?.cancel(); } catch {}
+        results.push(result);
+        recordAdminEvent({ type: "channel_check", channelId: ch.id, channel: ch.name, status: result.status, ok: result.ok, elapsedMs: result.elapsedMs, message: result.ok ? "فحص المصدر نجح" : "استجابة HTTP غير ناجحة" });
+      } catch (e) {
+        const result = { id: ch.id, name: ch.name, group: ch.group, status: 0, ok: false, contentType: "", elapsedMs: Date.now() - started, error: String(e.message || e), checkedAt: new Date().toISOString() };
+        results.push(result);
+        recordAdminEvent({ type: "channel_check", channelId: ch.id, channel: ch.name, status: 0, ok: false, elapsedMs: result.elapsedMs, message: result.error });
+      }
+    }
+    return json({ status: "ok", checked: results.length, totalAvailable: candidates.length, limited: candidates.length > batch.length, results, timestamp: new Date().toISOString() });
+  }
+
   if (url.pathname === "/api/admin/stats" && request.method === "GET") {
     let channelCount = 0;
     let groupCount = 0;
@@ -2882,6 +2939,7 @@ async function adminApi(request, env, url) {
         finalHost: (() => { try { return new URL(response.url || target.href).hostname; } catch { return ""; } })()
       };
       try { await response.body?.cancel(); } catch {}
+      recordAdminEvent({ type: "source_test", status: result.status, ok: result.ok, host: result.finalHost, elapsedMs: null, message: result.ok ? "اختبار المصدر نجح" : "المصدر أعاد HTTP " + result.status });
       return json(result);
     } catch (e) {
       return json({ error: "فشل الاتصال بالمصدر", detail: e.message }, 502);
