@@ -1632,6 +1632,32 @@ async function hlsApi(
 
   }
 
+  // Refresh the viewer heartbeat from HLS segment/playlist requests.
+  // Durable Object throttles writes per session; no KV operations are used.
+  try {
+    if (env.TRACKER) {
+      const ip = getClientIP(request);
+      const ua = request.headers.get("User-Agent") || "";
+      const sessionHash = await sha256(ip + "|" + ua);
+      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
+      await stub.fetch("https://viewer-tracker/heartbeat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: sessionHash,
+          ip,
+          ua,
+          country: request.cf?.country || "",
+          city: request.cf?.city || "",
+          org: request.cf?.asOrganization || "",
+          now: Date.now()
+        })
+      });
+    }
+  } catch (viewerError) {
+    console.warn("VIEWER_HEARTBEAT_ERROR", String(viewerError.message || viewerError));
+  }
+
   const target =
     decoded.url;
 
@@ -2960,6 +2986,21 @@ async function adminApi(request, env, url) {
       const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
       const response = await stub.fetch("https://viewer-tracker/list", { method: "GET" });
       const data = await response.json();
+      if (response.ok && Array.isArray(data.viewers)) {
+        try {
+          const channels = await loadChannels(env);
+          const index = new Map();
+          for (const [group, items] of Object.entries(channels)) {
+            if (!Array.isArray(items)) continue;
+            for (const ch of items) index.set(String(ch.id), { name: String(ch.name || ch.id), group });
+          }
+          data.viewers = data.viewers.map(v => ({
+            ...v,
+            name: index.get(String(v.ch))?.name || String(v.ch),
+            group: index.get(String(v.ch))?.group || ""
+          }));
+        } catch {}
+      }
       return json({ ...data, status: response.ok ? "ok" : "unavailable" }, response.status);
     } catch (e) {
       return json({ error: "تعذر قراءة جلسات المشاهدة", detail: String(e.message || e), viewers: [] }, 502);
@@ -3352,19 +3393,24 @@ export class ViewerTracker {
       try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
       const sessionId = String(body.sessionId || "");
       const channelId = String(body.channelId || "");
-      if (!/^[a-f0-9]{64}$/i.test(sessionId) || !channelId) {
+      if (!/^[a-f0-9]{64}$/i.test(sessionId)) {
         return json({ error: "Invalid session data" }, 400);
       }
 
       const key = "viewer:" + sessionId;
       const existing = await this.state.storage.get(key);
+      // Segment requests refresh activity but do not create an unknown session.
+      if (!channelId && !existing) return json({ status: "ignored", reason: "session-not-found" });
       const record = {
         sessionId,
-        ip: String(body.ip || ""),
-        ua: String(body.ua || "").slice(0, 512),
-        ch: channelId,
+        ip: String(body.ip || existing?.ip || ""),
+        ua: String(body.ua || existing?.ua || "").slice(0, 512),
+        ch: channelId || existing?.ch,
         firstSeen: existing?.firstSeen || Number(body.now) || now,
-        lastSeen: Number(body.now) || now,
+        // Throttle durable writes to once every 15 seconds per viewer session.
+        lastSeen: existing && now - Number(existing.lastSeen || 0) < 15000
+          ? existing.lastSeen
+          : (Number(body.now) || now),
         country: String(body.country || existing?.country || "").slice(0, 80),
         city: String(body.city || existing?.city || "").slice(0, 100),
         org: String(body.org || existing?.org || "").slice(0, 160),
