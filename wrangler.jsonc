@@ -7,11 +7,22 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
-  }, 
+  },
   "kv_namespaces": [
     {
       "binding": "DATA_KV",
       "id": "6f8fa9f54f844f51b03d76299911fb4a"
     }
-  ]
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "TRACKER", "class_name": "ViewerTracker" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ViewerTracker"] }
+  ],
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  }
 }
