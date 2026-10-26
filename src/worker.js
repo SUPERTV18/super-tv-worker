@@ -1410,7 +1410,8 @@ async function rewriteHLSManifest(
   body,
   sourceUrl,
   workerOrigin,
-  channelHeaders = {}
+  channelHeaders = {},
+  proxyPath = "/api/hls"
 ) {
 
   const lines =
@@ -1438,7 +1439,8 @@ async function rewriteHLSManifest(
           line,
           sourceUrl,
           workerOrigin,
-          channelHeaders
+          channelHeaders,
+          proxyPath
         );
 
       output.push(
@@ -1475,7 +1477,7 @@ async function rewriteHLSManifest(
         );
 
       output.push(
-        `${workerOrigin}/api/hls?token=${encodeURIComponent(token)}`
+        `${workerOrigin}${proxyPath}?token=${encodeURIComponent(token)}`
       );
 
     } catch {
@@ -1503,7 +1505,8 @@ async function rewriteURIAttributes(
   line,
   sourceUrl,
   workerOrigin,
-  channelHeaders = {}
+  channelHeaders = {},
+  proxyPath = "/api/hls"
 ) {
 
   const regex =
@@ -1556,7 +1559,7 @@ async function rewriteURIAttributes(
         );
 
       const replacement =
-        `${workerOrigin}/api/hls?token=${encodeURIComponent(token)}`;
+        `${workerOrigin}${proxyPath}?token=${encodeURIComponent(token)}`;
 
       result =
         result.slice(
@@ -2886,6 +2889,96 @@ function validateChannelsData(data) {
 async function adminApi(request, env, url) {
   if (!adminAuthorized(request, env)) {
     return json({ error: "غير مصرح. تحقق من مفتاح الإدارة." }, 401);
+  }
+
+  // Protected in-admin HLS preview. Accept a saved channel ID/group only;
+  // never accept an arbitrary upstream URL from the browser.
+  if (url.pathname === "/api/admin/preview" && request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: "بيانات غير صالحة" }, 400); }
+    const id = String(body.id || "").trim();
+    const group = String(body.group || "").trim();
+    if (!id || !group || id.length > 160 || group.length > 160) {
+      return json({ error: "اختر قناة محفوظة للمعاينة." }, 400);
+    }
+    try {
+      const data = await loadChannels(env);
+      const list = Array.isArray(data[group]) ? data[group] : [];
+      const channel = list.find(item => String(item.id) === id);
+      if (!channel || !channel.url) return json({ error: "القناة غير موجودة في ملف القنوات الحالي." }, 404);
+      if (channel.enabled === false) return json({ error: "هذه القناة متوقفة. فعّلها أولًا لمعاينة البث." }, 409);
+      let target;
+      try {
+        target = new URL(String(channel.url));
+        if (target.protocol !== "https:" && target.protocol !== "http:") throw new Error("protocol");
+      } catch { return json({ error: "رابط المصدر المحفوظ غير صالح." }, 400); }
+      const uaSettings = await getServerUASettings();
+      const upstream = await fetchUpstream(target.href, request, channel.headers || {}, uaSettings.proxyUA);
+      if (!upstream.ok) {
+        try { await upstream.body?.cancel(); } catch {}
+        return json({ error: "المصدر رفض المعاينة (HTTP " + upstream.status + "). راجع صلاحية الرابط ورؤوس المصدر." }, 502);
+      }
+      const contentType = upstream.headers.get("content-type") || "";
+      const finalUrl = upstream.url || target.href;
+      const bodyText = await upstream.text();
+      if (!bodyText.replace(/^\\uFEFF/, "").trimStart().startsWith("#EXTM3U")) {
+        return json({ error: "المصدر لم يُرجع قائمة HLS بصيغة M3U8؛ هذه المعاينة تدعم HLS فقط.", contentType }, 415);
+      }
+      const manifest = await rewriteHLSManifest(env, bodyText, finalUrl, url.origin, channel.headers || {}, "/api/admin/preview-hls");
+      recordAdminEvent({ type: "admin_preview", status: 200, ok: true, host: target.hostname, message: "بدء معاينة قناة محفوظة" });
+      return new Response(manifest, { status: 200, headers: {
+        "Content-Type": "application/vnd.apple.mpegurl; charset=utf-8",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "X-Content-Type-Options": "nosniff"
+      }});
+    } catch (e) {
+      return json({ error: "تعذر تجهيز المعاينة: " + String(e.message || e).slice(0, 180) }, 502);
+    }
+  }
+
+  if (url.pathname === "/api/admin/preview-hls" && request.method === "GET") {
+    const token = url.searchParams.get("token");
+    if (!token) return text("Missing token", 400);
+    const decoded = await verifyHLSToken(env, token);
+    if (!decoded) return text("Invalid or expired preview token", 403);
+    let target;
+    try {
+      target = new URL(decoded.url);
+      if (target.protocol !== "https:" && target.protocol !== "http:") throw new Error("protocol");
+    } catch { return text("Invalid upstream URL", 400); }
+    try {
+      const uaSettings = await getServerUASettings();
+      const upstream = await fetchUpstream(target.href, request, decoded.headers, uaSettings.proxyUA);
+      if (!upstream.ok) {
+        try { await upstream.body?.cancel(); } catch {}
+        return text("Upstream returned HTTP " + upstream.status, 502);
+      }
+      const contentType = upstream.headers.get("content-type") || "";
+      const finalUrl = upstream.url || target.href;
+      const isManifest = isProbablyM3U8(finalUrl, contentType);
+      if (isManifest) {
+        const bodyText = await upstream.text();
+        if (bodyText.replace(/^\\uFEFF/, "").trimStart().startsWith("#EXTM3U")) {
+          const manifest = await rewriteHLSManifest(env, bodyText, finalUrl, url.origin, decoded.headers, "/api/admin/preview-hls");
+          return new Response(manifest, { status: upstream.status, headers: {
+            "Content-Type": "application/vnd.apple.mpegurl; charset=utf-8",
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "X-Content-Type-Options": "nosniff"
+          }});
+        }
+        return text("Invalid HLS manifest", 502);
+      }
+      const headers = new Headers();
+      for (const name of ["Content-Type", "Content-Length", "Content-Range", "Accept-Ranges"]) {
+        const value = upstream.headers.get(name);
+        if (value) headers.set(name, value);
+      }
+      headers.set("Cache-Control", "no-store");
+      headers.set("X-Content-Type-Options", "nosniff");
+      return new Response(upstream.body, { status: upstream.status, headers });
+    } catch (e) {
+      return text("Preview upstream error: " + String(e.message || e).slice(0, 160), 502);
+    }
   }
 
   if (url.pathname === "/api/admin/server-ua" && request.method === "GET") {
