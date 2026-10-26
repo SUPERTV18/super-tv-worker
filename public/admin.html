@@ -234,6 +234,7 @@ details.adv .formgrid{padding:6px 16px 0}
 <div class="layout">
 <aside class="sidebar" aria-label="التنقل الرئيسي">
 <button class="nav active" data-page="overview"><span class="ic" data-ico="grid"></span><span>نظرة عامة</span></button>
+<button class="nav" data-page="ops"><span class="ic" data-ico="pulse"></span><span>مركز عمليات البث</span></button>
 <button class="nav" data-page="channels"><span class="ic" data-ico="tv"></span><span>إدارة القنوات</span></button>
 <button class="nav" data-page="editor"><span class="ic" data-ico="plus"></span><span>إضافة / تعديل</span></button>
 <button class="nav" data-page="tester"><span class="ic" data-ico="target"></span><span>اختبار المصدر</span></button>
@@ -260,6 +261,22 @@ details.adv .formgrid{padding:6px 16px 0}
 <div class="panel"><h3>أكثر القنوات طلبًا في الذاكرة الحالية</h3><div id="topChannels"><div class="empty">اضغط تحديث لتحميل الإحصائيات</div></div><p class="notice">ملاحظة: إحصائيات المشاهدين الحالية تقريبية ومؤقتة، ولا تمثل عدد المشاهدين الفريدين على مستوى جميع نسخ Cloudflare.</p></div>
 </div>
 <div class="panel"><h3>اختصارات سريعة</h3><div class="toolbar" style="margin:0"><button class="primary" data-goto="editor"><span data-ico="plus" data-size="16"></span>إضافة قناة</button><button class="soft" data-goto="channels">عرض القنوات</button><button class="soft" data-goto="tester">اختبار رابط بث</button></div></div>
+</section>
+
+<section class="page" id="page-ops">
+<div class="pagehead"><div><div class="crumb">لوحة التحكم<i>/</i><b>مركز عمليات البث</b></div><h2>مركز عمليات البث</h2><p class="notice">لوحة متابعة تجمع حالة القنوات ونتائج الفحص وسجل الأخطاء المتاح. لا تمثل بياناتًا لحظية من كل نسخ Cloudflare.</p></div><button class="primary" id="refreshOps" type="button"><span data-ico="refresh" data-size="16"></span>تحديث المركز</button></div>
+<div class="stats">
+<div class="stat"><div class="stat-top"><span class="label">إجمالي القنوات</span><span class="sic" data-ico="tv"></span></div><div class="num" id="opsChannels">—</div><div class="sub">من ملف القنوات المحمّل</div></div>
+<div class="stat"><div class="stat-top"><span class="label">نتائج الفحص الناجحة</span><span class="sic" data-ico="check"></span></div><div class="num" id="opsHealthy">—</div><div class="sub" id="opsHealthSub">شغّل فحص القنوات أولًا</div></div>
+<div class="stat"><div class="stat-top"><span class="label">نتائج تحتاج مراجعة</span><span class="sic" data-ico="alert"></span></div><div class="num" id="opsFailed">—</div><div class="sub">من آخر جولة فحص في هذه الجلسة</div></div>
+<div class="stat"><div class="stat-top"><span class="label">طلبات مشاهدة مرصودة</span><span class="sic" data-ico="pulse"></span></div><div class="num" id="opsRequests">—</div><div class="sub">عداد تقريبي من ذاكرة Worker المتاحة</div></div>
+</div>
+<div class="dash">
+<div class="panel"><div class="pagehead" style="margin:0 0 10px"><h3 style="margin:0">حالة المنظومة</h3><span class="pill" id="opsStatus"><i class="dot"></i><span>بانتظار التحديث</span></span></div><div id="opsSummary" class="empty">اضغط «تحديث المركز» لقراءة أحدث البيانات المتاحة.</div></div>
+<div class="panel"><h3>آخر نتائج فحص القنوات</h3><div id="opsChannelsHealth" class="empty">لا توجد نتائج فحص في هذه الجلسة.</div><button class="soft" data-goto="health" type="button" style="margin-top:10px">فتح فحص القنوات</button></div>
+</div>
+<div class="panel"><div class="pagehead" style="margin:0 0 10px"><div><h3 style="margin:0">أحدث أحداث الأخطاء</h3><p class="notice" style="margin:5px 0 0">السجل المتاح من ذاكرة Worker الحالية فقط وقد لا يشمل كل النسخ أو الأحداث السابقة.</p></div><button class="soft" id="refreshOpsLogs" type="button">تحديث السجل</button></div><div id="opsLogs" class="empty">اضغط تحديث المركز لقراءة سجل الأخطاء.</div></div>
+<div class="panel"><h3>مؤشرات الاستقرار المحلية</h3><p class="notice">هذه المؤشرات محفوظة في متصفح لوحة التحكم فقط. لا تكتب إلى KV ولا تقيس التقطيع الفعلي داخل جهاز المشاهد.</p><div id="opsHistory" class="empty">سيظهر الملخص بعد إجراء فحص للقنوات.</div></div>
 </section>
 
 <section class="page" id="page-channels">
@@ -487,7 +504,7 @@ function openDialog(o){return new Promise(resolve=>{
 })}
 
 async function api(path,opts={}){const headers={...(opts.headers||{}),"X-Admin-Key":adminKey};if(opts.body&&!headers["Content-Type"])headers["Content-Type"]="application/json";const isCh=path.startsWith("/api/admin/channels");if(isCh&&opts.method==="POST"&&baseSha)headers["X-Base-Sha"]=baseSha;const res=await fetch(path,{...opts,headers});const sh=res.headers.get("X-File-Sha");if(isCh&&sh)baseSha=sh;const data=await res.json().catch(()=>({error:"استجابة غير صالحة"}));if(!res.ok){const err=new Error(data.error||("HTTP "+res.status));err.status=res.status;throw err}if(data&&data.sha&&(isCh||path.startsWith("/api/admin/restore")))baseSha=data.sha;return data}
-function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));document.querySelectorAll(".nav").forEach(b=>{const on=b.dataset.page===name;b.classList.toggle("active",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});if(name==="editor"&&!editing)clearEditor();if(name==="errors")loadErrorLogs();if(name==="viewers")startViewers();else stopViewers();if(name==="history")loadHistory();window.scrollTo({top:0})}
+function showPage(name){document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));document.querySelectorAll(".nav").forEach(b=>{const on=b.dataset.page===name;b.classList.toggle("active",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});if(name==="editor"&&!editing)clearEditor();if(name==="errors")loadErrorLogs();if(name==="ops")refreshOperations();if(name==="viewers")startViewers();else stopViewers();if(name==="history")loadHistory();window.scrollTo({top:0})}
 document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.goto)));
 function allChannels(){return Object.entries(channels).flatMap(([group,items])=>(Array.isArray(items)?items:[]).map(ch=>({...ch,__group:group})))}
@@ -570,6 +587,36 @@ async function runHealthCheck(ids=null,triggerBtn=null){
 function checkAll(){return runHealthCheck(null,$("checkAllBtn"))}
 async function loadErrorLogs(){const out=$("errorLogResults");out.className="status";out.textContent="جار تحميل السجل...";try{const r=await api("/api/admin/logs");out.className="tablewrap";out.innerHTML=r.logs.length?'<table><thead><tr><th>الوقت</th><th>النوع</th><th>القناة</th><th>الحالة</th><th>التفاصيل</th></tr></thead><tbody>'+r.logs.map(x=>'<tr><td>'+esc(new Date(x.time).toLocaleString("ar-EG"))+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.channel||x.channelId||x.host||"—")+'</td><td>'+esc(x.status??"—")+'</td><td>'+esc(x.message||"—")+'</td></tr>').join("")+'</tbody></table>':'<div class="empty">لا توجد أحداث مسجلة في ذاكرة Worker الحالية.</div>';out.insertAdjacentHTML("beforeend",'<p class="notice">'+esc(r.scope)+'</p>')}catch(e){out.className="status";out.textContent=e.message}}
 
+let opsLogsCache=[];
+async function refreshOperations(){
+ const status=$("opsStatus");if(status){status.className="pill";status.innerHTML='<i class="dot"></i><span>جار التحديث</span>'}
+ $("opsChannels").textContent=allChannels().length;
+ $("opsRequests").textContent=stats?.activeViewerRequests??"—";
+ const results=Array.isArray(lastHealthResults)?lastHealthResults:[];
+ const good=results.filter(x=>x.ok),bad=results.filter(x=>!x.ok);
+ $("opsHealthy").textContent=results.length?good.length:"—";
+ $("opsFailed").textContent=results.length?bad.length:"—";
+ $("opsHealthSub").textContent=results.length?"من "+results.length+" نتيجة في آخر فحص":"شغّل فحص القنوات أولًا";
+ const summary=$("opsSummary"),history=readHealthHistory(),latest=history[0];
+ const err403=bad.filter(x=>Number(x.status)===403).length,err429=bad.filter(x=>Number(x.status)===429).length,err5xx=bad.filter(x=>Number(x.status)>=500&&Number(x.status)<600).length,pills=[];
+ if(!results.length)pills.push('<div class="status">لم يُجرَ فحص للقنوات في هذه الجلسة؛ لا يمكن تحديد حالة المصادر بعد.</div>');
+ else if(bad.length===0)pills.push('<div class="status" style="border-color:#35c99a">نتائج آخر فحص: جميع القنوات المفحوصة أعادت استجابة ناجحة. هذا لا يضمن استقرار التشغيل المستمر.</div>');
+ else pills.push('<div class="status" style="border-color:#ffb86b">نتائج آخر فحص: '+bad.length+' قناة تحتاج مراجعة من أصل '+results.length+'.</div>');
+ if(err403)pills.push('<div class="status">HTTP 403: '+err403+' · تحقق من صلاحية المصدر أو الرؤوس أو انتهاء الرابط.</div>');
+ if(err429)pills.push('<div class="status">HTTP 429: '+err429+' · تحقق من حدود الطلبات وتجنب الفحص المتكرر بسرعة.</div>');
+ if(err5xx)pills.push('<div class="status">HTTP 5xx: '+err5xx+' · احتمال مشكلة مؤقتة في المصدر أو الخادم الوسيط.</div>');
+ summary.className="";summary.innerHTML=pills.join("");
+ const healthEl=$("opsChannelsHealth");healthEl.className=results.length?"tablewrap":"empty";
+ healthEl.innerHTML=results.length?'<table><thead><tr><th>القناة</th><th>الحالة</th><th>الاستجابة</th><th>التشخيص</th></tr></thead><tbody>'+[...results].sort((a,b)=>Number(a.ok)-Number(b.ok)).slice(0,12).map(x=>'<tr><td>'+esc(x.name||x.id)+'<div class="muted">'+esc(x.id)+'</div></td><td><span class="st '+(x.ok?'st-ok':'st-bad')+'"><i></i>'+esc(x.status||"اتصال")+'</span></td><td>'+esc(x.elapsedMs??"—")+' ms</td><td>'+esc(x.categoryLabel||x.error||(x.ok?"استجابة ناجحة":"فشل"))+'</td></tr>').join("")+'</tbody></table>':'لا توجد نتائج فحص؛ افتح فحص القنوات وابدأ جولة جديدة.';
+ const h=$("opsHistory");h.className=latest?"":"empty";
+ h.innerHTML=latest?'<div class="stats"><div class="stat"><div class="label">آخر جولة</div><div class="num">'+esc(new Date(latest.time).toLocaleString("ar-EG"))+'</div></div><div class="stat"><div class="label">نسبة النجاح</div><div class="num">'+Math.round((latest.good||0)/Math.max(1,latest.checked||0)*100)+'%</div></div><div class="stat"><div class="label">جولات محفوظة محليًا</div><div class="num">'+history.length+'</div></div><div class="stat"><div class="label">فشل في آخر جولة</div><div class="num">'+(latest.bad||0)+'</div></div></div>':'لا يوجد سجل محلي حتى الآن.';
+ await refreshOpsLogs(false);
+ if(status){status.className="pill "+(results.length&&bad.length?"bad":results.length?"ok":"");status.innerHTML='<i class="dot"></i><span>'+(results.length?(bad.length?"تحتاج بعض القنوات مراجعة":"آخر فحص ناجح"):"تم تحديث البيانات")+'</span>'}
+}
+async function refreshOpsLogs(showNotice=true){
+ const el=$("opsLogs");if(!el)return;
+ try{const r=await api("/api/admin/logs");opsLogsCache=Array.isArray(r.logs)?r.logs:[];const rows=opsLogsCache.slice(-15).reverse();el.className=rows.length?"tablewrap":"empty";el.innerHTML=rows.length?'<table><thead><tr><th>الوقت</th><th>النوع</th><th>القناة / المضيف</th><th>الحالة</th><th>التفاصيل</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.time?new Date(x.time).toLocaleTimeString("ar-EG"):"—")+'</td><td>'+esc(x.type||"—")+'</td><td>'+esc(x.channel||x.channelId||x.host||"—")+'</td><td>'+esc(x.status??"—")+'</td><td>'+esc(x.message||"—")+'</td></tr>').join("")+'</tbody></table>':'لا توجد أحداث مسجلة في ذاكرة Worker الحالية.';if(showNotice)notify("تم تحديث سجل عمليات البث")}catch(e){el.className="status";el.textContent="تعذر تحميل السجل: "+e.message}
+}
 function finalChannelUrl(ch){const source=String(ch.url||"");const isViberLive=/^https?:\/\/vibertv\.fun\/ind4ex\.php\?[^#]*\blive=/i.test(source);const route=(isViberLive||String(ch.endpoint||"m3u8").toLowerCase()==="flv")?"play.flv":"play.m3u8";return WORKER_BASE+route+"?id="+encodeURIComponent(String(ch.id??""))}
 function smartConvert(){const v=$("smartLinkInput").value.trim(),out=$("smartLinkResult");out.classList.remove("hidden");let ch=null;if(/^https?:\/\//i.test(v)){ch=allChannels().find(x=>String(x.url||"").trim()===v)}else{ch=allChannels().find(x=>String(x.id)===v)}if(!ch){out.textContent="لم يتم العثور على قناة مطابقة محفوظة. افتح إدارة القنوات وتأكد من رابط المصدر أو ID.";return}const finalUrl=finalChannelUrl(ch);out.textContent="القناة: "+ch.name+"\nID الأصلي: "+ch.id+"\nرابط المصدر: "+String(ch.url||"")+"\nالرابط النهائي: "+finalUrl;const b=document.createElement("button");b.className="primary";b.textContent="نسخ الرابط النهائي";b.onclick=()=>copyText(finalUrl);out.appendChild(document.createTextNode("\n"));out.appendChild(b)}
 function fillGroups(){const groups=Object.keys(channels),cur=$("groupFilter").value;$("groupFilter").innerHTML='<option value="">كل المجموعات</option>'+groups.map(g=>'<option>'+esc(g)+'</option>').join("");if(groups.includes(cur))$("groupFilter").value=cur;$("knownGroups").innerHTML=groups.map(g=>'<option value="'+esc(g)+'"></option>').join("")}
@@ -819,6 +866,7 @@ $("openPalette").onclick=openPalette;
 document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();if(palOpen)closePalette();else openPalette()}});
 
 const diagnosisRefresh=$("refreshHealthDiagnosis");if(diagnosisRefresh)diagnosisRefresh.onclick=renderHealthDiagnosis;
+const refreshOpsBtn=$("refreshOps");if(refreshOpsBtn)refreshOpsBtn.onclick=async()=>{try{await loadStats();await refreshOperations();notify("تم تحديث مركز عمليات البث")}catch(e){notify(e.message,"error")}};const refreshOpsLogsBtn=$("refreshOpsLogs");if(refreshOpsLogsBtn)refreshOpsLogsBtn.onclick=()=>refreshOpsLogs(true);
 paintIcons();validateForm(false);
 const remembered=sessionStorage.getItem("stvAdminKey");if(remembered){$("loginKey").value=remembered;login()}
 </script></body></html>
