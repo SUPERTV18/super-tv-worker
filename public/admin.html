@@ -498,7 +498,6 @@ details.adv .formgrid{padding:6px 16px 0}
  </div>
  <div class="toolbar" style="margin:10px 0 0"><button class="primary" type="button" id="hostPreviewBtn">معاينة التعديلات</button><button class="soft" type="button" id="hostResetBtn">مسح الحقول</button><span class="muted" id="hostReplaceStatus" aria-live="polite">لم يتم تغيير أي شيء بعد.</span></div><div id="hostReplacePreview" class="hidden" style="margin-top:14px"></div>
 </div>
-</div>
 <div id="channelCards" class="cards" aria-live="polite">
 <div class="skcard"><div class="r"><div class="sk" style="width:46px;height:46px;border-radius:50%"></div><div class="c"><div class="sk" style="height:14px;width:60%"></div><div class="sk" style="height:10px;width:35%"></div></div></div><div class="sk" style="height:34px"></div><div class="sk" style="height:38px"></div></div>
 <div class="skcard"><div class="r"><div class="sk" style="width:46px;height:46px;border-radius:50%"></div><div class="c"><div class="sk" style="height:14px;width:50%"></div><div class="sk" style="height:10px;width:30%"></div></div></div><div class="sk" style="height:34px"></div><div class="sk" style="height:38px"></div></div>
@@ -983,8 +982,7 @@ async function setBulkEnabled(enabled){
    if($(check).checked){const value=$(input).value.trim();let oldKey=Object.keys(headers).find(k=>k.toLowerCase()===key.toLowerCase())||key;const before=headers[oldKey]||"";if(value)headers[oldKey]=value;else delete headers[oldKey];if(before!==value){fields.push({key:"headers."+oldKey,before:String(before),after:value,label});patch.headers={...headers}}}
   }
   if($("bulkEndpointOn").checked)put("endpoint",String(ch.endpoint||"m3u8").toLowerCase(),$("bulkEndpoint").value,"نوع الرابط");
-  if($("bulkEnabledOn").checked)put("enabled",ch.enabled!==false,$("bulkEnabled").value==="true" ? undefined : false,"حالة القناة");
-  if(patch.enabled===undefined&&fields.some(f=>f.key==="enabled"))delete patch.enabled;
+  if($("bulkEnabledOn").checked){const next=$("bulkEnabled").value==="true",before=ch.enabled!==false;if(before!==next){patch.enabled=next;fields.push({key:"enabled",before:String(before),after:String(next),label:"حالة القناة"})}}
   return {patch,fields};
  }
  function buildBulkPlan(){
@@ -1012,7 +1010,7 @@ async function setBulkEnabled(enabled){
   if(!hostReplacePlan.length)return;const count=hostReplacePlan.length;
   const ok=await openDialog({title:"تأكيد تعديل "+count+" قناة؟",text:"سيتم حفظ إعدادات المعاينة داخل ملف القنوات على GitHub. راجع القنوات المستهدفة قبل التأكيد.",ok:"تأكيد وحفظ",danger:false});if(!ok)return;
   const snapshot=clone(channels);
-  for(const item of hostReplacePlan){const arr=channels[item.group];if(!Array.isArray(arr))continue;const index=arr.findIndex(ch=>String(ch.id)===item.id);if(index>=0)arr[index]={...arr[index],...item.patch};}
+  for(const item of hostReplacePlan){const arr=channels[item.group];if(!Array.isArray(arr))continue;const index=arr.findIndex(ch=>String(ch.id)===item.id);if(index>=0){arr[index]={...arr[index],...item.patch};if(item.patch.enabled===true)delete arr[index].enabled;}}
   const changed=hostReplacePlan.reduce((n,c)=>n+c.fields.length,0);hostReplacePlan=[];
   $("hostReplacePreview").classList.add("hidden");$("hostReplacePreview").innerHTML="";$("hostReplaceStatus").textContent="جارٍ حفظ "+changed+" تعديل...";
   const saved=await saveChannels("تم تعديل "+count+" قناة جماعيًا");
