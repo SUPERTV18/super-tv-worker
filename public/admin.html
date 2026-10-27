@@ -545,10 +545,12 @@ details.adv .formgrid{padding:6px 16px 0}
 <div id="viewersTable" class="empty">جار التحميل...</div>
 <p class="notice">العناوين تُعرض مخفّية جزئيًا افتراضيًا. سجل المشاهدين التاريخي يُحفظ في Durable Object ولا يُحذف عند تحديث الصفحة أو نشر نسخة جديدة. عنوان IP بيانات شخصية، فاستخدمه للإدارة والحماية فقط.</p></div>
 <div class="stats">
-<div class="stat"><div class="label">إجمالي الأجهزة المسجلة</div><div class="num" id="histTotalViewers">—</div><div class="sub">كل من شاهد منذ تفعيل السجل</div></div>
-<div class="stat"><div class="label">زيارات آخر 24 ساعة</div><div class="num" id="histTodayVisits">—</div><div class="sub" id="histTodayUnique">مشاهدون مميزون: —</div></div>
-<div class="stat"><div class="label">زيارات آخر 7 أيام</div><div class="num" id="histWeekVisits">—</div><div class="sub" id="histWeekUnique">مشاهدون مميزون: —</div></div>
-<div class="stat"><div class="label">إجمالي جلسات المشاهدة</div><div class="num" id="histTotalVisits">—</div><div class="sub">جلسات جديدة مسجلة</div></div>
+<div class="stat"><div class="label">إجمالي الأجهزة المسجلة</div><div class="num" id="histTotalViewers">—</div><div class="sub">منذ تفعيل السجل</div></div>
+<div class="stat"><div class="label">مشاهدات اليوم</div><div class="num" id="histTodayVisits">—</div><div class="sub" id="histTodayUnique">مشاهدون مميزون: —</div></div>
+<div class="stat"><div class="label">مشاهدات الأمس</div><div class="num" id="histYesterdayVisits">—</div><div class="sub" id="histYesterdayUnique">مشاهدون مميزون: —</div></div>
+<div class="stat"><div class="label">آخر 7 أيام</div><div class="num" id="histWeekVisits">—</div><div class="sub" id="histWeekUnique">مشاهدون مميزون: —</div></div>
+<div class="stat"><div class="label">آخر 30 يومًا</div><div class="num" id="histMonthVisits">—</div><div class="sub" id="histMonthUnique">مشاهدون مميزون: —</div></div>
+<div class="stat"><div class="label">إجمالي جلسات المشاهدة</div><div class="num" id="histTotalVisits">—</div><div class="sub">كل الجلسات المسجلة</div></div>
 </div>
 <div class="panel"><h3>نشاط آخر 24 ساعة حسب آخر ظهور مسجّل</h3><p class="notice">يعرض توزيع أوقات آخر ظهور للأجهزة الموجودة في السجل، وليس عدد المشاهدين الفعلي لكل ساعة؛ قد يتأثر بمدة الاحتفاظ بالسجل.</p><div id="viewerActivity24" aria-live="polite"><div class="empty">جار تجهيز الرسم…</div></div></div>
 <div class="panel"><h3>خريطة كثافة الزيارات — آخر 7 أيام</h3><p class="notice">كل مربع يمثل عدد جلسات الزيارة المسجلة في ساعة محددة من يوم الأسبوع. الأوقات بتوقيت UTC، والبيانات من سجل الزيارات الموجود بالفعل.</p><div id="viewerActivityHeatmap" aria-live="polite"><div class="empty">جار تجهيز خريطة النشاط…</div></div></div>
@@ -1289,8 +1291,12 @@ async function loadViewerHistory(){
   out.removeAttribute("aria-busy");$("histTotalViewers").textContent=Number(r.totalHistoricalViewers||0).toLocaleString("ar-EG");
   $("histTodayVisits").textContent=Number(r.todayVisits||0).toLocaleString("ar-EG");
   $("histTodayUnique").textContent="مشاهدون مميزون: "+Number(r.todayUniqueViewers||0).toLocaleString("ar-EG");
+  $("histYesterdayVisits").textContent=Number(r.yesterdayVisits||0).toLocaleString("ar-EG");
+  $("histYesterdayUnique").textContent="مشاهدون مميزون: "+Number(r.yesterdayUniqueViewers||0).toLocaleString("ar-EG");
   $("histWeekVisits").textContent=Number(r.weekVisits||0).toLocaleString("ar-EG");
   $("histWeekUnique").textContent="مشاهدون مميزون: "+Number(r.weekUniqueViewers||0).toLocaleString("ar-EG");
+  $("histMonthVisits").textContent=Number(r.monthVisits||0).toLocaleString("ar-EG");
+  $("histMonthUnique").textContent="مشاهدون مميزون: "+Number(r.monthUniqueViewers||0).toLocaleString("ar-EG");
   $("histTotalVisits").textContent=Number(r.totalVisits||0).toLocaleString("ar-EG");
   const rows=Array.isArray(r.viewers)?r.viewers:[];
   renderViewerActivity24(rows);
