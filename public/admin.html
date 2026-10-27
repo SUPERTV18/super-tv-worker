@@ -479,6 +479,11 @@ details.adv .formgrid{padding:6px 16px 0}
 <div id="orderBar" class="banner hidden" role="status"><span><span data-ico="alert"></span>تم تغيير ترتيب القنوات — لم يُحفظ بعد</span><div style="display:flex;gap:8px"><button type="button" id="orderSave" style="background:linear-gradient(120deg,#35c9ff,#6f9bff);color:#04121f;border-color:transparent">حفظ الترتيب</button><button type="button" id="orderDiscard">تجاهل</button></div></div>
 <div id="statusChips" class="chips"></div>
 <div id="bulkBar" class="bulk hidden"><b id="bulkCount"></b><div><button class="soft" id="bulkMove">نقل لمجموعة</button><button class="soft" id="bulkCheck">فحص المحدد</button><button class="soft" id="bulkEnable">تفعيل المحدد</button><button class="soft" id="bulkDisable">إيقاف المحدد</button><button class="danger" id="bulkDelete">حذف</button><button class="ghost" id="bulkClear">إلغاء التحديد</button></div></div>
+<div class="panel" id="hostReplacePanel" style="margin:14px 0;border-color:#286b8b;background:linear-gradient(135deg,rgba(12,42,62,.72),rgba(18,28,50,.8))">
+ <div class="pagehead" style="margin:0 0 10px"><div><h3 style="margin:0">استبدال الهوست بالجملة</h3><p class="notice" style="margin:6px 0 0">استبدل الهوست في روابط القنوات المحفوظة. يحافظ على المسارات ومعلمات الرابط، ولا يحفظ إلا بعد المعاينة والتأكيد.</p></div><span class="pill">Bulk Host Replace</span></div>
+ <div class="formgrid"><div class="field"><label for="hostOld">الهوست القديم</label><input id="hostOld" dir="ltr" placeholder="old-host.example أو https://old-host.example" autocomplete="off"></div><div class="field"><label for="hostNew">الهوست الجديد</label><input id="hostNew" dir="ltr" placeholder="new-host.example أو https://new-host.example" autocomplete="off"></div></div>
+ <div class="toolbar" style="margin:10px 0 0"><button class="primary" type="button" id="hostPreviewBtn">معاينة الروابط المتأثرة</button><button class="soft" type="button" id="hostResetBtn">مسح</button><span class="muted" id="hostReplaceStatus" aria-live="polite">سيتم فحص جميع المجموعات والقنوات المحمّلة.</span></div><div id="hostReplacePreview" class="hidden" style="margin-top:14px"></div>
+</div>
 <div id="channelCards" class="cards" aria-live="polite">
 <div class="skcard"><div class="r"><div class="sk" style="width:46px;height:46px;border-radius:50%"></div><div class="c"><div class="sk" style="height:14px;width:60%"></div><div class="sk" style="height:10px;width:35%"></div></div></div><div class="sk" style="height:34px"></div><div class="sk" style="height:38px"></div></div>
 <div class="skcard"><div class="r"><div class="sk" style="width:46px;height:46px;border-radius:50%"></div><div class="c"><div class="sk" style="height:14px;width:50%"></div><div class="sk" style="height:10px;width:30%"></div></div></div><div class="sk" style="height:34px"></div><div class="sk" style="height:38px"></div></div>
@@ -943,6 +948,43 @@ async function setBulkEnabled(enabled){
  for(const [g,arr] of Object.entries(channels))channels[g]=arr.map(ch=>ids.has(String(ch.id))?{...ch,enabled}:ch);
  selected.clear();renderChannels();await saveChannels(enabled?"تم تفعيل القنوات المحددة":"تم إيقاف القنوات المحددة");
 }
+
+ // Bulk host replacement: exact hostname match, preview, then explicit save.
+ let hostReplacePlan=[];
+ function parseHostInput(value){let raw=String(value||"").trim();if(!raw)return null;const hasScheme=/^https?:\/\//i.test(raw);if(!hasScheme)raw="https://"+raw;try{const u=new URL(raw);if(!u.hostname||u.username||u.password)return null;return {hostname:u.hostname.toLowerCase(),port:u.port,protocol:u.protocol,hasScheme}}catch(e){return null}}
+ function replaceHostInUrl(value,oldHost,newHost){if(typeof value!=="string"||!value.trim())return value;try{const u=new URL(value.trim());if(u.hostname.toLowerCase()!==oldHost.hostname)return value;u.hostname=newHost.hostname;if(newHost.port)u.port=newHost.port;else if(oldHost.port&&u.port===oldHost.port)u.port="";if(newHost.hasScheme)u.protocol=newHost.protocol;return u.toString()}catch(e){return value}}
+ function hostReplacementChanges(){
+  const oldHost=parseHostInput($("hostOld").value),newHost=parseHostInput($("hostNew").value);if(!oldHost||!newHost)throw new Error("اكتب الهوست القديم والجديد بشكل صحيح، مثل old.example و new.example.");
+  if(oldHost.hostname===newHost.hostname&&oldHost.port===newHost.port&&(!newHost.hasScheme||oldHost.protocol===newHost.protocol))throw new Error("الهوست القديم والجديد متطابقان.");
+  const changes=[];for(const [group,items] of Object.entries(channels)){if(!Array.isArray(items))continue;items.forEach(ch=>{const fields=[];
+   for(const key of ["url","logo"]){const before=ch[key],after=replaceHostInUrl(before,oldHost,newHost);if(typeof before==="string"&&after!==before)fields.push({key,before,after})}
+   if(ch.headers&&typeof ch.headers==="object")for(const key of Object.keys(ch.headers)){if(/^(referer|origin)$/i.test(key)){const before=ch.headers[key],after=replaceHostInUrl(before,oldHost,newHost);if(typeof before==="string"&&after!==before)fields.push({key:"headers."+key,before,after})}}
+   if(fields.length)changes.push({group,id:String(ch.id),name:String(ch.name||ch.id),fields})
+  })}return changes;
+ }
+ function renderHostReplacementPreview(changes){
+  const box=$("hostReplacePreview");box.classList.remove("hidden");if(!changes.length){box.innerHTML='<div class="status">لم يتم العثور على روابط تطابق الهوست القديم.</div>';return}
+  const fieldName=k=>({"url":"رابط المصدر","logo":"الشعار","headers.Referer":"Referer","headers.referer":"Referer","headers.Origin":"Origin","headers.origin":"Origin"}[k]||k);
+  const rows=changes.slice(0,40).map(c=>'<tr><td>'+esc(c.name)+'<div class="muted">'+esc(c.group)+' · '+esc(c.id)+'</div></td><td>'+c.fields.map(f=>'<div class="muted">'+esc(fieldName(f.key))+'</div><code dir="ltr" style="white-space:normal;overflow-wrap:anywhere">'+esc(f.before)+'</code><div style="text-align:center;margin:4px">↓</div><code dir="ltr" style="white-space:normal;overflow-wrap:anywhere;color:#6ce4bc">'+esc(f.after)+'</code>').join('<hr style="border-color:var(--line);margin:8px 0">')+'</td></tr>').join("");
+  box.innerHTML='<div class="status" style="border-color:#35c99a">سيتم تعديل '+changes.length+' قناة و'+changes.reduce((n,c)=>n+c.fields.length,0)+' رابط/حقل. المعاينة تعرض حتى 40 قناة.</div><div class="tablewrap" style="max-height:420px;overflow:auto;margin-top:10px"><table><thead><tr><th>القناة</th><th>قبل ← بعد</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="toolbar" style="margin-top:12px"><button class="primary" type="button" id="hostApplyBtn">تأكيد الاستبدال وحفظ</button><button class="soft" type="button" id="hostCancelBtn">إلغاء المعاينة</button></div>';
+  $("hostApplyBtn").onclick=applyHostReplacement;$("hostCancelBtn").onclick=()=>{hostReplacePlan=[];box.classList.add("hidden");box.innerHTML="";$("hostReplaceStatus").textContent="تم إلغاء المعاينة."};
+ }
+ $("hostPreviewBtn").addEventListener("click",()=>{try{hostReplacePlan=hostReplacementChanges();renderHostReplacementPreview(hostReplacePlan);$("hostReplaceStatus").textContent="تم فحص "+allChannels().length+" قناة."}catch(e){hostReplacePlan=[];notify(e.message||"تعذر إعداد المعاينة","error")}});
+ $("hostResetBtn").addEventListener("click",()=>{$("hostOld").value="";$("hostNew").value="";$("hostReplacePreview").classList.add("hidden");$("hostReplacePreview").innerHTML="";$("hostReplaceStatus").textContent="سيتم فحص جميع المجموعات والقنوات المحمّلة.";hostReplacePlan=[]});
+ async function applyHostReplacement(){
+  if(!hostReplacePlan.length)return;const count=hostReplacePlan.length;
+  const ok=await openDialog({title:"تأكيد استبدال الهوست في "+count+" قناة؟",text:"سيتم تعديل روابط المصدر والشعار وReferer/Origin المطابقة للهوست القديم، ثم حفظ ملف القنوات على GitHub. الروابط الأخرى لن تتغير.",ok:"استبدال وحفظ",danger:false});if(!ok)return;
+  const oldHost=parseHostInput($("hostOld").value),newHost=parseHostInput($("hostNew").value);if(!oldHost||!newHost)return notify("قيم الهوست غير صالحة؛ أعد المعاينة.","error");
+  let changed=0;for(const [group,items] of Object.entries(channels)){if(!Array.isArray(items))continue;channels[group]=items.map(ch=>{const copy={...ch};
+   for(const key of ["url","logo"]){const after=replaceHostInUrl(copy[key],oldHost,newHost);if(after!==copy[key]){copy[key]=after;changed++}}
+   if(copy.headers&&typeof copy.headers==="object"){copy.headers={...copy.headers};for(const key of Object.keys(copy.headers)){if(/^(referer|origin)$/i.test(key)){const after=replaceHostInUrl(copy.headers[key],oldHost,newHost);if(after!==copy.headers[key]){copy.headers[key]=after;changed++}}}}
+   return copy
+  })}
+  hostReplacePlan=[];$("hostReplacePreview").classList.add("hidden");$("hostReplacePreview").innerHTML="";$("hostReplaceStatus").textContent="جارٍ حفظ "+changed+" تعديل...";
+  const saved=await saveChannels("تم استبدال الهوست في "+count+" قناة وحفظ التعديلات");
+  if(saved){$("hostReplaceStatus").textContent="تم الحفظ: "+count+" قناة، "+changed+" رابط/حقل.";notify("تم استبدال الهوست وحفظ التعديلات بنجاح")}else $("hostReplaceStatus").textContent="لم يتم الحفظ؛ راجع رسالة الخطأ وأعد تحميل القنوات."
+ }
+
 $("bulkEnable").onclick=()=>setBulkEnabled(true);
 $("bulkDisable").onclick=()=>setBulkEnabled(false);
 $("bulkDelete").onclick=async()=>{const n=selected.size;if(!n)return;const ok=await openDialog({title:"حذف "+n+" قناة؟",text:"سيتم حذف القنوات المحددة من ملف القنوات على GitHub، وستتوقف روابطها النهائية عن العمل داخل التطبيق.",ok:"حذف نهائيًا",danger:true});if(!ok)return;removeKeys([...selected]);selected.clear();await saveChannels("تم حذف القنوات المحددة")};
