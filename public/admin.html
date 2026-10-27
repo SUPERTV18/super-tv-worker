@@ -971,6 +971,7 @@ async function setBulkEnabled(enabled){
  }
  $("hostPreviewBtn").addEventListener("click",()=>{try{hostReplacePlan=hostReplacementChanges();renderHostReplacementPreview(hostReplacePlan);$("hostReplaceStatus").textContent="تم فحص "+allChannels().length+" قناة."}catch(e){hostReplacePlan=[];notify(e.message||"تعذر إعداد المعاينة","error")}});
  $("hostResetBtn").addEventListener("click",()=>{$("hostOld").value="";$("hostNew").value="";$("hostReplacePreview").classList.add("hidden");$("hostReplacePreview").innerHTML="";$("hostReplaceStatus").textContent="سيتم فحص جميع المجموعات والقنوات المحمّلة.";hostReplacePlan=[]});
+ ["hostOld","hostNew"].forEach(id=>$(id).addEventListener("input",()=>{if(hostReplacePlan.length){hostReplacePlan=[];$("hostReplacePreview").classList.add("hidden");$("hostReplacePreview").innerHTML="";$("hostReplaceStatus").textContent="تغيّرت القيم؛ أعد المعاينة قبل الحفظ."}}));
  async function applyHostReplacement(){
   if(!hostReplacePlan.length)return;const count=hostReplacePlan.length;
   const ok=await openDialog({title:"تأكيد استبدال الهوست في "+count+" قناة؟",text:"سيتم تعديل روابط المصدر والشعار وReferer/Origin المطابقة للهوست القديم، ثم حفظ ملف القنوات على GitHub. الروابط الأخرى لن تتغير.",ok:"استبدال وحفظ",danger:false});if(!ok)return;
