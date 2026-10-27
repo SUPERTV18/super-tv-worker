@@ -124,12 +124,13 @@
     {
       "id": "b1_4K",
       "name": "Bein Sports 1 4K",
-      "url": "https://www.manar2.shop/x1/59_0.m3u8",
+      "url": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156631",
       "headers": {
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "b2_4K",
