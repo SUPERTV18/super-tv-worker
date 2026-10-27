@@ -316,6 +316,27 @@ details.adv .formgrid{padding:6px 16px 0}
 .preview-footer-note{padding:2px 2px 0}
 @media(max-width:600px){.preview-card{padding:12px}.preview-video-wrap{aspect-ratio:16/10;border-radius:13px}.preview-center-play{width:54px;height:54px;font-size:20px}.preview-live-overlay{top:9px;right:9px;padding:5px 7px;font-size:9px}.preview-player-toolbar{left:8px;right:8px;bottom:8px;padding:7px;gap:6px}.preview-tool{width:34px;height:33px;min-height:33px}.preview-tool-primary{width:36px;height:35px}.preview-player-topline{gap:7px}.preview-connection-pill{max-width:118px;white-space:nowrap}}
 
+/* Fullscreen the complete custom player surface, never the native video element */
+#previewVideoFrame:fullscreen,
+#previewVideoFrame:-webkit-full-screen{
+ width:100vw!important;height:100vh!important;max-height:none!important;
+ aspect-ratio:auto!important;border:0!important;border-radius:0!important;
+ box-shadow:none!important;background:#000!important;
+ display:flex;align-items:center;justify-content:center;
+}
+#previewVideoFrame:fullscreen video,
+#previewVideoFrame:-webkit-full-screen video{
+ position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+ max-height:none!important;object-fit:contain!important;
+}
+#previewVideoFrame:fullscreen .preview-video-vignette,
+#previewVideoFrame:-webkit-full-screen .preview-video-vignette{position:absolute;inset:0}
+#previewVideoFrame:fullscreen .preview-player-toolbar,
+#previewVideoFrame:-webkit-full-screen .preview-player-toolbar{position:absolute;left:18px;right:18px;bottom:18px}
+#previewVideoFrame:fullscreen .preview-corner-mark,
+#previewVideoFrame:-webkit-full-screen .preview-corner-mark{top:18px;left:18px}
+#previewVideoFrame:fullscreen .preview-live-overlay,
+#previewVideoFrame:-webkit-full-screen .preview-live-overlay{top:18px;right:18px}
 /* Distinct broadcast studio layout */
 .preview-scrim{padding:18px;background:rgba(2,7,14,.88);backdrop-filter:blur(18px)}
 .preview-card{width:min(1280px,98vw);max-height:96vh;overflow:auto;padding:22px;background:#0a111b;border:1px solid #28394d;border-radius:18px;box-shadow:0 35px 110px #000d;color:#edf5ff}
@@ -1014,8 +1035,24 @@ $("fitChannelPreview").addEventListener("click",()=>{const frame=$("previewVideo
 $("closeChannelPreview").addEventListener("click",()=>stopChannelPreview(true));
 $("channelPreview").addEventListener("click",e=>{if(e.target===$("channelPreview"))stopChannelPreview(true)});
 $("muteChannelPreview").addEventListener("click",()=>{const v=$("channelPreviewVideo");v.muted=!v.muted;$("muteChannelPreview").innerHTML=v.muted?"◖ <span>إلغاء الكتم</span>":"◖ <span>كتم الصوت</span>"});
-$("fullscreenChannelPreview").addEventListener("click",()=>{const el=$("channelPreviewVideo");if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});else if(el.webkitEnterFullscreen)el.webkitEnterFullscreen()});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("channelPreview").classList.contains("hidden"))stopChannelPreview(true)});
+async function enterPreviewFullscreen(){
+ const frame=$("previewVideoFrame");
+ try{
+  if(frame.requestFullscreen){await frame.requestFullscreen();return}
+  if(frame.webkitRequestFullscreen){frame.webkitRequestFullscreen();return}
+  if(frame.msRequestFullscreen){frame.msRequestFullscreen();return}
+  previewStatus("ملء الشاشة غير مدعوم في هذا المتصفح. استخدم تكبير نافذة المتصفح بدلًا منه.","error");
+ }catch(err){previewStatus("تعذر فتح وضع ملء الشاشة. تحقق من صلاحية المتصفح ثم حاول مرة أخرى.","error")}
+}
+$("fullscreenChannelPreview").addEventListener("click",enterPreviewFullscreen);
+document.addEventListener("fullscreenchange",()=>{
+ const active=!!document.fullscreenElement;
+ $("fullscreenChannelPreview").innerHTML=active?"⛶ <span>إنهاء ملء الشاشة</span>":"⛶ <span>ملء الشاشة</span>";
+});
+document.addEventListener("keydown",e=>{
+ if(e.key==="Escape"&&document.fullscreenElement)return;
+ if(e.key==="Escape"&&!$("channelPreview").classList.contains("hidden"))stopChannelPreview(true)
+});
 
 /* tester */
 function fillTestSelect(){const all=allChannels();$("testChannelSelect").innerHTML='<option value="">اختر قناة</option>'+all.map(c=>'<option value="'+esc(c.id)+'" data-group="'+esc(c.__group)+'">'+esc(c.name+' — '+c.__group)+'</option>').join("")}
