@@ -155,12 +155,13 @@
     {
       "id": "b1_FHD",
       "name": "Bein Sports 1 FHD",
-      "url": "https://flu.systemnet.tv/BeinHD.1/index.m3u8",
+      "url": "https://ais7.aispeedcenter.cyou/hd/dwqxnqefrxsu/index.html",
       "headers": {
         "User-Agent": "",
-        "Referer": "",
+        "Referer": "https://ais7.aispeedcenter.cyou/",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "b2_FHD",
