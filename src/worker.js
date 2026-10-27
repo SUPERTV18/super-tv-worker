@@ -2149,11 +2149,10 @@ async function playApi(
       if (!backupEnabled) throw primaryError;
       usingBackup = true;
       cleanUrl = backupUrl;
-      channelHeaders = normalizeChannelHeaders(
-        channel.backupHeaders && typeof channel.backupHeaders === "object"
-          ? channel.backupHeaders
-          : channel.headers
-      );
+      channelHeaders = normalizeChannelHeaders({
+        ...(channel.headers && typeof channel.headers === "object" ? channel.headers : {}),
+        ...(channel.backupHeaders && typeof channel.backupHeaders === "object" ? channel.backupHeaders : {})
+      });
       headers = getUpstreamHeaders(cleanUrl, channelHeaders);
       console.warn("PLAY_FAILOVER", JSON.stringify({
         channelId: String(id),
@@ -2171,11 +2170,10 @@ async function playApi(
       try { if (response.body) await response.body.cancel(); } catch {}
       usingBackup = true;
       cleanUrl = backupUrl;
-      channelHeaders = normalizeChannelHeaders(
-        channel.backupHeaders && typeof channel.backupHeaders === "object"
-          ? channel.backupHeaders
-          : channel.headers
-      );
+      channelHeaders = normalizeChannelHeaders({
+        ...(channel.headers && typeof channel.headers === "object" ? channel.headers : {}),
+        ...(channel.backupHeaders && typeof channel.backupHeaders === "object" ? channel.backupHeaders : {})
+      });
       headers = getUpstreamHeaders(cleanUrl, channelHeaders);
       console.warn("PLAY_FAILOVER", JSON.stringify({
         channelId: String(id),
