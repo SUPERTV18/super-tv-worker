@@ -480,9 +480,24 @@ details.adv .formgrid{padding:6px 16px 0}
 <div id="statusChips" class="chips"></div>
 <div id="bulkBar" class="bulk hidden"><b id="bulkCount"></b><div><button class="soft" id="bulkMove">نقل لمجموعة</button><button class="soft" id="bulkCheck">فحص المحدد</button><button class="soft" id="bulkEnable">تفعيل المحدد</button><button class="soft" id="bulkDisable">إيقاف المحدد</button><button class="danger" id="bulkDelete">حذف</button><button class="ghost" id="bulkClear">إلغاء التحديد</button></div></div>
 <div class="panel" id="hostReplacePanel" style="margin:14px 0;border-color:#286b8b;background:linear-gradient(135deg,rgba(12,42,62,.72),rgba(18,28,50,.8))">
- <div class="pagehead" style="margin:0 0 10px"><div><h3 style="margin:0">استبدال الهوست بالجملة</h3><p class="notice" style="margin:6px 0 0">استبدل الهوست في روابط القنوات المحفوظة. يحافظ على المسارات ومعلمات الرابط، ولا يحفظ إلا بعد المعاينة والتأكيد.</p></div><span class="pill">Bulk Host Replace</span></div>
- <div class="formgrid"><div class="field"><label for="hostOld">الهوست القديم</label><input id="hostOld" dir="ltr" placeholder="old-host.example أو https://old-host.example" autocomplete="off"></div><div class="field"><label for="hostNew">الهوست الجديد</label><input id="hostNew" dir="ltr" placeholder="new-host.example أو https://new-host.example" autocomplete="off"></div></div>
- <div class="toolbar" style="margin:10px 0 0"><button class="primary" type="button" id="hostPreviewBtn">معاينة الروابط المتأثرة</button><button class="soft" type="button" id="hostResetBtn">مسح</button><span class="muted" id="hostReplaceStatus" aria-live="polite">سيتم فحص جميع المجموعات والقنوات المحمّلة.</span></div><div id="hostReplacePreview" class="hidden" style="margin-top:14px"></div>
+ <div class="pagehead" style="margin:0 0 10px"><div><h3 style="margin:0">التعديل الجماعي لإعدادات القنوات</h3><p class="notice" style="margin:6px 0 0">عدّل الهوست والروابط وReferer وOrigin وUser-Agent ونوع القناة وحالتها دفعة واحدة. اختر القنوات، راجع المعاينة، ثم أكد الحفظ.</p></div><span class="pill">Bulk Channel Editor</span></div>
+ <div class="formgrid">
+  <div class="field"><label for="bulkTarget">القنوات المستهدفة</label><select id="bulkTarget"><option value="all">كل القنوات</option><option value="selected">القنوات المحددة من القائمة</option><option value="group">مجموعة واحدة</option></select></div>
+  <div class="field" id="bulkTargetGroupWrap" style="display:none"><label for="bulkTargetGroup">اختر المجموعة</label><select id="bulkTargetGroup"><option value="">اختر مجموعة</option></select></div>
+  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkHostOn"> تغيير الهوست المطابق في روابط المصدر والشعار وReferer/Origin</label></div>
+  <div class="field"><label for="hostOld">الهوست القديم</label><input id="hostOld" dir="ltr" placeholder="old-host.example" autocomplete="off"></div>
+  <div class="field"><label for="hostNew">الهوست الجديد</label><input id="hostNew" dir="ltr" placeholder="new-host.example" autocomplete="off"></div>
+  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkUrlReplaceOn"> استبدال نص داخل رابط المصدر</label></div>
+  <div class="field"><label for="bulkUrlFind">النص الموجود في رابط المصدر</label><input id="bulkUrlFind" dir="ltr" placeholder="النص القديم"></div>
+  <div class="field"><label for="bulkUrlReplace">النص البديل</label><input id="bulkUrlReplace" dir="ltr" placeholder="النص الجديد (يمكن تركه فارغًا)"></div>
+  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkUAOn"> تعيين User-Agent</label><input id="bulkUA" dir="ltr" placeholder="User-Agent الجديد؛ اتركه فارغًا للمسح"></div>
+  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkRefererOn"> تعيين Referer</label><input id="bulkReferer" dir="ltr" placeholder="https://example.com/ (فارغ = مسح)"></div>
+  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkOriginOn"> تعيين Origin</label><input id="bulkOrigin" dir="ltr" placeholder="https://example.com (فارغ = مسح)"></div>
+  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkEndpointOn"> تغيير نوع الرابط</label><select id="bulkEndpoint"><option value="m3u8">HLS — m3u8</option><option value="flv">Raw / FLV</option></select></div>
+  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkEnabledOn"> تغيير حالة القنوات</label><select id="bulkEnabled"><option value="true">تفعيل القنوات</option><option value="false">إيقاف القنوات</option></select></div>
+ </div>
+ <div class="toolbar" style="margin:10px 0 0"><button class="primary" type="button" id="hostPreviewBtn">معاينة التعديلات</button><button class="soft" type="button" id="hostResetBtn">مسح الحقول</button><span class="muted" id="hostReplaceStatus" aria-live="polite">لم يتم تغيير أي شيء بعد.</span></div><div id="hostReplacePreview" class="hidden" style="margin-top:14px"></div>
+</div>
 </div>
 <div id="channelCards" class="cards" aria-live="polite">
 <div class="skcard"><div class="r"><div class="sk" style="width:46px;height:46px;border-radius:50%"></div><div class="c"><div class="sk" style="height:14px;width:60%"></div><div class="sk" style="height:10px;width:35%"></div></div></div><div class="sk" style="height:34px"></div><div class="sk" style="height:38px"></div></div>
@@ -949,41 +964,59 @@ async function setBulkEnabled(enabled){
  selected.clear();renderChannels();await saveChannels(enabled?"تم تفعيل القنوات المحددة":"تم إيقاف القنوات المحددة");
 }
 
- // Bulk host replacement: exact hostname match, preview, then explicit save.
- let hostReplacePlan=[];
+ // Bulk channel editor: changes are previewed and saved only after confirmation.
+ let hostReplacePlan=[],hostReplaceSnapshot=null;
  function parseHostInput(value){let raw=String(value||"").trim();if(!raw)return null;const hasScheme=/^https?:\/\//i.test(raw);if(!hasScheme)raw="https://"+raw;try{const u=new URL(raw);if(!u.hostname||u.username||u.password)return null;return {hostname:u.hostname.toLowerCase(),port:u.port,protocol:u.protocol,hasScheme}}catch(e){return null}}
  function replaceHostInUrl(value,oldHost,newHost){if(typeof value!=="string"||!value.trim())return value;try{const u=new URL(value.trim());if(u.hostname.toLowerCase()!==oldHost.hostname)return value;u.hostname=newHost.hostname;if(newHost.port)u.port=newHost.port;else if(oldHost.port&&u.port===oldHost.port)u.port="";if(newHost.hasScheme)u.protocol=newHost.protocol;return u.toString()}catch(e){return value}}
- function hostReplacementChanges(){
-  const oldHost=parseHostInput($("hostOld").value),newHost=parseHostInput($("hostNew").value);if(!oldHost||!newHost)throw new Error("اكتب الهوست القديم والجديد بشكل صحيح، مثل old.example و new.example.");
-  if(oldHost.hostname===newHost.hostname&&oldHost.port===newHost.port&&(!newHost.hasScheme||oldHost.protocol===newHost.protocol))throw new Error("الهوست القديم والجديد متطابقان.");
-  const changes=[];for(const [group,items] of Object.entries(channels)){if(!Array.isArray(items))continue;items.forEach(ch=>{const fields=[];
-   for(const key of ["url","logo"]){const before=ch[key],after=replaceHostInUrl(before,oldHost,newHost);if(typeof before==="string"&&after!==before)fields.push({key,before,after})}
-   if(ch.headers&&typeof ch.headers==="object")for(const key of Object.keys(ch.headers)){if(/^(referer|origin)$/i.test(key)){const before=ch.headers[key],after=replaceHostInUrl(before,oldHost,newHost);if(typeof before==="string"&&after!==before)fields.push({key:"headers."+key,before,after})}}
-   if(fields.length)changes.push({group,id:String(ch.id),name:String(ch.name||ch.id),fields})
-  })}return changes;
+ function refreshBulkTargetGroups(){const sel=$("bulkTargetGroup"),cur=sel.value;sel.innerHTML='<option value="">اختر مجموعة</option>'+Object.keys(channels).filter(g=>Array.isArray(channels[g])&&channels[g].length).map(g=>'<option value="'+esc(g)+'">'+esc(g)+'</option>').join("");if(Object.keys(channels).includes(cur))sel.value=cur}
+ $("bulkTarget").addEventListener("change",()=>{$("bulkTargetGroupWrap").style.display=$("bulkTarget").value==="group"?"":"none";invalidateBulkPreview()});
+ function invalidateBulkPreview(){hostReplacePlan=[];$("hostReplacePreview").classList.add("hidden");$("hostReplacePreview").innerHTML="";$("hostReplaceStatus").textContent="تغيّرت الإعدادات؛ اضغط معاينة التعديلات من جديد."}
+ function makeBulkPatch(ch,oldHost,newHost){
+  const patch={},fields=[];
+  const put=(key,before,after,label)=>{if(before!==after){patch[key]=after;fields.push({key,before:before==null?"":String(before),after:after==null?"":String(after),label})}};
+  if($("bulkHostOn").checked){for(const key of ["url","logo"]){const after=replaceHostInUrl(ch[key],oldHost,newHost);if(typeof ch[key]==="string")put(key,ch[key],after,key==="url"?"رابط المصدر":"الشعار")}
+   const headers={...(ch.headers||{})};let touched=false;for(const key of Object.keys(headers)){if(/^(referer|origin)$/i.test(key)){const after=replaceHostInUrl(headers[key],oldHost,newHost);if(after!==headers[key]){headers[key]=after;touched=true;fields.push({key:"headers."+key,before:String(ch.headers[key]||""),after:String(after||""),label:key})}}}if(touched)patch.headers=headers;
+  }
+  if($("bulkUrlReplaceOn").checked){const find=$("bulkUrlFind").value;if(!find)throw new Error("اكتب النص المطلوب استبداله داخل رابط المصدر.");const before=String(ch.url||""),after=before.split(find).join($("bulkUrlReplace").value);put("url",before,after,"رابط المصدر")}
+  const headers={...(patch.headers||ch.headers||{})};
+  for(const [check,input,key,label] of [["bulkUAOn","bulkUA","User-Agent","User-Agent"],["bulkRefererOn","bulkReferer","Referer","Referer"],["bulkOriginOn","bulkOrigin","Origin","Origin"]]){
+   if($(check).checked){const value=$(input).value.trim();let oldKey=Object.keys(headers).find(k=>k.toLowerCase()===key.toLowerCase())||key;const before=headers[oldKey]||"";if(value)headers[oldKey]=value;else delete headers[oldKey];if(before!==value){fields.push({key:"headers."+oldKey,before:String(before),after:value,label});patch.headers={...headers}}}
+  }
+  if($("bulkEndpointOn").checked)put("endpoint",String(ch.endpoint||"m3u8").toLowerCase(),$("bulkEndpoint").value,"نوع الرابط");
+  if($("bulkEnabledOn").checked)put("enabled",ch.enabled!==false,$("bulkEnabled").value==="true" ? undefined : false,"حالة القناة");
+  if(patch.enabled===undefined&&fields.some(f=>f.key==="enabled"))delete patch.enabled;
+  return {patch,fields};
  }
- function renderHostReplacementPreview(changes){
-  const box=$("hostReplacePreview");box.classList.remove("hidden");if(!changes.length){box.innerHTML='<div class="status">لم يتم العثور على روابط تطابق الهوست القديم.</div>';return}
-  const fieldName=k=>({"url":"رابط المصدر","logo":"الشعار","headers.Referer":"Referer","headers.referer":"Referer","headers.Origin":"Origin","headers.origin":"Origin"}[k]||k);
-  const rows=changes.slice(0,40).map(c=>'<tr><td>'+esc(c.name)+'<div class="muted">'+esc(c.group)+' · '+esc(c.id)+'</div></td><td>'+c.fields.map(f=>'<div class="muted">'+esc(fieldName(f.key))+'</div><code dir="ltr" style="white-space:normal;overflow-wrap:anywhere">'+esc(f.before)+'</code><div style="text-align:center;margin:4px">↓</div><code dir="ltr" style="white-space:normal;overflow-wrap:anywhere;color:#6ce4bc">'+esc(f.after)+'</code>').join('<hr style="border-color:var(--line);margin:8px 0">')+'</td></tr>').join("");
-  box.innerHTML='<div class="status" style="border-color:#35c99a">سيتم تعديل '+changes.length+' قناة و'+changes.reduce((n,c)=>n+c.fields.length,0)+' رابط/حقل. المعاينة تعرض حتى 40 قناة.</div><div class="tablewrap" style="max-height:420px;overflow:auto;margin-top:10px"><table><thead><tr><th>القناة</th><th>قبل ← بعد</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="toolbar" style="margin-top:12px"><button class="primary" type="button" id="hostApplyBtn">تأكيد الاستبدال وحفظ</button><button class="soft" type="button" id="hostCancelBtn">إلغاء المعاينة</button></div>';
+ function buildBulkPlan(){
+  const target=$("bulkTarget").value;let list=[];
+  if(target==="all")list=allChannels();
+  else if(target==="selected"){if(!selected.size)throw new Error("حدد القنوات المطلوبة من القائمة أولًا.");list=allChannels().filter(ch=>selected.has(ch.__group+"\u0000"+String(ch.id)))}
+  else{const group=$("bulkTargetGroup").value;if(!group)throw new Error("اختر المجموعة المطلوبة.");list=(channels[group]||[]).map(ch=>({...ch,__group:group}))}
+  const hostOn=$("bulkHostOn").checked;let oldHost=null,newHost=null;
+  if(hostOn){oldHost=parseHostInput($("hostOld").value);newHost=parseHostInput($("hostNew").value);if(!oldHost||!newHost)throw new Error("أدخل الهوست القديم والجديد بشكل صحيح.");if(oldHost.hostname===newHost.hostname&&oldHost.port===newHost.port&&(!newHost.hasScheme||oldHost.protocol===newHost.protocol))throw new Error("الهوست القديم والجديد متطابقان.")}
+  if(!hostOn&&!$("bulkUrlReplaceOn").checked&&!$("bulkUAOn").checked&&!$("bulkRefererOn").checked&&!$("bulkOriginOn").checked&&!$("bulkEndpointOn").checked&&!$("bulkEnabledOn").checked)throw new Error("فعّل نوع تعديل واحدًا على الأقل.");
+  return list.map(ch=>{const r=makeBulkPatch(ch,oldHost,newHost);return {group:ch.__group,id:String(ch.id),name:String(ch.name||ch.id),patch:r.patch,fields:r.fields}}).filter(x=>x.fields.length);
+ }
+ function renderHostReplacementPreview(plan){
+  const box=$("hostReplacePreview");box.classList.remove("hidden");
+  if(!plan.length){box.innerHTML='<div class="status">لا توجد تغييرات مطلوبة للقنوات المستهدفة.</div>';return}
+  const rows=plan.slice(0,50).map(c=>'<tr><td>'+esc(c.name)+'<div class="muted">'+esc(c.group)+' · '+esc(c.id)+'</div></td><td>'+c.fields.map(f=>'<div class="muted">'+esc(f.label||f.key)+'</div><code dir="ltr" style="white-space:normal;overflow-wrap:anywhere">'+esc(f.before||"(فارغ)")+'</code><div style="text-align:center;margin:3px">↓</div><code dir="ltr" style="white-space:normal;overflow-wrap:anywhere;color:#6ce4bc">'+esc(f.after||"(فارغ / مسح)")+'</code>').join('<hr style="border-color:var(--line);margin:7px 0">')+'</td></tr>').join("");
+  box.innerHTML='<div class="status" style="border-color:#35c99a">ستتغير '+plan.length+' قناة و'+plan.reduce((n,c)=>n+c.fields.length,0)+' إعداد/رابط. المعاينة تعرض حتى 50 قناة.</div><div class="tablewrap" style="max-height:440px;overflow:auto;margin-top:10px"><table><thead><tr><th>القناة</th><th>قبل ← بعد</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="toolbar" style="margin-top:12px"><button class="primary" type="button" id="hostApplyBtn">تأكيد التعديلات وحفظها</button><button class="soft" type="button" id="hostCancelBtn">إلغاء المعاينة</button></div>';
   $("hostApplyBtn").onclick=applyHostReplacement;$("hostCancelBtn").onclick=()=>{hostReplacePlan=[];box.classList.add("hidden");box.innerHTML="";$("hostReplaceStatus").textContent="تم إلغاء المعاينة."};
  }
- $("hostPreviewBtn").addEventListener("click",()=>{try{hostReplacePlan=hostReplacementChanges();renderHostReplacementPreview(hostReplacePlan);$("hostReplaceStatus").textContent="تم فحص "+allChannels().length+" قناة."}catch(e){hostReplacePlan=[];notify(e.message||"تعذر إعداد المعاينة","error")}});
- $("hostResetBtn").addEventListener("click",()=>{$("hostOld").value="";$("hostNew").value="";$("hostReplacePreview").classList.add("hidden");$("hostReplacePreview").innerHTML="";$("hostReplaceStatus").textContent="سيتم فحص جميع المجموعات والقنوات المحمّلة.";hostReplacePlan=[]});
- ["hostOld","hostNew"].forEach(id=>$(id).addEventListener("input",()=>{if(hostReplacePlan.length){hostReplacePlan=[];$("hostReplacePreview").classList.add("hidden");$("hostReplacePreview").innerHTML="";$("hostReplaceStatus").textContent="تغيّرت القيم؛ أعد المعاينة قبل الحفظ."}}));
+ $("hostPreviewBtn").addEventListener("click",()=>{try{refreshBulkTargetGroups();hostReplacePlan=buildBulkPlan();renderHostReplacementPreview(hostReplacePlan);$("hostReplaceStatus").textContent="تم تجهيز معاينة لـ "+hostReplacePlan.length+" قناة."}catch(e){hostReplacePlan=[];notify(e.message||"تعذر إعداد المعاينة","error")}});
+ $("hostResetBtn").addEventListener("click",()=>{["hostOld","hostNew","bulkUrlFind","bulkUrlReplace","bulkUA","bulkReferer","bulkOrigin"].forEach(id=>$(id).value="");["bulkHostOn","bulkUrlReplaceOn","bulkUAOn","bulkRefererOn","bulkOriginOn","bulkEndpointOn","bulkEnabledOn"].forEach(id=>$(id).checked=false);$("bulkTarget").value="all";$("bulkTargetGroupWrap").style.display="none";$("bulkEndpoint").value="m3u8";$("bulkEnabled").value="true";invalidateBulkPreview();$("hostReplaceStatus").textContent="تم مسح الحقول."});
+ ["hostOld","hostNew","bulkUrlFind","bulkUrlReplace","bulkUA","bulkReferer","bulkOrigin","bulkHostOn","bulkUrlReplaceOn","bulkUAOn","bulkRefererOn","bulkOriginOn","bulkEndpointOn","bulkEnabledOn","bulkEndpoint","bulkEnabled","bulkTargetGroup"].forEach(id=>$(id).addEventListener("change",invalidateBulkPreview));
+ ["hostOld","hostNew","bulkUrlFind","bulkUrlReplace","bulkUA","bulkReferer","bulkOrigin"].forEach(id=>$(id).addEventListener("input",()=>{if(hostReplacePlan.length)invalidateBulkPreview()}));
  async function applyHostReplacement(){
   if(!hostReplacePlan.length)return;const count=hostReplacePlan.length;
-  const ok=await openDialog({title:"تأكيد استبدال الهوست في "+count+" قناة؟",text:"سيتم تعديل روابط المصدر والشعار وReferer/Origin المطابقة للهوست القديم، ثم حفظ ملف القنوات على GitHub. الروابط الأخرى لن تتغير.",ok:"استبدال وحفظ",danger:false});if(!ok)return;
-  const oldHost=parseHostInput($("hostOld").value),newHost=parseHostInput($("hostNew").value);if(!oldHost||!newHost)return notify("قيم الهوست غير صالحة؛ أعد المعاينة.","error");
-  let changed=0;for(const [group,items] of Object.entries(channels)){if(!Array.isArray(items))continue;channels[group]=items.map(ch=>{const copy={...ch};
-   for(const key of ["url","logo"]){const after=replaceHostInUrl(copy[key],oldHost,newHost);if(after!==copy[key]){copy[key]=after;changed++}}
-   if(copy.headers&&typeof copy.headers==="object"){copy.headers={...copy.headers};for(const key of Object.keys(copy.headers)){if(/^(referer|origin)$/i.test(key)){const after=replaceHostInUrl(copy.headers[key],oldHost,newHost);if(after!==copy.headers[key]){copy.headers[key]=after;changed++}}}}
-   return copy
-  })}
-  hostReplacePlan=[];$("hostReplacePreview").classList.add("hidden");$("hostReplacePreview").innerHTML="";$("hostReplaceStatus").textContent="جارٍ حفظ "+changed+" تعديل...";
-  const saved=await saveChannels("تم استبدال الهوست في "+count+" قناة وحفظ التعديلات");
-  if(saved){$("hostReplaceStatus").textContent="تم الحفظ: "+count+" قناة، "+changed+" رابط/حقل.";notify("تم استبدال الهوست وحفظ التعديلات بنجاح")}else $("hostReplaceStatus").textContent="لم يتم الحفظ؛ راجع رسالة الخطأ وأعد تحميل القنوات."
+  const ok=await openDialog({title:"تأكيد تعديل "+count+" قناة؟",text:"سيتم حفظ إعدادات المعاينة داخل ملف القنوات على GitHub. راجع القنوات المستهدفة قبل التأكيد.",ok:"تأكيد وحفظ",danger:false});if(!ok)return;
+  const snapshot=clone(channels);
+  for(const item of hostReplacePlan){const arr=channels[item.group];if(!Array.isArray(arr))continue;const index=arr.findIndex(ch=>String(ch.id)===item.id);if(index>=0)arr[index]={...arr[index],...item.patch};}
+  const changed=hostReplacePlan.reduce((n,c)=>n+c.fields.length,0);hostReplacePlan=[];
+  $("hostReplacePreview").classList.add("hidden");$("hostReplacePreview").innerHTML="";$("hostReplaceStatus").textContent="جارٍ حفظ "+changed+" تعديل...";
+  const saved=await saveChannels("تم تعديل "+count+" قناة جماعيًا");
+  if(saved){$("hostReplaceStatus").textContent="تم حفظ "+count+" قناة و"+changed+" تعديل.";notify("تم حفظ التعديلات الجماعية بنجاح")}else{channels=snapshot;$("hostReplaceStatus").textContent="لم يتم الحفظ؛ راجع رسالة الخطأ."}
  }
 
 $("bulkEnable").onclick=()=>setBulkEnabled(true);
