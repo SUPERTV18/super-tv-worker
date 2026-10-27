@@ -3646,7 +3646,7 @@ export class ViewerTracker {
       const isNewVisit = !existing || gapMs > ACTIVE_MS;
       // Accumulate only verified heartbeat intervals. A long disconnect is never
       // counted as watching time; a single gap contributes at most 30 seconds.
-      const creditedMs = existing && gapMs > 0 && gapMs <= ACTIVE_MS
+      const creditedMs = existing && gapMs >= 15000 && gapMs <= ACTIVE_MS
         ? Math.min(gapMs, 30000)
         : 0;
       const watchedMs = Math.max(0, Number(existing?.watchedMs || 0)) + creditedMs;
