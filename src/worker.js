@@ -2104,7 +2104,7 @@ async function playApi(
     // SOURCE
     // ========================================================
 
-    const cleanUrl =
+    let cleanUrl =
       channel.url.split(
         "#"
       )[0];
@@ -2113,33 +2113,89 @@ async function playApi(
     // CHANNEL HEADERS
     // ========================================================
 
-    const channelHeaders =
+    let channelHeaders =
       normalizeChannelHeaders(
         channel.headers
       );
 
-    const headers =
+    let headers =
       getUpstreamHeaders(
         cleanUrl,
         channelHeaders
       );
 
+    const backupUrl =
+      String(channel.backupUrl || "").trim().split("#")[0];
+    const backupEnabled =
+      !!backupUrl &&
+      channel.backupEnabled !== false &&
+      backupUrl !== cleanUrl;
+
+    let response;
+    let usingBackup = false;
+
     // ========================================================
-    // FETCH SOURCE
+    // FETCH PRIMARY; FALL BACK ONLY ON REQUEST/HTTP FAILURE
+    // A new playback request always retries primary first, so
+    // recovery needs no KV state and no player URL changes.
     // ========================================================
 
-    const response =
-      await fetch(
-        cleanUrl,
-        {
-
-          redirect:
-            "follow",
-
-          headers
-
-        }
+    try {
+      response = await fetch(cleanUrl, {
+        redirect: "follow",
+        headers
+      });
+    } catch (primaryError) {
+      if (!backupEnabled) throw primaryError;
+      usingBackup = true;
+      cleanUrl = backupUrl;
+      channelHeaders = normalizeChannelHeaders(
+        channel.backupHeaders && typeof channel.backupHeaders === "object"
+          ? channel.backupHeaders
+          : channel.headers
       );
+      headers = getUpstreamHeaders(cleanUrl, channelHeaders);
+      console.warn("PLAY_FAILOVER", JSON.stringify({
+        channelId: String(id),
+        reason: "primary_network_error",
+        backupHost: (() => { try { return new URL(cleanUrl).hostname; } catch { return ""; } })()
+      }));
+      response = await fetch(cleanUrl, {
+        redirect: "follow",
+        headers
+      });
+    }
+
+    if (!response.ok && backupEnabled && !usingBackup) {
+      const primaryStatus = response.status;
+      try { if (response.body) await response.body.cancel(); } catch {}
+      usingBackup = true;
+      cleanUrl = backupUrl;
+      channelHeaders = normalizeChannelHeaders(
+        channel.backupHeaders && typeof channel.backupHeaders === "object"
+          ? channel.backupHeaders
+          : channel.headers
+      );
+      headers = getUpstreamHeaders(cleanUrl, channelHeaders);
+      console.warn("PLAY_FAILOVER", JSON.stringify({
+        channelId: String(id),
+        reason: "primary_http_error",
+        primaryStatus,
+        backupHost: (() => { try { return new URL(cleanUrl).hostname; } catch { return ""; } })()
+      }));
+      response = await fetch(cleanUrl, {
+        redirect: "follow",
+        headers
+      });
+    }
+
+    if (usingBackup) {
+      console.log("PLAYBACK_USING_BACKUP", JSON.stringify({
+        channelId: String(id),
+        backupHost: (() => { try { return new URL(cleanUrl).hostname; } catch { return ""; } })(),
+        status: response.status
+      }));
+    }
 
     let upstreamTarget =
       {};
