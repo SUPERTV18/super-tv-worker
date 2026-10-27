@@ -490,9 +490,9 @@ details.adv .formgrid{padding:6px 16px 0}
   <div class="field"><label class="chkrow"><input type="checkbox" id="bulkUrlReplaceOn"> استبدال نص داخل رابط المصدر</label></div>
   <div class="field"><label for="bulkUrlFind">النص الموجود في رابط المصدر</label><input id="bulkUrlFind" dir="ltr" placeholder="النص القديم"></div>
   <div class="field"><label for="bulkUrlReplace">النص البديل</label><input id="bulkUrlReplace" dir="ltr" placeholder="النص الجديد (يمكن تركه فارغًا)"></div>
-  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkUAOn"> تعيين User-Agent</label><input id="bulkUA" dir="ltr" placeholder="User-Agent الجديد؛ اتركه فارغًا للمسح"></div>
-  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkRefererOn"> تعيين Referer</label><input id="bulkReferer" dir="ltr" placeholder="https://example.com/ (فارغ = مسح)"></div>
-  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkOriginOn"> تعيين Origin</label><input id="bulkOrigin" dir="ltr" placeholder="https://example.com (فارغ = مسح)"></div>
+  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkUAOn"> استبدال User-Agent القديم بالجديد</label><input id="bulkUAOld" dir="ltr" placeholder="User-Agent القديم" autocomplete="off"><input id="bulkUA" dir="ltr" placeholder="User-Agent الجديد" autocomplete="off" style="margin-top:6px"></div>
+  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkRefererOn"> استبدال Referer القديم بالجديد</label><input id="bulkRefererOld" dir="ltr" placeholder="Referer القديم" autocomplete="off"><input id="bulkReferer" dir="ltr" placeholder="Referer الجديد" autocomplete="off" style="margin-top:6px"></div>
+  <div class="field"><label class="chkrow"><input type="checkbox" id="bulkOriginOn"> استبدال Origin القديم بالجديد</label><input id="bulkOriginOld" dir="ltr" placeholder="Origin القديم" autocomplete="off"><input id="bulkOrigin" dir="ltr" placeholder="Origin الجديد" autocomplete="off" style="margin-top:6px"></div>
   <div class="field"><label class="chkrow"><input type="checkbox" id="bulkEndpointOn"> تغيير نوع الرابط</label><select id="bulkEndpoint"><option value="m3u8">HLS — m3u8</option><option value="flv">Raw / FLV</option></select></div>
   <div class="field"><label class="chkrow"><input type="checkbox" id="bulkEnabledOn"> تغيير حالة القنوات</label><select id="bulkEnabled"><option value="true">تفعيل القنوات</option><option value="false">إيقاف القنوات</option></select></div>
  </div>
@@ -984,8 +984,15 @@ async function setBulkEnabled(enabled){
   }
   if($("bulkUrlReplaceOn").checked){const find=$("bulkUrlFind").value;if(!find)throw new Error("اكتب النص المطلوب استبداله داخل رابط المصدر.");const before=String(ch.url||""),after=before.split(find).join($("bulkUrlReplace").value);put("url",before,after,"رابط المصدر")}
   const headers={...(patch.headers||ch.headers||{})};
-  for(const [check,input,key,label] of [["bulkUAOn","bulkUA","User-Agent","User-Agent"],["bulkRefererOn","bulkReferer","Referer","Referer"],["bulkOriginOn","bulkOrigin","Origin","Origin"]]){
-   if($(check).checked){const value=$(input).value.trim();let oldKey=Object.keys(headers).find(k=>k.toLowerCase()===key.toLowerCase())||key;const before=headers[oldKey]||"";if(value)headers[oldKey]=value;else delete headers[oldKey];if(before!==value){fields.push({key:"headers."+oldKey,before:String(before),after:value,label});patch.headers={...headers}}}
+  for(const [check,oldInput,newInput,key,label] of [["bulkUAOn","bulkUAOld","bulkUA","User-Agent","User-Agent"],["bulkRefererOn","bulkRefererOld","bulkReferer","Referer","Referer"],["bulkOriginOn","bulkOriginOld","bulkOrigin","Origin","Origin"]]){
+   if($(check).checked){
+    const oldValue=$(oldInput).value.trim(),newValue=$(newInput).value.trim();
+    if(!oldValue)throw new Error("اكتب القيمة القديمة لـ "+label+" قبل المعاينة.");
+    let headerKey=Object.keys(headers).find(k=>k.toLowerCase()===key.toLowerCase())||key;
+    const before=String(headers[headerKey]||"");
+    const after=before.includes(oldValue)?before.split(oldValue).join(newValue):before;
+    if(after!==before){headers[headerKey]=after;fields.push({key:"headers."+headerKey,before,after,label});patch.headers={...headers}}
+   }
   }
   if($("bulkEndpointOn").checked)put("endpoint",String(ch.endpoint||"m3u8").toLowerCase(),$("bulkEndpoint").value,"نوع الرابط");
   if($("bulkEnabledOn").checked){const next=$("bulkEnabled").value==="true",before=ch.enabled!==false;if(before!==next){patch.enabled=next;fields.push({key:"enabled",before:String(before),after:String(next),label:"حالة القناة"})}}
@@ -1009,9 +1016,9 @@ async function setBulkEnabled(enabled){
   $("hostApplyBtn").onclick=applyHostReplacement;$("hostCancelBtn").onclick=()=>{hostReplacePlan=[];box.classList.add("hidden");box.innerHTML="";$("hostReplaceStatus").textContent="تم إلغاء المعاينة."};
  }
  $("hostPreviewBtn").addEventListener("click",()=>{try{refreshBulkTargetGroups();hostReplacePlan=buildBulkPlan();renderHostReplacementPreview(hostReplacePlan);$("hostReplaceStatus").textContent="تم تجهيز معاينة لـ "+hostReplacePlan.length+" قناة."}catch(e){hostReplacePlan=[];notify(e.message||"تعذر إعداد المعاينة","error")}});
- $("hostResetBtn").addEventListener("click",()=>{["hostOld","hostNew","bulkUrlFind","bulkUrlReplace","bulkUA","bulkReferer","bulkOrigin"].forEach(id=>$(id).value="");["bulkHostOn","bulkUrlReplaceOn","bulkUAOn","bulkRefererOn","bulkOriginOn","bulkEndpointOn","bulkEnabledOn"].forEach(id=>$(id).checked=false);$("bulkTarget").value="all";$("bulkTargetGroupWrap").style.display="none";$("bulkEndpoint").value="m3u8";$("bulkEnabled").value="true";invalidateBulkPreview();$("hostReplaceStatus").textContent="تم مسح الحقول."});
- ["hostOld","hostNew","bulkUrlFind","bulkUrlReplace","bulkUA","bulkReferer","bulkOrigin","bulkHostOn","bulkUrlReplaceOn","bulkUAOn","bulkRefererOn","bulkOriginOn","bulkEndpointOn","bulkEnabledOn","bulkEndpoint","bulkEnabled","bulkTargetGroup"].forEach(id=>$(id).addEventListener("change",invalidateBulkPreview));
- ["hostOld","hostNew","bulkUrlFind","bulkUrlReplace","bulkUA","bulkReferer","bulkOrigin"].forEach(id=>$(id).addEventListener("input",()=>{if(hostReplacePlan.length)invalidateBulkPreview()}));
+ $("hostResetBtn").addEventListener("click",()=>{["hostOld","hostNew","bulkUrlFind","bulkUrlReplace","bulkUAOld","bulkUA","bulkRefererOld","bulkReferer","bulkOriginOld","bulkOrigin"].forEach(id=>$(id).value="");["bulkHostOn","bulkUrlReplaceOn","bulkUAOn","bulkRefererOn","bulkOriginOn","bulkEndpointOn","bulkEnabledOn"].forEach(id=>$(id).checked=false);$("bulkTarget").value="all";$("bulkTargetGroupWrap").style.display="none";$("bulkEndpoint").value="m3u8";$("bulkEnabled").value="true";invalidateBulkPreview();$("hostReplaceStatus").textContent="تم مسح الحقول."});
+ ["hostOld","hostNew","bulkUrlFind","bulkUrlReplace","bulkUAOld","bulkUA","bulkRefererOld","bulkReferer","bulkOriginOld","bulkOrigin","bulkHostOn","bulkUrlReplaceOn","bulkUAOn","bulkRefererOn","bulkOriginOn","bulkEndpointOn","bulkEnabledOn","bulkEndpoint","bulkEnabled","bulkTargetGroup"].forEach(id=>$(id).addEventListener("change",invalidateBulkPreview));
+ ["hostOld","hostNew","bulkUrlFind","bulkUrlReplace","bulkUAOld","bulkUA","bulkRefererOld","bulkReferer","bulkOriginOld","bulkOrigin"].forEach(id=>$(id).addEventListener("input",()=>{if(hostReplacePlan.length)invalidateBulkPreview()}));
  async function applyHostReplacement(){
   if(!hostReplacePlan.length)return;const count=hostReplacePlan.length;
   const ok=await openDialog({title:"تأكيد تعديل "+count+" قناة؟",text:"سيتم حفظ إعدادات المعاينة داخل ملف القنوات على GitHub. راجع القنوات المستهدفة قبل التأكيد.",ok:"تأكيد وحفظ",danger:false});if(!ok)return;
