@@ -3649,7 +3649,6 @@ export class ViewerTracker {
       const creditedMs = existing && gapMs >= 15000 && gapMs <= ACTIVE_MS
         ? Math.min(gapMs, 30000)
         : 0;
-      const watchedMs = Math.max(0, Number(existing?.watchedMs || 0)) + creditedMs;
       const sessionWatchedMs = (isNewVisit ? 0 : Math.max(0, Number(existing?.sessionWatchedMs || 0))) + creditedMs;
       const dateKey = new Date(Number(body.now) || now).toISOString().slice(0, 10);
       const record = {
@@ -3661,7 +3660,6 @@ export class ViewerTracker {
         ch: channelId || existing?.ch,
         firstSeen: existing?.firstSeen || Number(body.now) || now,
         sessionStartedAt: isNewVisit ? (Number(body.now) || now) : (Number(existing?.sessionStartedAt) || Number(body.now) || now),
-        watchedMs,
         sessionWatchedMs,
         // Throttle durable writes to once every 15 seconds per viewer session.
         lastSeen: existing && now - Number(existing.lastSeen || 0) < 15000
