@@ -3651,7 +3651,7 @@ export class ViewerTracker {
         : 0;
       const watchedMs = Math.max(0, Number(existing?.watchedMs || 0)) + creditedMs;
       const sessionWatchedMs = (isNewVisit ? 0 : Math.max(0, Number(existing?.sessionWatchedMs || 0))) + creditedMs;
-      const dateKey = new Date(Number(body.now) || now).toISOString().slice(0, 10);
+      const dateKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Number(body.now) || now));
       const record = {
         sessionId,
         ip: String(body.ip || existing?.ip || ""),
@@ -3696,28 +3696,43 @@ export class ViewerTracker {
         .sort((a, b) => Number(b.lastSeen || 0) - Number(a.lastSeen || 0));
       const limit = Math.max(1, Math.min(2000, Number(url.searchParams.get("limit")) || 500));
       const visits = await this.state.storage.list({ prefix: "visit:", limit: 10000 });
-      const nowMs = Date.now(), dayMs = 24 * 60 * 60 * 1000, weekMs = 7 * dayMs;
-      let todayVisits = 0, weekVisits = 0;
-      const todayUnique = new Set(), weekUnique = new Set();
+      const nowMs = Date.now(), dayMs = 24 * 60 * 60 * 1000;
+      const cairoDateKey = (value) => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+      const todayKey = cairoDateKey(nowMs);
+      const [year, month, day] = todayKey.split("-").map(Number);
+      const todayUtc = Date.UTC(year, month - 1, day);
+      const yesterdayKey = new Date(todayUtc - dayMs).toISOString().slice(0, 10);
+      const weekKeys = new Set(Array.from({ length: 7 }, (_, i) => new Date(todayUtc - i * dayMs).toISOString().slice(0, 10)));
+      const monthKeys = new Set(Array.from({ length: 30 }, (_, i) => new Date(todayUtc - i * dayMs).toISOString().slice(0, 10)));
+      let todayVisits = 0, yesterdayVisits = 0, weekVisits = 0, monthVisits = 0;
+      const todayUnique = new Set(), yesterdayUnique = new Set(), weekUnique = new Set(), monthUnique = new Set();
       const activityHeatmap = Array.from({ length: 7 }, () => Array(24).fill(0));
       for (const v of visits.values()) {
         const at = Number(v.at || 0);
-        if (at >= nowMs - dayMs) { todayVisits++; todayUnique.add(v.sessionId); }
-        if (at >= nowMs - weekMs) {
-          weekVisits++;
-          weekUnique.add(v.sessionId);
+        const dateKey = v.date || (at > 0 ? cairoDateKey(at) : "");
+        if (dateKey === todayKey) { todayVisits++; todayUnique.add(v.sessionId); }
+        if (dateKey === yesterdayKey) { yesterdayVisits++; yesterdayUnique.add(v.sessionId); }
+        if (weekKeys.has(dateKey)) { weekVisits++; weekUnique.add(v.sessionId); }
+        if (monthKeys.has(dateKey)) { monthVisits++; monthUnique.add(v.sessionId); }
+        if (at > 0 && at <= nowMs) {
           const date = new Date(at);
-          if (at > 0 && at <= nowMs) activityHeatmap[date.getUTCDay()][date.getUTCHours()]++;
+          activityHeatmap[date.getUTCDay()][date.getUTCHours()]++;
         }
       }
-      const dailyKeys = await this.state.storage.list({ prefix: "day:" + new Date().toISOString().slice(0, 10) + ":", limit: 10000 });
-      const weekDates = new Set(Array.from({length: 7}, (_, i) => new Date(nowMs - i * dayMs).toISOString().slice(0, 10)));
-      const dailyUnique = new Set(Array.from(dailyKeys.values(), v => v.sessionId));
+      const dailyKeys = await this.state.storage.list({ prefix: "day:" + todayKey + ":", limit: 10000 });
+      const yesterdayKeys = await this.state.storage.list({ prefix: "day:" + yesterdayKey + ":", limit: 10000 });
       const weekDaily = await this.state.storage.list({ prefix: "day:", limit: 10000 });
-      for (const v of weekDaily.values()) if (weekDates.has(v.date)) weekUnique.add(v.sessionId);
+      const dailyUnique = new Set(Array.from(dailyKeys.values(), v => v.sessionId));
+      const yesterdayDailyUnique = new Set(Array.from(yesterdayKeys.values(), v => v.sessionId));
+      for (const v of weekDaily.values()) if (weekKeys.has(v.date)) weekUnique.add(v.sessionId);
+      for (const v of weekDaily.values()) if (monthKeys.has(v.date)) monthUnique.add(v.sessionId);
       return json({
         status: "ok", totalHistoricalViewers: viewers.length, totalVisits: visits.size,
-        todayVisits, weekVisits, todayUniqueViewers: dailyUnique.size, weekUniqueViewers: weekUnique.size,
+        todayVisits, yesterdayVisits, weekVisits, monthVisits,
+        todayUniqueViewers: Math.max(todayUnique.size, dailyUnique.size),
+        yesterdayUniqueViewers: Math.max(yesterdayUnique.size, yesterdayDailyUnique.size),
+        weekUniqueViewers: weekUnique.size, monthUniqueViewers: monthUnique.size,
+        statsTimezone: "Africa/Cairo",
         activityHeatmap, activityHeatmapTimezone: "UTC",
         viewers: viewers.slice(0, limit).map(v => ({...v, device: v.device || classifyViewerDevice(v.ua), app: v.app || classifyViewerApp(v.ua)})),
         timestamp: new Date().toISOString()
