@@ -1031,24 +1031,33 @@ $("channelPreviewVideo").addEventListener("playing",()=>{$("previewConnectionPil
 $("channelPreviewVideo").addEventListener("waiting",()=>{$("previewConnectionPill").dataset.state="";$("previewConnectionText").textContent="تحميل البيانات";});
 $("channelPreviewVideo").addEventListener("pause",()=>{if(previewHls)$("playChannelPreview").innerHTML="▶";$("previewVideoFrame").classList.remove("is-playing")});
 $("stopChannelPreview").addEventListener("click",()=>{stopChannelPreview(false);$("previewConnectionPill").dataset.state="";$("previewConnectionText").textContent="متوقف";$("playChannelPreview").innerHTML="▶";$("previewVideoFrame").classList.remove("is-playing")});
-$("fitChannelPreview").addEventListener("click",()=>{const frame=$("previewVideoFrame"),cover=frame.classList.contains("fit-contain");frame.classList.toggle("fit-contain",!cover);frame.classList.toggle("fit-cover",cover);$("fitChannelPreview").innerHTML="▣ <span>"+(cover?"ملء الإطار":"ملاءمة")+"</span>"});
+$("fitChannelPreview").addEventListener("click",()=>{const frame=$("previewVideoFrame"),cover=frame.classList.contains("fit-contain");frame.classList.toggle("fit-contain",!cover);frame.classList.toggle("fit-cover",cover);const b=$("fitChannelPreview");b.textContent=cover?"▣":"▤";b.title=cover?"ملاءمة الصورة":"ملء الإطار";b.setAttribute("aria-label",b.title)});
 $("closeChannelPreview").addEventListener("click",()=>stopChannelPreview(true));
 $("channelPreview").addEventListener("click",e=>{if(e.target===$("channelPreview"))stopChannelPreview(true)});
-$("muteChannelPreview").addEventListener("click",()=>{const v=$("channelPreviewVideo");v.muted=!v.muted;$("muteChannelPreview").innerHTML=v.muted?"◖ <span>إلغاء الكتم</span>":"◖ <span>كتم الصوت</span>"});
+$("muteChannelPreview").addEventListener("click",()=>{const v=$("channelPreviewVideo"),b=$("muteChannelPreview");v.muted=!v.muted;b.textContent=v.muted?"🔇":"◖";b.title=v.muted?"إلغاء كتم الصوت":"كتم الصوت";b.setAttribute("aria-label",b.title)});
 async function enterPreviewFullscreen(){
  const frame=$("previewVideoFrame");
  try{
+  const active=document.fullscreenElement||document.webkitFullscreenElement;
+  if(active===frame){
+   if(document.exitFullscreen)await document.exitFullscreen();
+   else if(document.webkitExitFullscreen)document.webkitExitFullscreen();
+   return;
+  }
   if(frame.requestFullscreen){await frame.requestFullscreen();return}
   if(frame.webkitRequestFullscreen){frame.webkitRequestFullscreen();return}
   if(frame.msRequestFullscreen){frame.msRequestFullscreen();return}
-  previewStatus("ملء الشاشة غير مدعوم في هذا المتصفح. استخدم تكبير نافذة المتصفح بدلًا منه.","error");
- }catch(err){previewStatus("تعذر فتح وضع ملء الشاشة. تحقق من صلاحية المتصفح ثم حاول مرة أخرى.","error")}
+  previewStatus("ملء الشاشة غير مدعوم في هذا المتصفح.","error");
+ }catch(err){previewStatus("تعذر تغيير وضع ملء الشاشة. جرّب زر التكبير مرة أخرى.","error")}
+}
+function updatePreviewFullscreenButton(){
+ const active=(document.fullscreenElement||document.webkitFullscreenElement)===$("previewVideoFrame");
+ const b=$("fullscreenChannelPreview");b.textContent=active?"⤢":"⛶";
+ b.title=active?"إنهاء ملء الشاشة":"ملء الشاشة";b.setAttribute("aria-label",b.title);
 }
 $("fullscreenChannelPreview").addEventListener("click",enterPreviewFullscreen);
-document.addEventListener("fullscreenchange",()=>{
- const active=!!document.fullscreenElement;
- $("fullscreenChannelPreview").innerHTML=active?"⛶ <span>إنهاء ملء الشاشة</span>":"⛶ <span>ملء الشاشة</span>";
-});
+document.addEventListener("fullscreenchange",updatePreviewFullscreenButton);
+document.addEventListener("webkitfullscreenchange",updatePreviewFullscreenButton);
 document.addEventListener("keydown",e=>{
  if(e.key==="Escape"&&document.fullscreenElement)return;
  if(e.key==="Escape"&&!$("channelPreview").classList.contains("hidden"))stopChannelPreview(true)
