@@ -851,7 +851,18 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 :root[data-theme="light"] #app>.wrap>.layout>.sidebar .nav-group-trigger{color:#435779}
 :root[data-theme="light"] #app>.wrap>.layout>.sidebar .nav-group-trigger .nav-group-icon{background:linear-gradient(145deg,#e2efff,#eae5ff);color:#3273b8}
 
- .worker-switch-label{font-size:12px;color:var(--muted);font-weight:700}.worker-switch{max-width:190px;min-width:155px;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;color:var(--text);padding:10px 12px;font:inherit;font-size:12px;font-weight:700}.worker-switch:focus{outline:2px solid var(--blue);outline-offset:2px}.field select{font:inherit} @media(max-width:700px){.worker-switch{min-width:135px;max-width:100%}.worker-switch-label{display:none}}</style></head>
+ .worker-switch-label{font-size:12px;color:var(--muted);font-weight:700}.worker-switch{max-width:190px;min-width:155px;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;color:var(--text);padding:10px 12px;font:inherit;font-size:12px;font-weight:700}.worker-switch:focus{outline:2px solid var(--blue);outline-offset:2px}.field select{font:inherit} @media(max-width:700px){.worker-switch{min-width:135px;max-width:100%}.worker-switch-label{display:none}}</style>
+<style id="bulkEditorCollapseStyles">
+#hostReplacePanel{overflow:hidden}
+#hostReplacePanel>summary::-webkit-details-marker{display:none}
+#hostReplacePanel>.pagehead{display:flex;justify-content:space-between;gap:12px}
+#hostReplacePanel>.pagehead h3{line-height:1.5}
+#hostReplacePanel .bulkEditorChevron{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;flex:0 0 30px;border:1px solid rgba(90,190,255,.35);border-radius:10px;color:#75d9ff;font-size:21px;transition:transform .2s ease,background .2s ease}
+#hostReplacePanel[open] .bulkEditorChevron{transform:rotate(180deg);background:rgba(53,201,255,.1)}
+#hostReplacePanel:not([open]) .bulkEditorBody{display:none}
+@media(max-width:560px){#hostReplacePanel>.pagehead{align-items:flex-start}#hostReplacePanel>.pagehead .pill{display:none}}
+</style>
+</head>
 <body>
 <section id="loginView" class="panel login">
 <div class="brand"><div class="logo">STV</div><div><h1>SUPER LIVE TV</h1><div class="muted">لوحة الإدارة الآمنة</div></div></div>
@@ -972,8 +983,8 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 <div id="orderBar" class="banner hidden" role="status"><span><span data-ico="alert"></span>تم تغيير ترتيب القنوات — لم يُحفظ بعد</span><div style="display:flex;gap:8px"><button type="button" id="orderSave" style="background:linear-gradient(120deg,#35c9ff,#6f9bff);color:#04121f;border-color:transparent">حفظ الترتيب</button><button type="button" id="orderDiscard">تجاهل</button></div></div>
 <div id="statusChips" class="chips"></div>
 <div id="bulkBar" class="bulk hidden"><b id="bulkCount"></b><div><button class="soft" id="bulkMove">نقل لمجموعة</button><button class="soft" id="bulkCheck">فحص المحدد</button><button class="soft" id="bulkEnable">تفعيل المحدد</button><button class="soft" id="bulkDisable">إيقاف المحدد</button><button class="danger" id="bulkDelete">حذف</button><button class="ghost" id="bulkClear">إلغاء التحديد</button></div></div>
-<div class="panel" id="hostReplacePanel" style="margin:14px 0;border-color:#286b8b;background:linear-gradient(135deg,rgba(12,42,62,.72),rgba(18,28,50,.8))">
- <div class="pagehead" style="margin:0 0 10px"><div><h3 style="margin:0">التعديل الجماعي لإعدادات القنوات</h3><p class="notice" style="margin:6px 0 0">عدّل الهوست والروابط وReferer وOrigin وUser-Agent ونوع القناة وحالتها دفعة واحدة. اختر القنوات، راجع المعاينة، ثم أكد الحفظ.</p></div><span class="pill">Bulk Channel Editor</span></div>
+<details class="panel" id="hostReplacePanel" style="margin:14px 0;border-color:#286b8b;background:linear-gradient(135deg,rgba(12,42,62,.72),rgba(18,28,50,.8))">
+ <summary class="pagehead" style="margin:0;padding:14px 16px;cursor:pointer;list-style:none;align-items:center"><div><h3 style="margin:0">التعديل الجماعي لإعدادات القنوات</h3><p class="notice" style="margin:6px 0 0">اضغط لفتح أدوات التعديل الجماعي أو إغلاقها.</p></div><span style="display:flex;align-items:center;gap:10px"><span class="pill">Bulk Channel Editor</span><span class="bulkEditorChevron" aria-hidden="true">⌄</span></span></summary><div class="bulkEditorBody" style="padding:0 16px 16px">
  <div class="formgrid">
   <div class="field"><label for="bulkTarget">القنوات المستهدفة</label><select id="bulkTarget"><option value="all">كل القنوات</option><option value="selected">القنوات المحددة من القائمة</option><option value="group">مجموعة واحدة</option></select></div>
   <div class="field" id="bulkTargetGroupWrap" style="display:none"><label for="bulkTargetGroup">اختر المجموعة</label><select id="bulkTargetGroup"><option value="">اختر مجموعة</option></select></div>
@@ -991,6 +1002,7 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
  </div>
  <div class="toolbar" style="margin:10px 0 0"><button class="primary" type="button" id="hostPreviewBtn">معاينة التعديلات</button><button class="soft" type="button" id="hostResetBtn">مسح الحقول</button><span class="muted" id="hostReplaceStatus" aria-live="polite">لم يتم تغيير أي شيء بعد.</span></div><div id="hostReplacePreview" class="hidden" style="margin-top:14px"></div>
 </div>
+</details>
 <div id="channelCards" class="cards" aria-live="polite">
 <div class="skcard"><div class="r"><div class="sk" style="width:46px;height:46px;border-radius:50%"></div><div class="c"><div class="sk" style="height:14px;width:60%"></div><div class="sk" style="height:10px;width:35%"></div></div></div><div class="sk" style="height:34px"></div><div class="sk" style="height:38px"></div></div>
 <div class="skcard"><div class="r"><div class="sk" style="width:46px;height:46px;border-radius:50%"></div><div class="c"><div class="sk" style="height:14px;width:50%"></div><div class="sk" style="height:10px;width:30%"></div></div></div><div class="sk" style="height:34px"></div><div class="sk" style="height:38px"></div></div>
