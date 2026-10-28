@@ -177,12 +177,13 @@
     {
       "id": "b3_FHD",
       "name": "Bein Sports 3 FHD",
-      "url": "https://sptvspk.st-plasma.workers.dev/b3f/index.m3u8",
+      "url": "https://krikartv4k.shaqlawatvworkersdev.workers.dev/b3s/index.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "b4_FHD",
