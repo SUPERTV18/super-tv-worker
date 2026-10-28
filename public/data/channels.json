@@ -113,13 +113,14 @@
     },
     {
       "id": "TOD3",
-      "name": "TOD 3 ",
-      "url": "https://iptv-subscription-api.tvkora56.workers.dev/v1/custom/stream/17.m3u8?code=2027",
+      "name": "TOD 3",
+      "url": "https://smarter.majedcss.site/live/ch1/972574ae336c4e3baf77c6efdccded2c.1793215298.1793820098.0.905dfb639868db3013e2c764094055210cc144ebe23e0e1957c7fbe716745ab3/master.css",
       "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
+        "User-Agent": "\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.",
+        "Referer": "\"https://player.majed-koora.live/?player=hls&channel=tood",
+        "Origin": "\"https://player.majed-koora.liv"
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "b1_4K",
