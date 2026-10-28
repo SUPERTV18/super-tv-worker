@@ -410,10 +410,10 @@ details.adv .formgrid{padding:6px 16px 0}
 .nav .ic{background:linear-gradient(145deg,#222b49,#191d38);color:#b7bfff;border:1px solid #ffffff0a;transition:all .18s ease}
 .nav.active,.nav:hover{background:linear-gradient(105deg,#392b65cc,#243b70aa 58%,#172d4cbb);border-color:#8b5cf655;box-shadow:inset -3px 0 #a78bfa,0 7px 20px #05081655}
 .nav.active .ic{background:linear-gradient(145deg,#8b5cf6,#536dfe);color:#fff;box-shadow:0 5px 16px #7158f655;border-color:#c4b5fd66}
-.sidebar-toggle{flex:0 0 40px;order:-1;border-color:#55447d!important;background:linear-gradient(145deg,#20203e,#111b31)!important;color:#c4b5fd!important}
-.top{top:8px;z-index:1000;border-color:#4a3c70;background:linear-gradient(110deg,#11182df5,#101428f5);box-shadow:0 15px 40px #02061777}
+.sidebar-toggle{width:100%;justify-content:flex-start;gap:10px;margin:0 0 8px;padding:10px 12px;border:1px solid #55447d;border-radius:12px;background:linear-gradient(145deg,#20203e,#111b31);color:#c4b5fd;font-weight:700;font-size:12px}.sidebar-toggle [data-ico]{width:20px;height:20px}.sidebar-toggle-label{display:inline}
+.top{position:sticky;top:8px;z-index:1000;border-color:#4a3c70;background:linear-gradient(110deg,#11182df5,#101428f5);box-shadow:0 15px 40px #02061777}
 #app.sidebar-collapsed .layout{grid-template-columns:86px minmax(0,1fr)}
-#app.sidebar-collapsed .sidebar{padding:10px 8px}
+#app.sidebar-collapsed .sidebar{padding:10px 8px}#app.sidebar-collapsed .sidebar-toggle{justify-content:center;padding:9px 4px}#app.sidebar-collapsed .sidebar-toggle-label{display:none}
 #app.sidebar-collapsed .sidebar:before{content:"STV";text-align:center;letter-spacing:1px;color:#c4b5fd;padding:12px 2px}
 #app.sidebar-collapsed .nav{justify-content:center;padding:9px 5px;gap:0}
 #app.sidebar-collapsed .nav>span:not(.ic){display:none}
@@ -437,11 +437,12 @@ details.adv .formgrid{padding:6px 16px 0}
 </section>
 <div id="app" class="hidden">
 <div class="wrap">
-<header class="top"><button class="soft icon sidebar-toggle" id="sidebarToggle" type="button" aria-label="طي القائمة الجانبية" title="طي القائمة الجانبية"><span data-ico="menu"></span></button><div class="brand"><div class="logo">STV</div><div><h1>SUPER LIVE TV <span class="badge">ADMIN</span></h1><div class="muted">إدارة القنوات ومراقبة المصدر والإعدادات</div></div></div>
+<header class="top"><div class="brand"><div class="logo">STV</div><div><h1>SUPER LIVE TV <span class="badge">ADMIN</span></h1><div class="muted">إدارة القنوات ومراقبة المصدر والإعدادات</div></div></div>
 <button class="palbtn" id="openPalette" type="button"><span data-ico="search"></span><span class="grow">بحث سريع في كل اللوحة</span><kbd>Ctrl K</kbd></button>
 <div class="top-actions"><span class="pill" id="connection"><i class="dot"></i><span id="connText">غير متصل</span></span><button class="soft theme-toggle" id="themeToggle" type="button" aria-label="تفعيل الوضع الفاتح" title="تبديل المظهر"><span class="theme-glyph" data-ico="sun"></span><span class="theme-label">المظهر</span></button><button class="soft icon" id="refreshBtn" aria-label="تحديث" title="تحديث"><span data-ico="refresh"></span></button><button class="danger" id="logoutBtn"><span data-ico="logout" data-size="16"></span>خروج</button></div></header>
 <div class="layout">
 <aside class="sidebar" aria-label="التنقل الرئيسي">
+<button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="طي القائمة الجانبية" title="طي القائمة الجانبية"><span data-ico="panel-right-close"></span><span class="sidebar-toggle-label">طي القائمة</span></button>
 <button class="nav active" data-page="overview"><span class="ic" data-ico="grid"></span><span>نظرة عامة</span></button>
 <button class="nav" data-page="ops"><span class="ic" data-ico="pulse"></span><span>مركز عمليات البث</span></button>
 <button class="nav" data-page="channels"><span class="ic" data-ico="tv"></span><span>إدارة القنوات</span></button>
@@ -1502,7 +1503,7 @@ const SIDEBAR_COLLAPSE_KEY="stvAdminSidebarCollapsedV1";
 function setSidebarCollapsed(collapsed){
  const app=$("app");if(!app)return;
  app.classList.toggle("sidebar-collapsed",!!collapsed);
- const b=$("sidebarToggle");if(b){b.setAttribute("aria-label",collapsed?"توسيع القائمة الجانبية":"طي القائمة الجانبية");b.title=collapsed?"توسيع القائمة الجانبية":"طي القائمة الجانبية";const i=b.querySelector("[data-ico]");if(i)i.dataset.ico=collapsed?"panel-right-open":"panel-right-close";if(typeof paintIcons==="function")paintIcons()}
+ const b=$("sidebarToggle");if(b){b.setAttribute("aria-label",collapsed?"توسيع القائمة الجانبية":"طي القائمة الجانبية");b.title=collapsed?"توسيع القائمة الجانبية":"طي القائمة الجانبية";const i=b.querySelector("[data-ico]");if(i)i.dataset.ico=collapsed?"panel-right-open":"panel-right-close";const label=b.querySelector(".sidebar-toggle-label");if(label)label.textContent=collapsed?"توسيع القائمة":"طي القائمة";if(typeof paintIcons==="function")paintIcons()}
  try{localStorage.setItem(SIDEBAR_COLLAPSE_KEY,collapsed?"1":"0")}catch(e){}
 }
 const sidebarToggle=$("sidebarToggle");if(sidebarToggle)sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!$("app").classList.contains("sidebar-collapsed")));
