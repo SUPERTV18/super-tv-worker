@@ -740,6 +740,17 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 :root[data-theme="light"] .nav-special-tag{background:#e2f6ff;color:#24678b;border-color:#c4e8f6}
 @media(max-width:900px){#app.sidebar-collapsed .nav-group-title,#app.sidebar-collapsed .nav-group-chevron{display:initial!important}.nav-special-wrap{flex:0 0 auto}}
 
+
+/* Distinct, always-visible icon treatment for each top-level navigation group */
+.nav-group-trigger .nav-group-icon{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:11px;border:1px solid #3475ad66;background:linear-gradient(145deg,#103b5b,#202657);color:#65e3ff;box-shadow:inset 0 1px #ffffff12,0 4px 12px #02081738}
+.nav-accordion[data-nav-group="home"]>.nav-group-trigger .nav-group-icon{background:linear-gradient(145deg,#075caa,#312c86);color:#9be8ff}
+.nav-accordion[data-nav-group="broadcast"]>.nav-group-trigger .nav-group-icon{background:linear-gradient(145deg,#087b91,#0752a2);color:#8df6ff}
+.nav-accordion[data-nav-group="audience"]>.nav-group-trigger .nav-group-icon{background:linear-gradient(145deg,#078c83,#135a72);color:#8bffe4}
+.nav-accordion[data-nav-group="tools"]>.nav-group-trigger .nav-group-icon{background:linear-gradient(145deg,#6342ad,#293b8b);color:#d7c7ff}
+.nav-accordion[data-nav-group="system"]>.nav-group-trigger .nav-group-icon{background:linear-gradient(145deg,#9a5a20,#7140a1);color:#ffe0a6}
+.nav-accordion.expanded>.nav-group-trigger .nav-group-icon{border-color:#ffffff40;box-shadow:0 0 18px #4aaeff20}
+#app.sidebar-collapsed .nav-group-trigger .nav-group-icon{width:38px;height:38px;flex-basis:38px;border-radius:12px}
+
 </style></head>
 <body>
 <section id="loginView" class="panel login">
