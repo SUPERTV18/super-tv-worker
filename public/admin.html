@@ -634,6 +634,66 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 @media(max-width:900px){#app>.wrap,.wrap{padding:12px 12px 105px}.layout{grid-template-columns:minmax(0,1fr)}.sidebar{padding:8px}.overview-hero{grid-template-columns:minmax(0,1fr)}.dashboard-analytics,.dashboard-secondary{grid-template-columns:minmax(0,1fr)}.dashboard-health{grid-column:auto}.dashboard-analytics>.panel,.dashboard-secondary>.panel{min-height:unset}}
 @media(max-width:520px){.pagehead h2{font-size:22px}.stats{grid-template-columns:minmax(0,1fr)}.stat{min-height:118px;padding:17px}.overview-hero{padding:20px}.overview-hero-copy h3{font-size:24px}.overview-live{min-height:145px}.overview-actions button{flex:1 1 100%}}
 
+
+/* Reference-inspired SUPER LIVE TV control center */
+.top{display:grid;grid-template-columns:minmax(200px,auto) minmax(220px,1fr) auto;align-items:center;gap:22px;min-height:72px;padding:12px 22px;border-radius:20px;border:1px solid #245cb0;background:linear-gradient(100deg,#06162d 0%,#071a39 55%,#10143a 100%);box-shadow:0 12px 36px #02081770;margin-bottom:20px}
+.top .brand{gap:12px;min-width:0}
+.top .logo{width:48px;height:48px;border-radius:15px;background:linear-gradient(145deg,#00c9ff,#6158ff);box-shadow:0 0 24px #1b8cff55;font-weight:900}
+.top .brand h1{font-size:15px;letter-spacing:.2px;white-space:nowrap}
+.top .brand .muted{font-size:11px;color:#9db6dc}
+.top .palbtn{width:100%;max-width:560px;justify-self:center;border-radius:999px;min-height:43px;background:#132c55;border:1px solid #294b7c;color:#a9c5e9}
+.top .top-actions{gap:9px}
+.top .top-actions .soft,.top .top-actions .danger{min-height:39px;border-radius:12px}
+.layout{grid-template-columns:226px minmax(0,1fr);gap:18px}
+.sidebar{padding:14px 10px 16px;border-radius:20px;background:linear-gradient(180deg,#04152b,#061126);border:1px solid #173a67;box-shadow:0 16px 40px #0208174d}
+.nav-group-label{padding:17px 12px 7px;color:#6687b8;font-size:10px;font-weight:900;letter-spacing:.7px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.nav-group-label:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,#203b62,transparent)}
+.nav{min-height:42px;margin:3px 0;padding:8px 10px;border-radius:11px;gap:10px;color:#c2d5f2;font-size:12px;border:1px solid transparent;transition:background .18s,border-color .18s,transform .18s}
+.nav:hover{background:#10284a;border-color:#1d4779;transform:translateX(-1px)}
+.nav.active{background:linear-gradient(100deg,#087cff,#0755c7);border-color:#3b9cff;color:#fff;box-shadow:0 7px 18px #006bff36}
+.nav .ic{width:30px;height:30px;border-radius:9px;background:#0c2546;color:#75dfff}
+.nav.active .ic{background:#ffffff20;color:#fff}
+.overview-hero{grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:24px;min-height:194px;padding:26px 30px;border-radius:23px;border:1px solid #2559a3;background:radial-gradient(ellipse at 76% 0%,#32258a7a,transparent 42%),radial-gradient(ellipse at 10% 100%,#007fba33,transparent 45%),linear-gradient(115deg,#06152c,#081b3c 58%,#11163a);box-shadow:0 18px 44px #02081745;position:relative;overflow:hidden}
+.overview-hero:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(165deg,transparent 0 45px,#2b73bf08 46px 47px);pointer-events:none}
+.overview-hero-copy,.overview-live{position:relative;z-index:1}
+.overview-eyebrow{font-size:10px;letter-spacing:1.1px;color:#54d8ff}
+.overview-hero-copy h3{font-size:clamp(23px,2vw,31px);line-height:1.5;color:#f3f7ff}
+.overview-hero-copy p{font-size:12px;color:#a8bfdf;line-height:1.9}
+.overview-live{border-radius:18px;background:linear-gradient(145deg,#091a34,#102b52);border:1px solid #244b7d;padding:18px;min-height:150px}
+.overview-live-num{font-size:clamp(38px,3.5vw,54px);color:#2edcff}
+.stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin:0 0 18px}
+.stat{position:relative;min-height:126px;padding:18px 18px 16px;border-radius:17px;overflow:hidden;border:1px solid #24518b;box-shadow:0 12px 28px #02081730}
+.stat:nth-child(1){background:linear-gradient(135deg,#38218a,#102e76)}
+.stat:nth-child(2){background:linear-gradient(135deg,#0562a8,#082e67)}
+.stat:nth-child(3){background:linear-gradient(135deg,#087b91,#07375c)}
+.stat:nth-child(4){background:linear-gradient(135deg,#6426a5,#172d76)}
+.stat:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#71e6ff,transparent);opacity:.85}
+.stat .label{color:#e0eaff;font-size:11px;font-weight:800}
+.stat .sic{width:39px;height:39px;border-radius:12px;background:#ffffff16;border:1px solid #ffffff25;color:#d8f7ff}
+.stat .num{font-size:clamp(27px,2.2vw,35px);color:#fff;font-weight:900;margin:10px 0 3px}
+.stat .sub{font-size:10px;color:#c1d6f2}
+.dashboard-analytics{grid-template-columns:minmax(0,1.18fr) minmax(0,1fr) minmax(210px,.75fr);gap:13px}
+.dashboard-analytics>.panel,.dashboard-secondary>.panel{min-height:250px;padding:18px;border-radius:17px;background:linear-gradient(145deg,#071a34,#09162b);border:1px solid #173a66;box-shadow:0 14px 34px #02081736}
+.dash-panel-head{border-bottom:1px solid #17345a;padding-bottom:12px;margin-bottom:13px}
+.dash-panel-head h3,.dashboard-secondary>.panel>h3{color:#e5efff;font-size:13px}
+.trend-chart{min-height:170px}
+.dashboard-health #dashboardHealthRing{min-height:185px}
+.dashboard-secondary{grid-template-columns:minmax(0,1fr);margin-top:13px}
+.dashboard-secondary>.panel{min-height:unset}
+:root[data-theme="light"] .top{background:linear-gradient(100deg,#f8fbff,#edf4ff);border-color:#c8d9f5}
+:root[data-theme="light"] .top .brand .muted{color:#607796}
+:root[data-theme="light"] .top .palbtn{background:#e8f0ff;color:#526b8c}
+:root[data-theme="light"] .sidebar{background:linear-gradient(180deg,#f8fbff,#edf3ff);border-color:#d3e0f4}
+:root[data-theme="light"] .nav{color:#314b6e}
+:root[data-theme="light"] .nav-group-label{color:#6d80a0}
+:root[data-theme="light"] .nav-group-label:after{background:linear-gradient(90deg,#c9d7ee,transparent)}
+:root[data-theme="light"] .nav .ic{background:#e3efff;color:#3273b8}
+:root[data-theme="light"] .dashboard-analytics>.panel,:root[data-theme="light"] .dashboard-secondary>.panel{background:linear-gradient(145deg,#fff,#f0f5ff);border-color:#d6e2f4}
+:root[data-theme="light"] .dash-panel-head h3,:root[data-theme="light"] .dashboard-secondary>.panel>h3{color:#203451}
+@media(max-width:1300px){.top{grid-template-columns:minmax(180px,auto) minmax(170px,1fr) auto;gap:12px}.layout{grid-template-columns:210px minmax(0,1fr)}.dashboard-analytics{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.dashboard-health{grid-column:1/-1}}
+@media(max-width:900px){.top{grid-template-columns:minmax(0,1fr) auto;padding:12px;gap:10px}.top .palbtn{grid-row:2;grid-column:1/-1;max-width:none;order:3}.top .brand h1{font-size:13px}.layout{grid-template-columns:1fr}.sidebar{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:5px}.nav-group-label{display:none}.nav{flex:0 0 auto}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-analytics{grid-template-columns:minmax(0,1fr)}.dashboard-health{grid-column:auto}}
+@media(max-width:520px){.top{border-radius:14px}.top .brand .muted{display:none}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat{padding:13px;min-height:112px}.stat .num{font-size:26px}.overview-hero{padding:18px}.overview-hero-copy h3{font-size:22px}.top .top-actions .theme-label{display:none}}
+
 </style></head>
 <body>
 <section id="loginView" class="panel login">
@@ -650,16 +710,21 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 <div class="layout">
 <aside class="sidebar" aria-label="التنقل الرئيسي">
 <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="طي القائمة الجانبية" title="طي القائمة الجانبية"><span data-ico="panel-right-close"></span><span class="sidebar-toggle-label">طي القائمة</span></button>
+<div class="nav-group-label">الرئيسية</div>
 <button class="nav active" data-page="overview"><span class="ic" data-ico="grid"></span><span>نظرة عامة</span></button>
+<div class="nav-group-label">إدارة البث والقنوات</div>
 <button class="nav" data-page="ops"><span class="ic" data-ico="pulse"></span><span>مركز عمليات البث</span></button>
 <button class="nav" data-page="channels"><span class="ic" data-ico="tv"></span><span>إدارة القنوات</span></button>
 <button class="nav" data-page="editor"><span class="ic" data-ico="plus"></span><span>إضافة / تعديل</span></button>
 <button class="nav" data-page="tester"><span class="ic" data-ico="target"></span><span>اختبار المصدر</span></button>
 <button class="nav" data-page="health"><span class="ic" data-ico="pulse"></span><span>فحص القنوات</span></button>
+<div class="nav-group-label">المشاهدون والتحليلات</div>
 <button class="nav" data-page="viewers"><span class="ic" data-ico="users"></span><span>المشاهدون الآن</span></button>
+<div class="nav-group-label">الأدوات والسجلات</div>
 <button class="nav" data-page="smartlinks"><span class="ic" data-ico="link"></span><span>مدير الروابط الذكي</span></button>
 <button class="nav" data-page="errors"><span class="ic" data-ico="alert"></span><span>سجل الأخطاء</span></button>
 <button class="nav" data-page="history"><span class="ic" data-ico="history"></span><span>سجل التعديلات</span></button>
+<div class="nav-group-label">النظام والإعدادات</div>
 <button class="nav" data-page="security"><span class="ic" data-ico="shield"></span><span>الحماية والإعدادات</span></button>
 <button class="nav" data-page="logs"><span class="ic" data-ico="log"></span><span>حالة النظام</span></button>
 <button class="nav" data-page="seriesadmin"><span class="ic" data-ico="tv"></span><span>إدارة الأفلام والمسلسلات</span></button>
