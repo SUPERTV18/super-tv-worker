@@ -427,6 +427,83 @@ details.adv .formgrid{padding:6px 16px 0}
 @media(max-width:900px){.sidebar-toggle{display:none!important}#app.sidebar-collapsed .layout{grid-template-columns:1fr}#app.sidebar-collapsed .sidebar{padding:8px}#app.sidebar-collapsed .sidebar:before{display:none}#app.sidebar-collapsed .nav>span:not(.ic){display:inline}#app.sidebar-collapsed .nav .ic{width:30px;height:30px}#app.sidebar-collapsed .nav.active:after{display:none}}
 @media(max-width:640px){.top{position:sticky;top:4px;gap:8px;padding:10px;backdrop-filter:blur(20px)}.top .brand{gap:8px}.top .brand .muted{display:none}.top .brand h1{font-size:14px}.top .logo{width:38px;height:38px;border-radius:12px}.top-actions{gap:5px}.top-actions .pill{padding:6px 8px}.top-actions button{padding:8px 10px}}
 
+
+/* Glass Pro layout repair: responsive auto-collapse and stable sticky header */
+#app>.wrap{min-width:0}
+#app>.wrap>.top{
+ position:sticky;top:8px;z-index:1100;isolation:isolate;
+ display:flex;align-items:center;gap:14px;flex-wrap:nowrap;
+ min-height:76px;margin:0 0 18px;padding:12px 16px;
+ border:1px solid #51417a;border-radius:18px;
+ background:linear-gradient(110deg,rgba(17,24,45,.97),rgba(10,20,37,.97));
+ box-shadow:0 12px 34px rgba(2,6,23,.32);
+ backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)
+}
+#app>.wrap>.top>.brand{flex:0 0 auto;min-width:0}
+#app>.wrap>.top>.palbtn{flex:1 1 220px;min-width:120px;max-width:340px}
+#app>.wrap>.top>.top-actions{flex:0 0 auto;margin-inline-start:auto;flex-wrap:nowrap;gap:7px}
+#app>.wrap>.layout{min-width:0;grid-template-columns:240px minmax(0,1fr);gap:18px}
+#app>.wrap>.layout>.sidebar{position:sticky;top:104px;align-self:start;max-height:calc(100vh - 120px);overflow-y:auto;overscroll-behavior:contain}
+#app.sidebar-collapsed>.wrap>.layout{grid-template-columns:76px minmax(0,1fr)}
+#app.sidebar-collapsed>.wrap>.layout>.sidebar .sidebar-toggle{justify-content:center;padding-inline:4px}
+#app.sidebar-collapsed>.wrap>.layout>.sidebar .sidebar-toggle-label{display:none}
+#app.sidebar-collapsed>.wrap>.layout>.sidebar .nav>span:not(.ic){display:none}
+#app.sidebar-collapsed>.wrap>.layout>.sidebar .nav{justify-content:center;padding-inline:4px}
+@media (min-width:901px) and (max-width:1100px){
+ #app>.wrap>.layout{grid-template-columns:76px minmax(0,1fr);gap:14px}
+ #app>.wrap>.layout>.sidebar{padding:10px 7px}
+ #app>.wrap>.layout>.sidebar:before{content:"STV";text-align:center;letter-spacing:1px;color:#c4b5fd;padding:12px 2px}
+ #app>.wrap>.layout>.sidebar .sidebar-toggle{justify-content:center;padding-inline:4px}
+ #app>.wrap>.layout>.sidebar .sidebar-toggle-label{display:none}
+ #app>.wrap>.layout>.sidebar .nav>span:not(.ic){display:none}
+ #app>.wrap>.layout>.sidebar .nav{justify-content:center;padding-inline:4px}
+ #app>.wrap>.layout>.sidebar .nav .ic{width:38px;height:38px}
+ #app>.wrap>.top{gap:9px;padding:10px 12px}
+ #app>.wrap>.top .brand h1{font-size:15px}
+ #app>.wrap>.top .brand .muted{display:none}
+ #app>.wrap>.top .theme-label{display:none}
+}
+@media (max-width:900px){
+ #app>.wrap{padding:10px 12px 112px}
+ #app>.wrap>.top{
+  top:4px;display:grid;grid-template-columns:minmax(0,1fr) auto;
+  gap:10px;padding:10px;border-radius:15px;min-height:0;margin-bottom:14px
+ }
+ #app>.wrap>.top>.brand{grid-column:1;grid-row:1}
+ #app>.wrap>.top>.top-actions{grid-column:2;grid-row:1;margin:0;gap:5px}
+ #app>.wrap>.top>.palbtn{grid-column:1/-1;grid-row:2;max-width:none;width:100%;min-width:0;order:initial}
+ #app>.wrap>.top .brand h1{font-size:14px;white-space:nowrap}
+ #app>.wrap>.top .brand .muted{display:none}
+ #app>.wrap>.top .logo{width:38px;height:38px}
+ #app>.wrap>.top .top-actions .pill{display:none}
+ #app>.wrap>.top .top-actions .theme-label{display:none}
+ #app>.wrap>.top .top-actions button{padding:8px}
+ #app>.wrap>.layout{grid-template-columns:minmax(0,1fr);gap:12px}
+ #app>.wrap>.layout>.sidebar{position:fixed;inset:auto 0 0 0;top:auto;z-index:1050;
+  display:flex;flex-direction:row;align-items:stretch;gap:4px;padding:7px;
+  max-height:none;overflow-x:auto;overflow-y:hidden;border-radius:16px 16px 0 0;
+  border-bottom:0;box-shadow:0 -10px 32px rgba(0,0,0,.35);background:rgba(12,20,36,.97);
+  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+ #app>.wrap>.layout>.sidebar:before{display:none}
+ #app>.wrap>.layout>.sidebar .sidebar-toggle{display:none!important}
+ #app>.wrap>.layout>.sidebar .nav{display:flex;flex:0 0 72px;min-width:72px;min-height:56px;
+  flex-direction:column;justify-content:center;align-items:center;gap:4px;margin:0;padding:5px 3px;
+  font-size:10px;white-space:nowrap;text-align:center}
+ #app>.wrap>.layout>.sidebar .nav>span:not(.ic){display:inline!important}
+ #app>.wrap>.layout>.sidebar .nav .ic{width:27px;height:27px}
+ #app>.wrap>.layout>.sidebar .nav.active:after{display:none}
+ #app.sidebar-collapsed>.wrap>.layout{grid-template-columns:minmax(0,1fr)}
+ #app.sidebar-collapsed>.wrap>.layout>.sidebar .nav>span:not(.ic){display:inline!important}
+}
+@media (max-width:420px){
+ #app>.wrap>.top{grid-template-columns:minmax(0,1fr) auto;gap:7px;padding:8px}
+ #app>.wrap>.top>.top-actions{gap:3px}
+ #app>.wrap>.top .brand h1{font-size:12px}
+ #app>.wrap>.top .logo{width:34px;height:34px}
+ #app>.wrap>.top .palbtn{font-size:11px}
+ #app>.wrap>.layout>.sidebar .nav{flex-basis:64px;min-width:64px;font-size:9px}
+}
+
 </style></head>
 <body>
 <section id="loginView" class="panel login">
