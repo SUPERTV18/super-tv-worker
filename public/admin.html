@@ -1176,7 +1176,7 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 const $=id=>document.getElementById(id);
 const WORKERS={primary:{label:"السيرفر الأول • stvl",base:"https://super-tv-api.stvl.workers.dev/"},secondary:{label:"السيرفر الثاني • sltv",base:"https://super-tv-api.sltv.workers.dev/"}};
 let activeWorker="primary",WORKER_BASE=WORKERS.primary.base,adminKey="",channels={},editing=null,stats=null,dirty=false,viewMode="cards",healthMap={},lastCheck=0,selected=new Set(),baseSha="",lastSaved={},orderDirty=false;
-function setActiveWorker(id){activeWorker=WORKERS[id]?id:"primary";WORKER_BASE=WORKERS[activeWorker].base;const a=$("loginWorker"),b=$("workerSwitch");if(a)a.value=activeWorker;if(b)b.value=activeWorker;}
+function setActiveWorker(id){activeWorker=WORKERS[id]?id:"primary";WORKER_BASE=WORKERS[activeWorker].base;try{sessionStorage.setItem("stvAdminWorker",activeWorker)}catch(e){}const a=$("loginWorker"),b=$("workerSwitch");if(a)a.value=activeWorker;if(b)b.value=activeWorker;}
 const clone=o=>JSON.parse(JSON.stringify(o));
 const ICONS={
 sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>',
@@ -2031,5 +2031,6 @@ if(navAccordionRoot){
 }
 
 renderDashboardTrend();renderDashboardHealthRing();paintIcons();validateForm(false);
-const remembered=sessionStorage.getItem("stvAdminKey");if(remembered){$("loginKey").value=remembered;login()}
+let rememberedWorker="primary";try{rememberedWorker=sessionStorage.getItem("stvAdminWorker")||"primary"}catch(e){}setActiveWorker(rememberedWorker);
+let remembered=sessionStorage.getItem("stvAdminKey:"+activeWorker);if(!remembered&&activeWorker==="primary")remembered=sessionStorage.getItem("stvAdminKey");if(remembered){$("loginKey").value=remembered;login()}
 </script></body></html>
