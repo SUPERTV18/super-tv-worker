@@ -201,12 +201,15 @@
     {
       "id": "b5_FHD",
       "name": "Bein Sports 5 FHD",
-      "url": "https://ktplus.skrm87228.workers.dev/stream/8.m3u8",
+      "url": "https://yacinflash.mandooosports.workers.dev/4973946197354098250.m3u8",
       "headers": {
-        "User-Agent": "",
+        "User-Agent": "FFLASHTV/1.0&Referer",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://sportsbite.org/247/beINAR5?m3u8",
+      "backupEnabled": true
     },
     {
       "id": "b6_FHD",
