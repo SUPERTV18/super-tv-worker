@@ -524,6 +524,34 @@ body{background:radial-gradient(ellipse at 90% -10%,#202c68 0,transparent 34%),r
  #app>.wrap>.layout>.sidebar .nav{flex-basis:62px;min-width:62px;font-size:9px}
 }
 
+
+/* Aurora dashboard composition: trend, rankings and verified channel health */
+.dashboard-analytics{grid-template-columns:minmax(0,1.25fr) minmax(260px,1fr) minmax(220px,.8fr);gap:16px;align-items:stretch;margin-bottom:16px}
+.dashboard-secondary{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+.dashboard-analytics>.panel,.dashboard-secondary>.panel{min-width:0;padding:20px;border-radius:22px;background:linear-gradient(155deg,#101b32f5,#0b1427f7);border:1px solid #263a5c;box-shadow:0 16px 40px #02061724}
+.dash-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.dash-panel-head h3{margin:0;font-size:14px;font-weight:800;letter-spacing:-.2px}
+.dash-panel-head p{margin:5px 0 0;color:var(--muted);font-size:10px;line-height:1.7}
+.trend-live{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;background:#063b3b;color:#61f0d0;font-size:10px;white-space:nowrap}
+.trend-live i{width:6px;height:6px;border-radius:50%;background:#2ce5b4;box-shadow:0 0 0 4px #2ce5b41c}
+.trend-chart{min-height:190px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.trend-chart svg{display:block;width:100%;height:auto;max-height:220px;overflow:visible}
+.trend-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;padding-top:12px;border-top:1px solid var(--line);font-size:10px;color:var(--muted)}
+.trend-foot b{color:var(--blue);font-size:12px;white-space:nowrap}
+.dash-head-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:linear-gradient(145deg,#123e61,#29234f);color:#70dfff;border:1px solid #315278}
+.dashboard-health #dashboardHealthRing{min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px}
+.health-ring-wrap{position:relative;width:154px;height:154px;display:grid;place-items:center}
+.health-ring-wrap svg{width:154px;height:154px;transform:rotate(-90deg)}
+.health-ring-center{position:absolute;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px}
+.health-ring-center b{font-size:27px;line-height:1.2;color:var(--text)}.health-ring-center span{font-size:10px;color:var(--muted)}
+.health-legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;font-size:10px;color:var(--muted)}
+.health-legend span{display:flex;align-items:center;gap:6px}.health-legend i{width:7px;height:7px;border-radius:50%;display:inline-block}.health-legend b{margin-inline-start:auto;color:var(--text)}
+:root[data-theme="light"] .dashboard-analytics>.panel,:root[data-theme="light"] .dashboard-secondary>.panel{background:linear-gradient(155deg,#fff,#f5f7ff);border-color:#dce3f4;box-shadow:0 12px 32px #4b529010}
+:root[data-theme="light"] .trend-live{background:#dcfbf3;color:#087e69}
+:root[data-theme="light"] .dash-head-icon{background:linear-gradient(145deg,#e1f7ff,#ece7ff);color:#4e56b6;border-color:#d6d8fa}
+@media(max-width:1200px){.dashboard-analytics{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}.dashboard-health{grid-column:1/-1}.dashboard-health #dashboardHealthRing{min-height:0;display:grid;grid-template-columns:160px minmax(0,1fr);gap:18px}.health-legend{max-width:420px}}
+@media(max-width:700px){.dashboard-analytics,.dashboard-secondary{grid-template-columns:minmax(0,1fr);gap:12px}.dashboard-health{grid-column:auto}.dashboard-health #dashboardHealthRing{grid-template-columns:1fr}.dashboard-analytics>.panel,.dashboard-secondary>.panel{padding:15px;border-radius:18px}.trend-chart{min-height:150px}}
+
 </style></head>
 <body>
 <section id="loginView" class="panel login">
@@ -572,16 +600,21 @@ body{background:radial-gradient(ellipse at 90% -10%,#202c68 0,transparent 34%),r
   <div class="overview-live-foot"><span id="dashboardLiveUpdated">آخر تحديث: —</span><span id="dashboardLiveTop">أكثر قناة مشاهدة: —</span></div>
  </div>
 </section>
-<div class="panel hidden" id="dashboardPrefs" style="margin-bottom:16px"><div class="pagehead" style="margin:0 0 12px"><div><h3 style="margin:0">تخصيص الصفحة الرئيسية</h3><p class="muted" style="margin:5px 0 0">اختياراتك محفوظة في هذا المتصفح فقط ولا تغيّر بيانات القنوات أو KV.</p></div><div class="toolbar" style="margin:0"><button class="primary" id="saveDashboardPrefs" type="button">حفظ الترتيب</button><button class="soft" id="resetDashboardPrefs" type="button">استعادة الافتراضي</button></div></div><div class="grid2" id="dashboardPrefsList"><label class="checkline"><input type="checkbox" data-dashboard-widget="viewerLive" checked> بطاقة المشاهدين الحاليين</label><label class="checkline"><input type="checkbox" data-dashboard-widget="stats" checked> بطاقات الإحصائيات</label><label class="checkline"><input type="checkbox" data-dashboard-widget="distribution" checked> توزيع القنوات على المجموعات</label><label class="checkline"><input type="checkbox" data-dashboard-widget="topChannels" checked> أكثر القنوات طلبًا</label><label class="checkline"><input type="checkbox" data-dashboard-widget="shortcuts" checked> الاختصارات السريعة</label></div></div>
+<div class="panel hidden" id="dashboardPrefs" style="margin-bottom:16px"><div class="pagehead" style="margin:0 0 12px"><div><h3 style="margin:0">تخصيص الصفحة الرئيسية</h3><p class="muted" style="margin:5px 0 0">اختياراتك محفوظة في هذا المتصفح فقط ولا تغيّر بيانات القنوات أو KV.</p></div><div class="toolbar" style="margin:0"><button class="primary" id="saveDashboardPrefs" type="button">حفظ الترتيب</button><button class="soft" id="resetDashboardPrefs" type="button">استعادة الافتراضي</button></div></div><div class="grid2" id="dashboardPrefsList"><label class="checkline"><input type="checkbox" data-dashboard-widget="viewerLive" checked> بطاقة المشاهدين الحاليين</label><label class="checkline"><input type="checkbox" data-dashboard-widget="stats" checked> بطاقات الإحصائيات</label><label class="checkline"><input type="checkbox" data-dashboard-widget="distribution" checked> توزيع القنوات على المجموعات</label><label class="checkline"><input type="checkbox" data-dashboard-widget="topChannels" checked> أكثر القنوات طلبًا</label><label class="checkline"><input type="checkbox" data-dashboard-widget="viewerTrend" checked> حركة المشاهدين</label><label class="checkline"><input type="checkbox" data-dashboard-widget="channelHealth" checked> حالة القنوات</label><label class="checkline"><input type="checkbox" data-dashboard-widget="shortcuts" checked> الاختصارات السريعة</label></div></div>
 <div class="stats" data-dashboard-widget="stats">
 <div class="stat"><div class="stat-top"><span class="label">إجمالي القنوات</span><span class="sic" data-ico="tv"></span></div><div class="num" id="statChannels">—</div><div class="sub">من ملف القنوات الرئيسي</div></div>
 <div class="stat"><div class="stat-top"><span class="label">المجموعات</span><span class="sic" data-ico="folder"></span></div><div class="num" id="statGroups">—</div><div class="sub">تصنيفات القنوات</div></div>
 <div class="stat"><div class="stat-top"><span class="label">طلبات المشاهدة المرصودة</span><span class="sic" data-ico="pulse"></span></div><div class="num" id="statViewers">—</div><div class="sub">ذاكرة نسخة Worker الحالية فقط</div></div>
 <div class="stat"><div class="stat-top"><span class="label">مصادر تعمل</span><span class="sic" data-ico="check"></span></div><div class="num" id="statHealthy">—</div><div class="sub" id="statHealthySub">اضغط «فحص الحالة» في إدارة القنوات</div></div>
 </div>
-<div class="dash">
+<div class="dash dashboard-analytics">
+<div class="panel dashboard-trend" data-dashboard-widget="viewerTrend"><div class="dash-panel-head"><div><h3>حركة المشاهدين</h3><p>آخر قراءات الجلسات من لوحة التحكم</p></div><span class="trend-live"><i></i> متابعة</span></div><div id="dashboardTrendChart" class="trend-chart"><div class="empty">سيظهر الرسم بعد وصول بيانات المشاهدين</div></div><div class="trend-foot"><span>قراءات محلية محفوظة في المتصفح</span><b id="dashboardTrendLatest">— جلسة</b></div></div>
+<div class="panel dashboard-topchannels" data-dashboard-widget="topChannels"><div class="dash-panel-head"><div><h3>أكثر القنوات طلبًا</h3><p>حسب بيانات Worker المتاحة</p></div><span class="dash-head-icon" data-ico="chart-no-axes-combined"></span></div><div id="topChannels"><div class="empty">اضغط تحديث لتحميل الإحصائيات</div></div><p class="notice">الإحصائيات تقريبية ومؤقتة، ولا تمثل عدد المشاهدين الفريدين عبر جميع نسخ Cloudflare.</p></div>
+<div class="panel dashboard-health" data-dashboard-widget="channelHealth"><div class="dash-panel-head"><div><h3>حالة القنوات</h3><p>نتائج آخر فحص من هذه الجلسة</p></div><span class="dash-head-icon" data-ico="activity"></span></div><div id="dashboardHealthRing"><div class="empty">شغّل فحص الحالة لعرض النتائج</div></div></div>
+</div>
+<div class="dash dashboard-secondary">
 <div class="panel" data-dashboard-widget="distribution"><h3>توزيع القنوات على المجموعات</h3><div id="groupDonut"><div class="empty">جار التحميل...</div></div></div>
-<div class="panel" data-dashboard-widget="topChannels"><h3>أكثر القنوات طلبًا في الذاكرة الحالية</h3><div id="topChannels"><div class="empty">اضغط تحديث لتحميل الإحصائيات</div></div><p class="notice">ملاحظة: إحصائيات المشاهدين الحالية تقريبية ومؤقتة، ولا تمثل عدد المشاهدين الفريدين على مستوى جميع نسخ Cloudflare.</p></div>
+<div class="panel" data-dashboard-widget="shortcuts"><h3>اختصارات سريعة</h3><div class="toolbar" style="margin:0"><button class="primary" data-goto="editor"><span data-ico="plus" data-size="16"></span>إضافة قناة</button><button class="soft" data-goto="channels">عرض القنوات</button><button class="soft" data-goto="tester">اختبار رابط بث</button></div></div>
 </div>
 <div class="panel" data-dashboard-widget="shortcuts"><h3>اختصارات سريعة</h3><div class="toolbar" style="margin:0"><button class="primary" data-goto="editor"><span data-ico="plus" data-size="16"></span>إضافة قناة</button><button class="soft" data-goto="channels">عرض القنوات</button><button class="soft" data-goto="tester">اختبار رابط بث</button></div></div>
 </section>
@@ -914,6 +947,27 @@ $("logoutBtn").addEventListener("click",()=>{stopChannelPreview(true);sessionSto
 function setConn(ok,t){$("connText").textContent=t;$("connection").className="pill "+(ok?"ok":"bad")}
 async function refreshAll(){const channelBox=$("channelCards");if(channelBox&&!allChannels().length)renderChannelSkeletons();try{channels=await api("/api/admin/channels");lastSaved=clone(channels);orderDirty=false;fillGroups();renderChannels();fillTestSelect();renderDonut();renderHealthHistory();await loadStats();setConn(true,"متصل • تم التحميل");$("lastUpdate").textContent="آخر تحديث: "+new Date().toLocaleTimeString("ar-EG");$("systemInfo").textContent="واجهة الإدارة: متصلة\nتحميل ملف القنوات: ناجح\nعدد القنوات: "+allChannels().length+"\nآخر فحص: "+new Date().toISOString();startDashboardViewers()}catch(e){setConn(false,"خطأ في الاتصال");notify(e.message,"error")}}
 
+const DASH_TREND_KEY="stvDashboardViewerTrendV1";
+function readDashboardTrend(){try{const a=JSON.parse(localStorage.getItem(DASH_TREND_KEY)||"[]");return Array.isArray(a)?a.filter(x=>Number.isFinite(x.t)&&Number.isFinite(x.n)).slice(-48):[]}catch(e){return[]}}
+function renderDashboardTrend(){
+ const el=$("dashboardTrendChart"),rows=readDashboardTrend();if(!el)return;
+ if(!rows.length){el.innerHTML='<div class="empty">سيظهر الرسم بعد وصول بيانات المشاهدين</div>';$("dashboardTrendLatest").textContent="— جلسة";return}
+ const W=560,H=190,L=16,R=12,T=12,B=26,iw=W-L-R,ih=H-T-B,max=Math.max(1,...rows.map(x=>x.n)),min=0;
+ const pts=rows.map((x,i)=>({x:L+(rows.length===1?iw/2:i*iw/(rows.length-1)),y:T+ih-(x.n-min)/(max-min||1)*ih,n:x.n,t:x.t}));
+ const path=pts.map((p,i)=>(i?"L":"M")+p.x.toFixed(1)+" "+p.y.toFixed(1)).join(" ");
+ const area=path+" L "+pts[pts.length-1].x.toFixed(1)+" "+(T+ih)+" L "+pts[0].x.toFixed(1)+" "+(T+ih)+" Z";
+ const grid=[0,.33,.66,1].map(v=>'<line x1="'+L+'" y1="'+(T+ih-v*ih)+'" x2="'+(W-R)+'" y2="'+(T+ih-v*ih)+'" stroke="var(--line)" stroke-dasharray="3 5"/><text x="'+L+'" y="'+(T+ih-v*ih-4)+'" fill="var(--muted)" font-size="9">'+Math.round(max*v)+'</text>').join("");
+ const dots=pts.map((p,i)=>i===pts.length-1?'<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#38d8ff" stroke="#0b1427" stroke-width="2"/>':"").join("");
+ el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="منحنى قراءات المشاهدين الأخيرة"><defs><linearGradient id="stvTrendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#38d8ff" stop-opacity=".38"/><stop offset="100%" stop-color="#536dfe" stop-opacity=".02"/></linearGradient><linearGradient id="stvTrendLine"><stop offset="0%" stop-color="#38d8ff"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient></defs>'+grid+'<path d="'+area+'" fill="url(#stvTrendFill)"/><path d="'+path+'" fill="none" stroke="url(#stvTrendLine)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'+dots+'<text x="'+L+'" y="'+(H-5)+'" fill="var(--muted)" font-size="9">أقدم قراءة</text><text x="'+(W-R)+'" y="'+(H-5)+'" text-anchor="end" fill="var(--muted)" font-size="9">أحدث قراءة</text></svg>';
+ $("dashboardTrendLatest").textContent=rows[rows.length-1].n.toLocaleString("ar-EG")+" جلسة";
+}
+function recordDashboardTrend(count,stamp){const rows=readDashboardTrend();const t=Number(stamp)||Date.now();if(!rows.length||t-rows[rows.length-1].t>=10000)rows.push({t,n:Math.max(0,Number(count)||0)});else rows[rows.length-1]={t,n:Math.max(0,Number(count)||0)};try{localStorage.setItem(DASH_TREND_KEY,JSON.stringify(rows.slice(-48)))}catch(e){}renderDashboardTrend()}
+function renderDashboardHealthRing(){
+ const el=$("dashboardHealthRing");if(!el)return;const vals=Object.values(healthMap||{});if(!vals.length){el.innerHTML='<div class="empty">شغّل فحص الحالة من صفحة «إدارة القنوات» لعرض النتائج هنا.</div>';return}
+ const good=vals.filter(x=>x&&x.ok).length,bad=vals.filter(x=>x&&!x.ok).length,unknown=Math.max(0,allChannels().length-vals.length),total=Math.max(1,good+bad+unknown),C=2*Math.PI*52;
+ let off=0;const parts=[[good,"#2ce5b4"],[bad,"#fb7185"],[unknown,"#53647f"]];const arcs=parts.map(([n,c])=>{const len=n/total*C;const out='<circle cx="70" cy="70" r="52" fill="none" stroke="'+c+'" stroke-width="13" stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" stroke-linecap="round"/>';off+=len;return out}).join("");
+ el.innerHTML='<div class="health-ring-wrap"><svg viewBox="0 0 140 140" role="img" aria-label="حالة '+vals.length+' قناة تم فحصها"><circle cx="70" cy="70" r="52" fill="none" stroke="var(--line)" stroke-width="13"/>'+arcs+'</svg><div class="health-ring-center"><b>'+Math.round(good/Math.max(1,vals.length)*100)+'%</b><span>نجاح آخر فحص</span></div></div><div class="health-legend"><span><i style="background:#2ce5b4"></i>تعمل<b>'+good+'</b></span><span><i style="background:#fb7185"></i>تحتاج مراجعة<b>'+bad+'</b></span><span><i style="background:#53647f"></i>لم تُفحص<b>'+unknown+'</b></span><span><i style="background:#38d8ff"></i>إجمالي القنوات<b>'+allChannels().length+'</b></span></div>';
+}
 let dashboardViewersTimer=null,dashboardViewersBusy=false;
 function stopDashboardViewers(){if(dashboardViewersTimer){clearInterval(dashboardViewersTimer);dashboardViewersTimer=null}}
 function startDashboardViewers(){stopDashboardViewers();if(!$("app").classList.contains("hidden")){loadDashboardViewers();dashboardViewersTimer=setInterval(()=>{if(document.visibilityState==="visible"&&document.getElementById("page-overview")?.classList.contains("active"))loadDashboardViewers()},15000)}}
@@ -928,6 +982,7 @@ async function loadDashboardViewers(){
   $("dashboardLiveTop").textContent="أكثر قناة مشاهدة: "+(top?top[0]+" ("+top[1]+")":"—");
   $("dashboardLiveState").textContent="مباشر";
   $("dashboardLiveUpdated").textContent="آخر تحديث: "+new Date(Number(r.serverTime)||Date.now()).toLocaleTimeString("ar-EG");
+  recordDashboardTrend(count,Number(r.serverTime)||Date.now());renderDashboardHealthRing();
   card.classList.remove("unavailable");
  }catch(e){
   $("dashboardLiveCount").textContent="—";
@@ -945,7 +1000,7 @@ async function loadStats(){try{stats=await api("/api/admin/stats");setAnimatedCo
 const PAL=["#35c9ff","#9b9aff","#5ee6b6","#ffb86b","#ff9fb0","#8be0ff"];
 function renderDonut(){const el=$("groupDonut");const groups=Object.entries(channels).map(([g,a])=>[g,Array.isArray(a)?a.length:0]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);const total=groups.reduce((s,x)=>s+x[1],0);if(!total){el.innerHTML='<div class="empty">'+emptyStateMarkup("layers","لا توجد قنوات بعد","أضف أول قناة لتظهر هنا إحصائيات توزيع القنوات على المجموعات.","إضافة قناة","editor")+'</div>';return}const top=groups.slice(0,5);const rest=groups.slice(5).reduce((s,x)=>s+x[1],0);if(rest)top.push(["أخرى",rest]);const C=2*Math.PI*54;let off=0;const segs=top.map((x,i)=>{const len=x[1]/total*C;const s='<circle cx="70" cy="70" r="54" stroke="'+PAL[i%PAL.length]+'" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'"/>';off+=len;return s}).join("");el.innerHTML='<div class="donut-wrap"><svg width="170" height="170" viewBox="0 0 140 140" role="img" aria-label="توزيع '+total+' قناة على '+groups.length+' مجموعات" style="flex:0 0 170px"><g transform="rotate(-90 70 70)" fill="none" stroke-width="18">'+segs+'</g><text x="70" y="68" text-anchor="middle" font-size="26" font-weight="800" fill="#f3f7ff" font-family="Cairo,sans-serif">'+total+'</text><text x="70" y="86" text-anchor="middle" font-size="10" fill="#9fb2cc" font-family="Cairo,sans-serif">قناة</text></svg><ul class="legend">'+top.map((x,i)=>'<li><span class="sw" style="background:'+PAL[i%PAL.length]+'"></span><span>'+esc(x[0])+'</span><b>'+x[1]+'</b></li>').join("")+'</ul></div>'}
 
-function updateHealthStat(){const vals=Object.values(healthMap);if(!vals.length)return;const good=vals.filter(x=>x.ok).length;$("statHealthy").textContent=good;$("statHealthySub").textContent="من "+vals.length+" قناة تم فحصها"}
+function updateHealthStat(){const vals=Object.values(healthMap);if(!vals.length){renderDashboardHealthRing();return}const good=vals.filter(x=>x.ok).length;$("statHealthy").textContent=good;$("statHealthySub").textContent="من "+vals.length+" قناة تم فحصها";renderDashboardHealthRing()}
 const HEALTH_HISTORY_KEY="stvHealthHistoryV1";
 function readHealthHistory(){try{const v=JSON.parse(localStorage.getItem(HEALTH_HISTORY_KEY)||"[]");return Array.isArray(v)?v:[]}catch(e){return[]}}
 function writeHealthHistory(rows){try{localStorage.setItem(HEALTH_HISTORY_KEY,JSON.stringify(rows.slice(0,100)));return true}catch(e){return false}}
@@ -1606,6 +1661,6 @@ function setSidebarCollapsed(collapsed){
 const sidebarToggle=$("sidebarToggle");if(sidebarToggle)sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!$("app").classList.contains("sidebar-collapsed")));
 try{setSidebarCollapsed(localStorage.getItem(SIDEBAR_COLLAPSE_KEY)==="1")}catch(e){}
 
-paintIcons();validateForm(false);
+renderDashboardTrend();renderDashboardHealthRing();paintIcons();validateForm(false);
 const remembered=sessionStorage.getItem("stvAdminKey");if(remembered){$("loginKey").value=remembered;login()}
 </script></body></html>
