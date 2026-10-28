@@ -1893,16 +1893,18 @@ if(navAccordionRoot){
    });
    try{localStorage.setItem("stvAdminNavOpenGroupV1",opening?group.dataset.navGroup:"")}catch(e){}
   }
-  const nav=e.target.closest(".nav-group-items .nav[data-page]");
+  const nav=e.target.closest(".sidebar .nav[data-page]");
   if(nav){
    const group=nav.closest(".nav-accordion");
-   navAccordionRoot.querySelectorAll(".nav-accordion").forEach(g=>{
-    const open=g===group;g.classList.toggle("expanded",open);
-    const b=g.querySelector(".nav-group-trigger"),list=g.querySelector(".nav-group-items");
-    if(b)b.setAttribute("aria-expanded",String(open));
-    if(list)list.hidden=!open;
-   });
-   try{localStorage.setItem("stvAdminNavOpenGroupV1",group.dataset.navGroup)}catch(e){}
+   if(group){
+    navAccordionRoot.querySelectorAll(".nav-accordion").forEach(g=>{
+     const open=g===group;g.classList.toggle("expanded",open);
+     const b=g.querySelector(".nav-group-trigger"),list=g.querySelector(".nav-group-items");
+     if(b)b.setAttribute("aria-expanded",String(open));
+     if(list)list.hidden=!open;
+    });
+    try{localStorage.setItem("stvAdminNavOpenGroupV1",group.dataset.navGroup)}catch(e){}
+   }
   }
  });
  try{
