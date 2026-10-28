@@ -428,80 +428,100 @@ details.adv .formgrid{padding:6px 16px 0}
 @media(max-width:640px){.top{position:sticky;top:4px;gap:8px;padding:10px;backdrop-filter:blur(20px)}.top .brand{gap:8px}.top .brand .muted{display:none}.top .brand h1{font-size:14px}.top .logo{width:38px;height:38px;border-radius:12px}.top-actions{gap:5px}.top-actions .pill{padding:6px 8px}.top-actions button{padding:8px 10px}}
 
 
-/* Glass Pro layout repair: responsive auto-collapse and stable sticky header */
-#app>.wrap{min-width:0}
-#app>.wrap>.top{
- position:sticky;top:8px;z-index:1100;isolation:isolate;
- display:flex;align-items:center;gap:14px;flex-wrap:nowrap;
- min-height:76px;margin:0 0 18px;padding:12px 16px;
- border:1px solid #51417a;border-radius:18px;
- background:linear-gradient(110deg,rgba(17,24,45,.97),rgba(10,20,37,.97));
- box-shadow:0 12px 34px rgba(2,6,23,.32);
- backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)
-}
-#app>.wrap>.top>.brand{flex:0 0 auto;min-width:0}
-#app>.wrap>.top>.palbtn{flex:1 1 220px;min-width:120px;max-width:340px}
-#app>.wrap>.top>.top-actions{flex:0 0 auto;margin-inline-start:auto;flex-wrap:nowrap;gap:7px}
-#app>.wrap>.layout{min-width:0;grid-template-columns:240px minmax(0,1fr);gap:18px}
-#app>.wrap>.layout>.sidebar{position:sticky;top:104px;align-self:start;max-height:calc(100vh - 120px);overflow-y:auto;overscroll-behavior:contain}
-#app.sidebar-collapsed>.wrap>.layout{grid-template-columns:76px minmax(0,1fr)}
-#app.sidebar-collapsed>.wrap>.layout>.sidebar .sidebar-toggle{justify-content:center;padding-inline:4px}
+
+/* SUPER TV Admin — Aurora Studio visual system */
+:root{--bg:#080c18;--panel:#10172a;--surface-1:#111a30;--surface-2:#0c1427;--line:#263552;--border:#344465;--text:#f4f7ff;--muted:#9caecc;--blue:#38d8ff;--purple:#a78bfa;--radius-md:16px;--radius-lg:24px}
+:root[data-theme="light"]{--bg:#f3f6ff;--panel:#fff;--surface-1:#fff;--surface-2:#f5f7ff;--line:#dce3f4;--border:#cbd5ea;--text:#17223d;--muted:#61708e;--blue:#087fb7;--purple:#7056d9}
+:root[data-theme="light"] body{background:radial-gradient(ellipse at 85% 0%,#d9d8ff 0,transparent 34%),radial-gradient(ellipse at 8% 30%,#d8f5ff 0,transparent 30%),var(--bg)}
+body{background:radial-gradient(ellipse at 90% -10%,#202c68 0,transparent 34%),radial-gradient(ellipse at 0% 35%,#09364a 0,transparent 28%),var(--bg);background-attachment:fixed}
+#app>.wrap{max-width:1680px;padding:22px clamp(14px,2.3vw,36px) 34px}
+#app>.wrap>.top{position:sticky;top:12px;z-index:1100;isolation:isolate;display:grid;grid-template-columns:minmax(215px,auto) minmax(180px,1fr) auto;align-items:center;gap:20px;min-height:86px;margin:0 0 24px;padding:14px 20px;border:1px solid #39486c;border-radius:24px;background:linear-gradient(110deg,rgba(17,25,48,.94),rgba(12,19,38,.94));box-shadow:0 20px 55px #02061755, inset 0 1px #ffffff0a;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}
+#app>.wrap>.top .brand{gap:13px}
+#app>.wrap>.top .logo{width:52px;height:52px;border-radius:17px;background:linear-gradient(145deg,#35dcff 0%,#537cff 48%,#a17bff 100%);box-shadow:0 8px 28px #577bff44;border:1px solid #ffffff45}
+#app>.wrap>.top .brand h1{font-size:17px;letter-spacing:.1px}
+#app>.wrap>.top .brand .muted{font-size:11px;margin-top:5px}
+#app>.wrap>.top .palbtn{width:100%;max-width:none;min-width:0;min-height:44px;border-radius:14px;background:#090f20a8;border-color:#2a3b5e}
+#app>.wrap>.top .top-actions{flex-wrap:nowrap;gap:8px}
+#app>.wrap>.top .top-actions button{min-height:40px;border-radius:13px}
+#app>.wrap>.layout{grid-template-columns:252px minmax(0,1fr);gap:24px;align-items:start}
+#app>.wrap>.layout>.sidebar{top:122px;max-height:calc(100vh - 140px);overflow-y:auto;padding:13px 11px;border-radius:22px;border-color:#354364;background:linear-gradient(165deg,rgba(18,28,52,.97),rgba(10,17,34,.97));box-shadow:0 18px 50px #02061733;backdrop-filter:blur(18px)}
+#app>.wrap>.layout>.sidebar:before{content:"SUPER TV  /  NAVIGATION";font-size:9px;letter-spacing:1.4px;color:#7f91b8;padding:12px 13px 15px}
+#app>.wrap>.layout>.sidebar .sidebar-toggle{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px;padding:11px 13px;border:1px solid #45426f;border-radius:14px;background:linear-gradient(110deg,#222448,#151d37);color:#d2c7ff;transition:transform .18s,border-color .18s}
+#app>.wrap>.layout>.sidebar .sidebar-toggle:hover{transform:translateY(-1px);border-color:#8b7bfa}
+#app>.wrap>.layout>.sidebar .nav{min-height:48px;margin:4px 0;padding:8px 10px;border-radius:14px;gap:11px;color:#a8b6d2;transition:background .18s,border-color .18s,transform .18s}
+#app>.wrap>.layout>.sidebar .nav .ic{width:34px;height:34px;border-radius:11px;flex:0 0 34px;background:linear-gradient(145deg,#1c2a47,#17223c);color:#9cb7e6;border:1px solid #ffffff0a}
+#app>.wrap>.layout>.sidebar .nav:hover{transform:translateX(-2px);border-color:#3d4d76}
+#app>.wrap>.layout>.sidebar .nav.active{background:linear-gradient(105deg,#173955,#28234f);border-color:#3c6b91;color:#fff;box-shadow:inset -3px 0 #3bdcff,0 7px 20px #05081644}
+#app>.wrap>.layout>.sidebar .nav.active .ic{background:linear-gradient(145deg,#32d8ff,#6c7cff 65%,#a27bff);color:#081226;border-color:#ffffff44}
+#app.sidebar-collapsed>.wrap>.layout{grid-template-columns:82px minmax(0,1fr)}
+#app.sidebar-collapsed>.wrap>.layout>.sidebar{padding:12px 8px}
+#app.sidebar-collapsed>.wrap>.layout>.sidebar:before{content:"STV";text-align:center;letter-spacing:1px;color:#b7a8ff;padding:12px 0}
+#app.sidebar-collapsed>.wrap>.layout>.sidebar .sidebar-toggle{justify-content:center;padding:10px 4px}
 #app.sidebar-collapsed>.wrap>.layout>.sidebar .sidebar-toggle-label{display:none}
+#app.sidebar-collapsed>.wrap>.layout>.sidebar .nav{justify-content:center;padding:7px 4px}
 #app.sidebar-collapsed>.wrap>.layout>.sidebar .nav>span:not(.ic){display:none}
-#app.sidebar-collapsed>.wrap>.layout>.sidebar .nav{justify-content:center;padding-inline:4px}
+#app.sidebar-collapsed>.wrap>.layout>.sidebar .nav .ic{width:42px;height:42px;flex-basis:42px}
+#app .pagehead{margin-bottom:20px}
+#app .pagehead h2{letter-spacing:-.35px}
+#app .panel,#app .stat{border-radius:20px;border-color:var(--line);box-shadow:0 12px 32px #0206170d}
+#app .stat{transition:transform .2s,border-color .2s,box-shadow .2s}
+#app .stat:hover{transform:translateY(-3px);border-color:#4c6b9b;box-shadow:0 18px 38px #0206171f}
+#app .overview-hero{border-radius:26px;border-color:#36567c;background:radial-gradient(ellipse at 0% 0%,#526dff35,transparent 48%),radial-gradient(ellipse at 100% 100%,#00d6ff19,transparent 42%),linear-gradient(120deg,#122b48,#111b36 55%,#211d48);box-shadow:0 20px 55px #02061738;padding:clamp(22px,3vw,36px)}
+#app .overview-live{border-radius:20px;border-color:#49618b;background:linear-gradient(145deg,#142644,#111a30)}
+:root[data-theme="light"] #app>.wrap>.top{background:rgba(255,255,255,.9);border-color:#d9d9f4;box-shadow:0 16px 45px #4b52901a}
+:root[data-theme="light"] #app>.wrap>.layout>.sidebar{background:linear-gradient(165deg,#fff,#f1f3ff);border-color:#d7d9f0;box-shadow:0 15px 40px #4b529018}
+:root[data-theme="light"] #app>.wrap>.layout>.sidebar:before{color:#7775a5}
+:root[data-theme="light"] #app>.wrap>.layout>.sidebar .nav.active{background:linear-gradient(105deg,#e2f6ff,#eee8ff);border-color:#c8c7f5;color:#26325a;box-shadow:inset -3px 0 #7056d9}
+:root[data-theme="light"] #app>.wrap>.layout>.sidebar .nav.active .ic{color:#fff}
+:root[data-theme="light"] #app>.wrap>.layout>.sidebar .sidebar-toggle{background:linear-gradient(110deg,#f0efff,#e7f6ff);color:#51458c;border-color:#d6d1fa}
+@media (min-width:1101px) and (max-width:1350px){#app>.wrap>.layout{grid-template-columns:230px minmax(0,1fr);gap:18px}#app>.wrap>.top{grid-template-columns:minmax(190px,auto) minmax(150px,1fr) auto;gap:12px}#app>.wrap>.top .brand h1{font-size:15px}}
 @media (min-width:901px) and (max-width:1100px){
- #app>.wrap>.layout{grid-template-columns:76px minmax(0,1fr);gap:14px}
- #app>.wrap>.layout>.sidebar{padding:10px 7px}
- #app>.wrap>.layout>.sidebar:before{content:"STV";text-align:center;letter-spacing:1px;color:#c4b5fd;padding:12px 2px}
- #app>.wrap>.layout>.sidebar .sidebar-toggle{justify-content:center;padding-inline:4px}
+ #app>.wrap>.layout{grid-template-columns:82px minmax(0,1fr);gap:16px}
+ #app>.wrap>.layout>.sidebar{padding:12px 8px}
+ #app>.wrap>.layout>.sidebar:before{content:"STV";text-align:center;padding:12px 0}
+ #app>.wrap>.layout>.sidebar .sidebar-toggle{justify-content:center;padding:10px 4px}
  #app>.wrap>.layout>.sidebar .sidebar-toggle-label{display:none}
+ #app>.wrap>.layout>.sidebar .nav{justify-content:center;padding:7px 4px}
  #app>.wrap>.layout>.sidebar .nav>span:not(.ic){display:none}
- #app>.wrap>.layout>.sidebar .nav{justify-content:center;padding-inline:4px}
- #app>.wrap>.layout>.sidebar .nav .ic{width:38px;height:38px}
- #app>.wrap>.top{gap:9px;padding:10px 12px}
- #app>.wrap>.top .brand h1{font-size:15px}
+ #app>.wrap>.layout>.sidebar .nav .ic{width:40px;height:40px;flex-basis:40px}
+ #app>.wrap>.top{grid-template-columns:minmax(0,1fr) auto;gap:10px}
+ #app>.wrap>.top>.brand{grid-column:1;grid-row:1}
+ #app>.wrap>.top>.top-actions{grid-column:2;grid-row:1}
+ #app>.wrap>.top>.palbtn{grid-column:1/-1;grid-row:2}
  #app>.wrap>.top .brand .muted{display:none}
- #app>.wrap>.top .theme-label{display:none}
 }
 @media (max-width:900px){
- #app>.wrap{padding:10px 12px 112px}
- #app>.wrap>.top{
-  top:4px;display:grid;grid-template-columns:minmax(0,1fr) auto;
-  gap:10px;padding:10px;border-radius:15px;min-height:0;margin-bottom:14px
- }
+ #app>.wrap{padding:12px 12px 112px}
+ #app>.wrap>.top{top:5px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;min-height:0;padding:11px;border-radius:19px;margin-bottom:16px}
  #app>.wrap>.top>.brand{grid-column:1;grid-row:1}
  #app>.wrap>.top>.top-actions{grid-column:2;grid-row:1;margin:0;gap:5px}
- #app>.wrap>.top>.palbtn{grid-column:1/-1;grid-row:2;max-width:none;width:100%;min-width:0;order:initial}
- #app>.wrap>.top .brand h1{font-size:14px;white-space:nowrap}
+ #app>.wrap>.top>.palbtn{grid-column:1/-1;grid-row:2;min-height:40px}
+ #app>.wrap>.top .brand h1{font-size:13px;white-space:nowrap}
  #app>.wrap>.top .brand .muted{display:none}
- #app>.wrap>.top .logo{width:38px;height:38px}
+ #app>.wrap>.top .logo{width:38px;height:38px;border-radius:13px}
  #app>.wrap>.top .top-actions .pill{display:none}
  #app>.wrap>.top .top-actions .theme-label{display:none}
- #app>.wrap>.top .top-actions button{padding:8px}
+ #app>.wrap>.top .top-actions button{min-height:36px;padding:7px 9px}
  #app>.wrap>.layout{grid-template-columns:minmax(0,1fr);gap:12px}
- #app>.wrap>.layout>.sidebar{position:fixed;inset:auto 0 0 0;top:auto;z-index:1050;
-  display:flex;flex-direction:row;align-items:stretch;gap:4px;padding:7px;
-  max-height:none;overflow-x:auto;overflow-y:hidden;border-radius:16px 16px 0 0;
-  border-bottom:0;box-shadow:0 -10px 32px rgba(0,0,0,.35);background:rgba(12,20,36,.97);
-  backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+ #app>.wrap>.layout>.sidebar{position:fixed;inset:auto 0 0 0;top:auto;z-index:1150;display:flex;flex-direction:row;align-items:stretch;gap:5px;padding:8px 7px max(8px,env(safe-area-inset-bottom));max-height:none;overflow-x:auto;overflow-y:hidden;border-radius:20px 20px 0 0;border-bottom:0;background:rgba(10,17,34,.96);box-shadow:0 -12px 36px #02061766;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}
  #app>.wrap>.layout>.sidebar:before{display:none}
  #app>.wrap>.layout>.sidebar .sidebar-toggle{display:none!important}
- #app>.wrap>.layout>.sidebar .nav{display:flex;flex:0 0 72px;min-width:72px;min-height:56px;
-  flex-direction:column;justify-content:center;align-items:center;gap:4px;margin:0;padding:5px 3px;
-  font-size:10px;white-space:nowrap;text-align:center}
+ #app>.wrap>.layout>.sidebar .nav{display:flex;flex:0 0 70px;min-width:70px;min-height:60px;flex-direction:column;justify-content:center;align-items:center;gap:4px;margin:0;padding:5px 3px;font-size:10px;white-space:nowrap;text-align:center}
  #app>.wrap>.layout>.sidebar .nav>span:not(.ic){display:inline!important}
- #app>.wrap>.layout>.sidebar .nav .ic{width:27px;height:27px}
- #app>.wrap>.layout>.sidebar .nav.active:after{display:none}
+ #app>.wrap>.layout>.sidebar .nav .ic{width:28px;height:28px;flex-basis:28px}
+ #app>.wrap>.layout>.sidebar .nav.active{box-shadow:inset 0 2px #39dfff}
  #app.sidebar-collapsed>.wrap>.layout{grid-template-columns:minmax(0,1fr)}
  #app.sidebar-collapsed>.wrap>.layout>.sidebar .nav>span:not(.ic){display:inline!important}
+ #app .overview-hero{grid-template-columns:minmax(0,1fr);padding:20px}
 }
-@media (max-width:420px){
- #app>.wrap>.top{grid-template-columns:minmax(0,1fr) auto;gap:7px;padding:8px}
- #app>.wrap>.top>.top-actions{gap:3px}
- #app>.wrap>.top .brand h1{font-size:12px}
- #app>.wrap>.top .logo{width:34px;height:34px}
+@media (max-width:480px){
+ #app>.wrap>.top{gap:7px;padding:9px}
+ #app>.wrap>.top .brand h1{font-size:11px}
+ #app>.wrap>.top .logo{width:33px;height:33px}
+ #app>.wrap>.top .top-actions{gap:3px}
+ #app>.wrap>.top .top-actions button{padding:7px}
  #app>.wrap>.top .palbtn{font-size:11px}
- #app>.wrap>.layout>.sidebar .nav{flex-basis:64px;min-width:64px;font-size:9px}
+ #app>.wrap>.layout>.sidebar .nav{flex-basis:62px;min-width:62px;font-size:9px}
 }
 
 </style></head>
