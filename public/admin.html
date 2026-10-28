@@ -694,6 +694,29 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 @media(max-width:900px){.top{grid-template-columns:minmax(0,1fr) auto;padding:12px;gap:10px}.top .palbtn{grid-row:2;grid-column:1/-1;max-width:none;order:3}.top .brand h1{font-size:13px}.layout{grid-template-columns:1fr}.sidebar{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:5px}.nav-group-label{display:none}.nav{flex:0 0 auto}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-analytics{grid-template-columns:minmax(0,1fr)}.dashboard-health{grid-column:auto}}
 @media(max-width:520px){.top{border-radius:14px}.top .brand .muted{display:none}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat{padding:13px;min-height:112px}.stat .num{font-size:26px}.overview-hero{padding:18px}.overview-hero-copy h3{font-size:22px}.top .top-actions .theme-label{display:none}}
 
+
+/* Accordion sidebar: show only five top-level groups */
+.sidebar{gap:7px}
+.nav-accordion{margin:2px 0;border:1px solid transparent;border-radius:13px;overflow:hidden}
+.nav-group-trigger{width:100%;min-height:49px;display:flex;align-items:center;gap:11px;padding:9px 12px;border:1px solid #1a3557;border-radius:12px;background:linear-gradient(110deg,#0c1d35,#0b1730);color:#c4d8f5;text-align:right;cursor:pointer;font:inherit;font-size:12px;font-weight:800;transition:background .2s,border-color .2s,box-shadow .2s}
+.nav-group-icon{width:30px;height:30px;display:grid;place-items:center;flex:0 0 30px;border-radius:9px;background:#102b4d;color:#55d9ff}
+.nav-group-title{flex:1;min-width:0}
+.nav-group-chevron{width:16px;height:16px;color:#7f9fc9;transition:transform .2s}
+.nav-accordion.expanded{background:#07152a;border-color:#1b3a60;padding:4px}
+.nav-accordion.expanded>.nav-group-trigger{background:linear-gradient(100deg,#086ee0,#153b83);border-color:#328cf1;color:#fff;box-shadow:0 6px 16px #006bff24}
+.nav-accordion.expanded>.nav-group-trigger .nav-group-icon{background:#ffffff20;color:#fff}
+.nav-accordion.expanded>.nav-group-trigger .nav-group-chevron{transform:rotate(180deg);color:#fff}
+.nav-group-items{padding:5px 2px 2px;display:flex;flex-direction:column;gap:3px}
+.nav-group-items[hidden]{display:none!important}
+.nav-group-items .nav{width:100%;min-height:39px;margin:0;padding:6px 9px 6px 7px;border-radius:10px;font-size:11px}
+.nav-group-items .nav .ic{width:27px;height:27px;flex:0 0 27px;border-radius:8px}
+.nav-group-items .nav.active{background:linear-gradient(100deg,#087cff,#0755c7);border-color:#3997ff}
+:root[data-theme="light"] .nav-group-trigger{background:linear-gradient(110deg,#f7faff,#edf3ff);border-color:#d4e0f3;color:#2b4266}
+:root[data-theme="light"] .nav-group-icon{background:#e2efff;color:#2779bc}
+:root[data-theme="light"] .nav-accordion.expanded{background:#edf4ff;border-color:#d1def3}
+:root[data-theme="light"] .nav-accordion.expanded>.nav-group-trigger{background:linear-gradient(100deg,#1684f8,#4d5ee8);color:#fff}
+@media(max-width:900px){.sidebar{display:flex;flex-direction:column;overflow:visible}.nav-accordion{flex:0 0 auto;width:100%}.nav-group-trigger{min-height:44px}.nav-group-items .nav{flex:0 0 auto}}
+
 </style></head>
 <body>
 <section id="loginView" class="panel login">
@@ -710,24 +733,44 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 <div class="layout">
 <aside class="sidebar" aria-label="التنقل الرئيسي">
 <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="طي القائمة الجانبية" title="طي القائمة الجانبية"><span data-ico="panel-right-close"></span><span class="sidebar-toggle-label">طي القائمة</span></button>
-<div class="nav-group-label">الرئيسية</div>
+<div class="nav-accordion expanded" data-nav-group="home">
+<button class="nav-group-trigger" type="button" aria-expanded="true" aria-controls="nav-items-home"><span class="nav-group-icon" data-ico="layout-dashboard"></span><span class="nav-group-title">الرئيسية</span><span class="nav-group-chevron" data-ico="chevron-down"></span></button>
+<div class="nav-group-items" id="nav-items-home">
 <button class="nav active" data-page="overview"><span class="ic" data-ico="grid"></span><span>نظرة عامة</span></button>
-<div class="nav-group-label">إدارة البث والقنوات</div>
+</div>
+</div>
+<div class="nav-accordion" data-nav-group="broadcast">
+<button class="nav-group-trigger" type="button" aria-expanded="false" aria-controls="nav-items-broadcast"><span class="nav-group-icon" data-ico="radio-tower"></span><span class="nav-group-title">إدارة البث والقنوات</span><span class="nav-group-chevron" data-ico="chevron-down"></span></button>
+<div class="nav-group-items" id="nav-items-broadcast" hidden>
 <button class="nav" data-page="ops"><span class="ic" data-ico="pulse"></span><span>مركز عمليات البث</span></button>
 <button class="nav" data-page="channels"><span class="ic" data-ico="tv"></span><span>إدارة القنوات</span></button>
 <button class="nav" data-page="editor"><span class="ic" data-ico="plus"></span><span>إضافة / تعديل</span></button>
 <button class="nav" data-page="tester"><span class="ic" data-ico="target"></span><span>اختبار المصدر</span></button>
 <button class="nav" data-page="health"><span class="ic" data-ico="pulse"></span><span>فحص القنوات</span></button>
-<div class="nav-group-label">المشاهدون والتحليلات</div>
+</div>
+</div>
+<div class="nav-accordion" data-nav-group="audience">
+<button class="nav-group-trigger" type="button" aria-expanded="false" aria-controls="nav-items-audience"><span class="nav-group-icon" data-ico="users"></span><span class="nav-group-title">المشاهدون والتحليلات</span><span class="nav-group-chevron" data-ico="chevron-down"></span></button>
+<div class="nav-group-items" id="nav-items-audience" hidden>
 <button class="nav" data-page="viewers"><span class="ic" data-ico="users"></span><span>المشاهدون الآن</span></button>
-<div class="nav-group-label">الأدوات والسجلات</div>
+</div>
+</div>
+<div class="nav-accordion" data-nav-group="tools">
+<button class="nav-group-trigger" type="button" aria-expanded="false" aria-controls="nav-items-tools"><span class="nav-group-icon" data-ico="wrench"></span><span class="nav-group-title">الأدوات والسجلات</span><span class="nav-group-chevron" data-ico="chevron-down"></span></button>
+<div class="nav-group-items" id="nav-items-tools" hidden>
 <button class="nav" data-page="smartlinks"><span class="ic" data-ico="link"></span><span>مدير الروابط الذكي</span></button>
 <button class="nav" data-page="errors"><span class="ic" data-ico="alert"></span><span>سجل الأخطاء</span></button>
 <button class="nav" data-page="history"><span class="ic" data-ico="history"></span><span>سجل التعديلات</span></button>
-<div class="nav-group-label">النظام والإعدادات</div>
+</div>
+</div>
+<div class="nav-accordion" data-nav-group="system">
+<button class="nav-group-trigger" type="button" aria-expanded="false" aria-controls="nav-items-system"><span class="nav-group-icon" data-ico="settings"></span><span class="nav-group-title">النظام والإعدادات</span><span class="nav-group-chevron" data-ico="chevron-down"></span></button>
+<div class="nav-group-items" id="nav-items-system" hidden>
 <button class="nav" data-page="security"><span class="ic" data-ico="shield"></span><span>الحماية والإعدادات</span></button>
 <button class="nav" data-page="logs"><span class="ic" data-ico="log"></span><span>حالة النظام</span></button>
 <button class="nav" data-page="seriesadmin"><span class="ic" data-ico="tv"></span><span>إدارة الأفلام والمسلسلات</span></button>
+</div>
+</div>
 </aside>
 <main class="content">
 
@@ -1806,6 +1849,46 @@ function setSidebarCollapsed(collapsed){
 }
 const sidebarToggle=$("sidebarToggle");if(sidebarToggle)sidebarToggle.addEventListener("click",()=>setSidebarCollapsed(!$("app").classList.contains("sidebar-collapsed")));
 try{setSidebarCollapsed(localStorage.getItem(SIDEBAR_COLLAPSE_KEY)==="1")}catch(e){}
+
+
+/* Sidebar accordion groups: exactly five visible top-level items */
+const navAccordionRoot=document.querySelector(".sidebar");
+if(navAccordionRoot){
+ navAccordionRoot.addEventListener("click",e=>{
+  const trigger=e.target.closest(".nav-group-trigger");
+  if(trigger){
+   const group=trigger.closest(".nav-accordion");
+   const opening=!group.classList.contains("expanded");
+   navAccordionRoot.querySelectorAll(".nav-accordion").forEach(g=>{
+    const open=g===group&&opening;
+    g.classList.toggle("expanded",open);
+    const b=g.querySelector(".nav-group-trigger");
+    const list=g.querySelector(".nav-group-items");
+    if(b)b.setAttribute("aria-expanded",String(open));
+    if(list)list.hidden=!open;
+   });
+   try{localStorage.setItem("stvAdminNavOpenGroupV1",opening?group.dataset.navGroup:"")}catch(e){}
+  }
+  const nav=e.target.closest(".nav-group-items .nav[data-page]");
+  if(nav){
+   const group=nav.closest(".nav-accordion");
+   navAccordionRoot.querySelectorAll(".nav-accordion").forEach(g=>{
+    const open=g===group;g.classList.toggle("expanded",open);
+    const b=g.querySelector(".nav-group-trigger"),list=g.querySelector(".nav-group-items");
+    if(b)b.setAttribute("aria-expanded",String(open));
+    if(list)list.hidden=!open;
+   });
+   try{localStorage.setItem("stvAdminNavOpenGroupV1",group.dataset.navGroup)}catch(e){}
+  }
+ });
+ try{
+  const saved=localStorage.getItem("stvAdminNavOpenGroupV1");
+  const active=navAccordionRoot.querySelector(".nav-group-items .nav.active");
+  const activeGroup=active&&active.closest(".nav-accordion");
+  const target=navAccordionRoot.querySelector('.nav-accordion[data-nav-group="'+(saved||activeGroup?.dataset.navGroup||"home")+'"]');
+  if(target){navAccordionRoot.querySelectorAll(".nav-accordion").forEach(g=>{const open=g===target;g.classList.toggle("expanded",open);g.querySelector(".nav-group-trigger").setAttribute("aria-expanded",String(open));g.querySelector(".nav-group-items").hidden=!open})}
+ }catch(e){}
+}
 
 renderDashboardTrend();renderDashboardHealthRing();paintIcons();validateForm(false);
 const remembered=sessionStorage.getItem("stvAdminKey");if(remembered){$("loginKey").value=remembered;login()}
