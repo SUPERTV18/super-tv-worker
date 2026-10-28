@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "super-tv-api",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-13",
+  "compatibility_flags": ["allow_custom_ports"],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "DATA_KV",
+      "id": "cc7f2da5f11b47ff8ab5497045a38411"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "TRACKER", "class_name": "ViewerTracker" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ViewerTracker"] }
+  ],
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  }
+}
