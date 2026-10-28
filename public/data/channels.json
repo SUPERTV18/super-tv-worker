@@ -235,7 +235,9 @@
         "Referer": "",
         "Origin": ""
       },
-      "endpoint": "m3u8"
+      "endpoint": "m3u8",
+      "backupUrl": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156628",
+      "backupEnabled": true
     },
     {
       "id": "b1_HD",
