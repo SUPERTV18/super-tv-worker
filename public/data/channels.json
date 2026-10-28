@@ -190,12 +190,13 @@
     {
       "id": "b4_FHD",
       "name": "Bein Sports 4 FHD",
-      "url": "https://ktplus.skrm87228.workers.dev/stream/7.m3u8",
+      "url": "https://yacinflash.mandooosports.workers.dev/4973946197356005279.m3u8",
       "headers": {
-        "User-Agent": "",
+        "User-Agent": "FFLASHTV/1.0&Referer",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "b5_FHD",
