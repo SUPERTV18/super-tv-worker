@@ -552,6 +552,26 @@ body{background:radial-gradient(ellipse at 90% -10%,#202c68 0,transparent 34%),r
 @media(max-width:1200px){.dashboard-analytics{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}.dashboard-health{grid-column:1/-1}.dashboard-health #dashboardHealthRing{min-height:0;display:grid;grid-template-columns:160px minmax(0,1fr);gap:18px}.health-legend{max-width:420px}}
 @media(max-width:700px){.dashboard-analytics,.dashboard-secondary{grid-template-columns:minmax(0,1fr);gap:12px}.dashboard-health{grid-column:auto}.dashboard-health #dashboardHealthRing{grid-template-columns:1fr}.dashboard-analytics>.panel,.dashboard-secondary>.panel{padding:15px;border-radius:18px}.trend-chart{min-height:150px}}
 
+
+/* Layout correction after live visual review: use the available viewport and remove duplicate dashboard sections */
+html,body{width:100%;min-width:0}
+#app,.wrap{width:100%;max-width:none;min-width:0;box-sizing:border-box}
+.wrap{margin:0;padding:18px clamp(16px,2.2vw,34px) 30px}
+.layout{width:100%;grid-template-columns:228px minmax(0,1fr);gap:18px;align-items:start}
+.content,.page{width:100%;max-width:none;min-width:0}
+.pagehead{margin-bottom:20px}
+.stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.stat{min-height:145px;padding:21px}
+.stat .num{font-size:clamp(28px,2.3vw,38px)}
+.dashboard-analytics{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(220px,.82fr);gap:16px}
+.dashboard-secondary{grid-template-columns:minmax(0,1fr)}
+.dashboard-secondary>.panel{width:100%}
+.dashboard-analytics>.panel,.dashboard-secondary>.panel{padding:22px}
+.dashboard-trend .trend-chart{min-height:205px}
+@media(max-width:1250px){.layout{grid-template-columns:210px minmax(0,1fr);gap:14px}.dashboard-analytics{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.dashboard-health{grid-column:1/-1}}
+@media(max-width:900px){.wrap{padding:12px 12px 105px}.layout{grid-template-columns:minmax(0,1fr)}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-analytics,.dashboard-secondary{grid-template-columns:minmax(0,1fr)}.dashboard-health{grid-column:auto}}
+@media(max-width:520px){.stats{grid-template-columns:minmax(0,1fr)}.stat{min-height:115px}}
+
 </style></head>
 <body>
 <section id="loginView" class="panel login">
@@ -616,7 +636,6 @@ body{background:radial-gradient(ellipse at 90% -10%,#202c68 0,transparent 34%),r
 <div class="panel" data-dashboard-widget="distribution"><h3>توزيع القنوات على المجموعات</h3><div id="groupDonut"><div class="empty">جار التحميل...</div></div></div>
 <div class="panel" data-dashboard-widget="shortcuts"><h3>اختصارات سريعة</h3><div class="toolbar" style="margin:0"><button class="primary" data-goto="editor"><span data-ico="plus" data-size="16"></span>إضافة قناة</button><button class="soft" data-goto="channels">عرض القنوات</button><button class="soft" data-goto="tester">اختبار رابط بث</button></div></div>
 </div>
-<div class="panel" data-dashboard-widget="shortcuts"><h3>اختصارات سريعة</h3><div class="toolbar" style="margin:0"><button class="primary" data-goto="editor"><span data-ico="plus" data-size="16"></span>إضافة قناة</button><button class="soft" data-goto="channels">عرض القنوات</button><button class="soft" data-goto="tester">اختبار رابط بث</button></div></div>
 </section>
 
 <section class="page" id="page-ops">
