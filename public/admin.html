@@ -717,6 +717,29 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 :root[data-theme="light"] .nav-accordion.expanded>.nav-group-trigger{background:linear-gradient(100deg,#1684f8,#4d5ee8);color:#fff}
 @media(max-width:900px){.sidebar{display:flex;flex-direction:column;overflow:visible}.nav-accordion{flex:0 0 auto;width:100%}.nav-group-trigger{min-height:44px}.nav-group-items .nav{flex:0 0 auto}}
 
+
+/* Premium collapsed navigation: icon-only groups, featured media destination */
+#app.sidebar-collapsed .nav-group-trigger{justify-content:center;gap:0;padding:8px 4px;min-height:46px}
+#app.sidebar-collapsed .nav-group-title,#app.sidebar-collapsed .nav-group-chevron{display:none!important}
+#app.sidebar-collapsed .nav-group-icon{width:34px;height:34px;flex-basis:34px;border-radius:11px}
+#app.sidebar-collapsed .nav-accordion{padding:2px;border-color:transparent;background:transparent}
+#app.sidebar-collapsed .nav-accordion.expanded{border-color:#1b3a60;background:#07152a}
+#app.sidebar-collapsed .nav-group-items .nav{justify-content:center;padding:6px 3px;gap:0}
+#app.sidebar-collapsed .nav-group-items .nav>span:not(.ic){display:none!important}
+#app.sidebar-collapsed .nav-group-items .nav .ic{width:32px;height:32px;flex-basis:32px}
+.nav-special-wrap{margin:8px 0 4px;padding:5px 0;border-top:1px solid #1b3555;border-bottom:1px solid #1b3555}
+.nav-special{position:relative;width:100%;min-height:47px;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;border:1px solid #345c99;background:linear-gradient(105deg,#182c55,#282052);color:#eef5ff;font-size:12px;font-weight:850;box-shadow:inset 0 1px #ffffff0b,0 7px 18px #02081730}
+.nav-special .ic{background:linear-gradient(145deg,#8b5cf6,#376ef2);color:#fff;border-color:#9aabff55}
+.nav-special-tag{margin-inline-start:auto;padding:3px 5px;border-radius:5px;font-size:8px;letter-spacing:.6px;color:#9beaff;background:#0a3150;border:1px solid #285b80}
+.nav-special.active{background:linear-gradient(105deg,#087cff,#5545d9);border-color:#66b8ff;box-shadow:0 7px 20px #145eff38}
+#app.sidebar-collapsed .nav-special{justify-content:center;padding:7px 3px;gap:0}
+#app.sidebar-collapsed .nav-special>span:not(.ic){display:none!important}
+#app.sidebar-collapsed .nav-special .ic{width:34px;height:34px;flex-basis:34px}
+:root[data-theme="light"] .nav-special-wrap{border-color:#d7e2f3}
+:root[data-theme="light"] .nav-special{background:linear-gradient(105deg,#eaf1ff,#f3edff);border-color:#cbd8f0;color:#263d60}
+:root[data-theme="light"] .nav-special-tag{background:#e2f6ff;color:#24678b;border-color:#c4e8f6}
+@media(max-width:900px){#app.sidebar-collapsed .nav-group-title,#app.sidebar-collapsed .nav-group-chevron{display:initial!important}.nav-special-wrap{flex:0 0 auto}}
+
 </style></head>
 <body>
 <section id="loginView" class="panel login">
@@ -755,6 +778,7 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 <button class="nav" data-page="viewers"><span class="ic" data-ico="users"></span><span>المشاهدون الآن</span></button>
 </div>
 </div>
+<div class="nav-special-wrap"><button class="nav nav-special" data-page="seriesadmin"><span class="ic" data-ico="clapperboard"></span><span>الأفلام والمسلسلات</span><span class="nav-special-tag">MEDIA</span></button></div>
 <div class="nav-accordion" data-nav-group="tools">
 <button class="nav-group-trigger" type="button" aria-expanded="false" aria-controls="nav-items-tools"><span class="nav-group-icon" data-ico="wrench"></span><span class="nav-group-title">الأدوات والسجلات</span><span class="nav-group-chevron" data-ico="chevron-down"></span></button>
 <div class="nav-group-items" id="nav-items-tools" hidden>
@@ -768,7 +792,7 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 <div class="nav-group-items" id="nav-items-system" hidden>
 <button class="nav" data-page="security"><span class="ic" data-ico="shield"></span><span>الحماية والإعدادات</span></button>
 <button class="nav" data-page="logs"><span class="ic" data-ico="log"></span><span>حالة النظام</span></button>
-<button class="nav" data-page="seriesadmin"><span class="ic" data-ico="tv"></span><span>إدارة الأفلام والمسلسلات</span></button>
+
 </div>
 </div>
 </aside>
