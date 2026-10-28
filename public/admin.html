@@ -1436,7 +1436,7 @@ $("refreshHistory").onclick=loadHistory;
 
 /* command palette (Ctrl/Cmd + K) */
 let palOpen=false,palItems=[],palIdx=0;
-const PAGES=[["overview","نظرة عامة","grid"],["channels","إدارة القنوات","tv"],["editor","إضافة / تعديل","plus"],["tester","اختبار المصدر","target"],["health","فحص القنوات","pulse"],["viewers","المشاهدون الآن","users"],["smartlinks","مدير الروابط الذكي","link"],["errors","سجل الأخطاء","alert"],["history","سجل التعديلات","history"],["security","الحماية والإعدادات","shield"],["logs","حالة النظام","log"]];
+const PAGES=[["overview","نظرة عامة","grid"],["channels","إدارة القنوات","tv"],["editor","إضافة / تعديل","plus"],["tester","اختبار المصدر","target"],["health","فحص القنوات","pulse"],["viewers","المشاهدون الآن","users"],["smartlinks","مدير الروابط الذكي","link"],["errors","سجل الأخطاء","alert"],["history","سجل التعديلات","history"],["security","الحماية والإعدادات","shield"],["logs","حالة النظام","log"],["seriesadmin","إدارة الأفلام والمسلسلات","tv"]];
 function palBuild(q){q=q.trim().toLowerCase();const m=s=>!q||String(s).toLowerCase().includes(q),out=[];
  if(q)allChannels().filter(c=>[c.name,c.id,c.__group].some(v=>String(v||"").toLowerCase().includes(q))).slice(0,8).forEach(c=>out.push({g:"قنوات",av:c,label:String(c.name),sub:c.__group+" · ID: "+c.id,run:()=>editChannel(c.__group,String(c.id))}));
  PAGES.filter(p=>m(p[1])).forEach(p=>out.push({g:"صفحات",icon:p[2],label:p[1],run:()=>showPage(p[0])}));
