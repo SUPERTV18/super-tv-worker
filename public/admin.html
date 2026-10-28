@@ -572,6 +572,68 @@ html,body{width:100%;min-width:0}
 @media(max-width:900px){.wrap{padding:12px 12px 105px}.layout{grid-template-columns:minmax(0,1fr)}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-analytics,.dashboard-secondary{grid-template-columns:minmax(0,1fr)}.dashboard-health{grid-column:auto}}
 @media(max-width:520px){.stats{grid-template-columns:minmax(0,1fr)}.stat{min-height:115px}}
 
+
+/* SUPER LIVE TV — dashboard redesign v2: stronger hierarchy, readable scale, full-width canvas */
+body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,transparent 36%),radial-gradient(ellipse at 3% 42%,#07394a 0,transparent 30%),#070b15}
+#app{width:100%;max-width:none;margin:0 auto}
+#app>.wrap,.wrap{width:100%;max-width:none;margin:0;padding:18px clamp(18px,2.4vw,38px) 36px}
+.layout{width:100%;max-width:none;grid-template-columns:252px minmax(0,1fr);gap:22px;align-items:start}
+.content{min-width:0;width:100%}
+.page{width:100%;min-width:0}
+.pagehead{padding:4px 2px 16px;margin:0 0 8px;border-bottom:1px solid #1c2a42;align-items:center}
+.pagehead h2{font-size:27px;font-weight:900;letter-spacing:-.5px}
+.pagehead .crumb{font-size:12px}
+.top{min-height:66px;padding:13px 20px;border-radius:18px;margin-bottom:20px;border:1px solid #2a3e60;background:linear-gradient(105deg,#101a2df7,#11152bf5);box-shadow:0 12px 32px #02061766}
+.sidebar{padding:14px 11px;border-radius:22px;border-color:#283b5b;background:linear-gradient(180deg,#101b31 0%,#0b1222 100%);box-shadow:0 18px 50px #02061744}
+.nav{min-height:43px;border-radius:12px;margin:3px 0;font-size:13px;padding:9px 11px}
+.nav .ic{width:29px;height:29px;border-radius:9px}
+.nav.active{background:linear-gradient(100deg,#123a5b,#27234c);border:1px solid #365b8d;box-shadow:inset 0 0 0 1px #4d83b422}
+.overview-hero{position:relative;overflow:hidden;grid-template-columns:minmax(0,1.25fr) minmax(285px,.75fr);gap:28px;align-items:center;min-height:210px;padding:clamp(24px,3vw,40px);margin:18px 0 20px;border:1px solid #385b91;border-radius:25px;background:radial-gradient(ellipse at 100% 0%,#5946b73d,transparent 44%),radial-gradient(ellipse at 0% 100%,#087fa533,transparent 48%),linear-gradient(118deg,#101a31,#101a30 55%,#15162e);box-shadow:0 22px 55px #02061750}
+.overview-hero:after{content:"";position:absolute;left:-70px;bottom:-145px;width:300px;height:300px;border:1px solid #6acbff1e;border-radius:50%;box-shadow:0 0 0 30px #6acbff08,0 0 0 60px #6acbff05;pointer-events:none}
+.overview-hero-copy{position:relative;z-index:1;max-width:760px}
+.overview-eyebrow{display:inline-flex;align-items:center;gap:8px;color:#75ddff;font-size:11px;font-weight:800;letter-spacing:1.2px;margin-bottom:12px}
+.overview-hero-copy h3{font-size:clamp(24px,2.2vw,34px);line-height:1.45;font-weight:900;letter-spacing:-.7px;margin:0 0 10px;color:#f4f7ff}
+.overview-hero-copy p{font-size:13px;line-height:2;color:#aebed8;max-width:600px;margin:0 0 20px}
+.overview-actions{display:flex;flex-wrap:wrap;gap:9px}
+.overview-actions button{min-height:41px;border-radius:12px;padding:10px 15px;font-size:12px}
+.overview-live{position:relative;z-index:1;min-height:166px;padding:20px;border:1px solid #3c5682;border-radius:20px;background:linear-gradient(145deg,#0b172b,#111b32);box-shadow:0 14px 36px #02061750}
+.overview-live-top{font-size:12px}
+.overview-live-num{font-size:clamp(44px,4.5vw,62px);line-height:1.15;font-weight:900;letter-spacing:-2px;color:#55dcff;margin:12px 0 5px;text-shadow:0 0 32px #35c9ff22}
+.overview-live-sub{font-size:11px;line-height:1.8;color:#a8bad3}
+.overview-live-foot{font-size:10px;line-height:1.8;gap:10px;flex-wrap:wrap}
+.stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:0 0 20px}
+.stat{position:relative;min-height:148px;padding:22px;border-radius:19px;border:1px solid #253955;background:linear-gradient(145deg,#111e33,#0b1424);box-shadow:0 14px 34px #0206172e;overflow:hidden}
+.stat:before{content:"";position:absolute;top:0;right:18px;left:18px;height:2px;background:linear-gradient(90deg,transparent,#38d8ff,#a78bfa,transparent);opacity:.8}
+.stat-top{gap:12px}.stat .label{font-size:12px;line-height:1.7;color:#b7c8e0;font-weight:700}
+.stat .sic{width:40px;height:40px;border-radius:13px;background:linear-gradient(145deg,#153b57,#28264e);border:1px solid #2c4d73;color:#75e2ff}
+.stat .num{font-size:clamp(30px,2.6vw,40px);line-height:1.25;margin:13px 0 5px;font-weight:900;letter-spacing:-1px}
+.stat .sub{font-size:10px;line-height:1.7;color:#8196b5}
+.dashboard-analytics{grid-template-columns:minmax(0,1.12fr) minmax(0,1fr) minmax(245px,.85fr);gap:16px;margin-bottom:18px}
+.dashboard-analytics>.panel,.dashboard-secondary>.panel{min-height:270px;padding:22px;border-radius:21px;border:1px solid #263a5b;background:linear-gradient(150deg,#101b30,#0b1323);box-shadow:0 16px 42px #02061732}
+.dash-panel-head{padding-bottom:14px;border-bottom:1px solid #202f49;margin-bottom:16px}
+.dash-panel-head h3,.dashboard-secondary>.panel>h3{font-size:15px;font-weight:850;color:#edf4ff}
+.dash-panel-head p{font-size:11px}
+.dashboard-trend .trend-chart{min-height:195px}
+.dashboard-health #dashboardHealthRing{min-height:220px}
+.dashboard-secondary{grid-template-columns:minmax(0,1fr);margin-bottom:18px}
+.dashboard-secondary>.panel{min-height:unset}
+.dashboard-secondary .toolbar{gap:10px;flex-wrap:wrap}
+.dashboard-secondary .toolbar button{min-height:42px;border-radius:12px;padding-inline:16px}
+#topChannels .empty,.dashboard-health .empty,.dashboard-trend .empty{border:1px dashed #304768;background:#0a1425;border-radius:15px;padding:25px 16px;line-height:2;color:#a9bad4}
+.notice{font-size:11px;line-height:1.9}
+:root[data-theme="light"] body{background:radial-gradient(ellipse at 85% 0%,#dce7ff 0,transparent 38%),#f2f5fc}
+:root[data-theme="light"] .overview-hero{background:radial-gradient(ellipse at 100% 0%,#d9d5ff,transparent 45%),linear-gradient(118deg,#fff,#edf5ff);border-color:#d1ddf4}
+:root[data-theme="light"] .overview-hero-copy h3{color:#152543}
+:root[data-theme="light"] .overview-hero-copy p{color:#5b6d89}
+:root[data-theme="light"] .overview-live{background:linear-gradient(145deg,#fff,#edf5ff);border-color:#d4e0f4}
+:root[data-theme="light"] .stat,:root[data-theme="light"] .dashboard-analytics>.panel,:root[data-theme="light"] .dashboard-secondary>.panel{background:linear-gradient(145deg,#fff,#f4f7ff);border-color:#dce4f4}
+:root[data-theme="light"] .dash-panel-head h3,:root[data-theme="light"] .dashboard-secondary>.panel>h3{color:#172747}
+:root[data-theme="light"] #topChannels .empty,:root[data-theme="light"] .dashboard-health .empty,:root[data-theme="light"] .dashboard-trend .empty{background:#f8faff;border-color:#cbd8ed;color:#5a6d89}
+@media(max-width:1350px){.layout{grid-template-columns:225px minmax(0,1fr);gap:16px}.dashboard-analytics{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.dashboard-health{grid-column:1/-1}}
+@media(max-width:1000px){.overview-hero{grid-template-columns:minmax(0,1fr) minmax(235px,.8fr);gap:18px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){#app>.wrap,.wrap{padding:12px 12px 105px}.layout{grid-template-columns:minmax(0,1fr)}.sidebar{padding:8px}.overview-hero{grid-template-columns:minmax(0,1fr)}.dashboard-analytics,.dashboard-secondary{grid-template-columns:minmax(0,1fr)}.dashboard-health{grid-column:auto}.dashboard-analytics>.panel,.dashboard-secondary>.panel{min-height:unset}}
+@media(max-width:520px){.pagehead h2{font-size:22px}.stats{grid-template-columns:minmax(0,1fr)}.stat{min-height:118px;padding:17px}.overview-hero{padding:20px}.overview-hero-copy h3{font-size:24px}.overview-live{min-height:145px}.overview-actions button{flex:1 1 100%}}
+
 </style></head>
 <body>
 <section id="loginView" class="panel login">
