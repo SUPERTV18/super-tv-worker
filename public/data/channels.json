@@ -94,27 +94,6 @@
   ],
   "Bein Sports": [
     {
-      "id": "TOD2",
-      "name": "TOD 2 ",
-      "url": "https://vibertv.fun/ind4ex.php?live=1",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "TOD3",
-      "name": "TOD 3",
-      "url": "https://smarter.majedcss.site/live/ch1/972574ae336c4e3baf77c6efdccded2c.1793215298.1793820098.0.905dfb639868db3013e2c764094055210cc144ebe23e0e1957c7fbe716745ab3/master.css",
-      "headers": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0",
-        "Referer": "https://player.majed-koora.live/?player=hls&channel=tood1",
-        "Origin": "https://player.majed-koora.live"
-      },
-      "endpoint": "m3u8"
-    },
-    {
       "id": "b1_4K",
       "name": "Bein Sports 1 4K",
       "url": "https://super-livetv.super-stv.workers.dev/?id=b1_4K",
@@ -1455,6 +1434,27 @@
       "headers": {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0",
         "Referer": "https://player.majed-koora.live/?player=hls&channel=tood2",
+        "Origin": "https://player.majed-koora.live"
+      },
+      "endpoint": "m3u8"
+    },
+    {
+      "id": "TOD2",
+      "name": "TOD 2 ",
+      "url": "https://vibertv.fun/ind4ex.php?live=1",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "TOD3",
+      "name": "TOD 3",
+      "url": "https://smarter.majedcss.site/live/ch1/972574ae336c4e3baf77c6efdccded2c.1793215298.1793820098.0.905dfb639868db3013e2c764094055210cc144ebe23e0e1957c7fbe716745ab3/master.css",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0",
+        "Referer": "https://player.majed-koora.live/?player=hls&channel=tood1",
         "Origin": "https://player.majed-koora.live"
       },
       "endpoint": "m3u8"
