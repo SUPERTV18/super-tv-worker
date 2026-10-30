@@ -1,17 +1,6 @@
 {
   "Bein Sports": [
     {
-      "id": "22",
-      "name": "Bein 4K",
-      "url": "https://hdr-plasma4k-extraali4k.b-cdn.net/order/4k_tod.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8"
-    },
-    {
       "id": "supertv1",
       "name": "SUPER TV 1 (multi)",
       "url": "https://super-livetv-rho.vercel.app/SUPERTV_1.m3u8",
@@ -1454,6 +1443,19 @@
         "Referer": "",
         "Origin": ""
       }
+    }
+  ],
+  "SUPER TV": [
+    {
+      "id": "22",
+      "name": "Bein 4K",
+      "url": "https://hdr-plasma4k-extraali4k.b-cdn.net/order/4k_tod.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8"
     }
   ]
 }
