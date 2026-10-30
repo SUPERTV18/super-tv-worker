@@ -751,12 +751,13 @@
     {
       "id": "THM1_HDR",
       "name": "Thmanyah 1 HDR",
-      "url": "https://akamai-live.servers8.com/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI4OExEaWU4bDNDZDhSdGpyZjJ2cGFidThOeG0xIiwiY2hhbm5lbE5hbWUiOiJjaDExIiwiaXAiOiI5LjI0Ni42OS4xOTUiLCJpcF92NCI6IjkuMjQ2LjY5LjE5NSIsImlwX3Y2IjoiIiwidXNlckFnZW50IjoiTW96aWxsYS81LjAgKFgxMTsgTGludXggeDg2XzY0KSBBcHBsZVdlYktpdC81MzcuMzYgKEtIVE1MLCBsaWtlIEdlY2tvKSBDaHJvbWUvMTUwLjAuNzg3MS4xMTkgWWFCcm93c2VyLzI2LjguMS4xMTkuMDAgU2FmYXJpLzUzNy4zNiIsImhhc1N1YnNjcmlwdGlvbnMiOmZhbHNlLCJuYmYiOjE3ODgyODIzMDYsImV4cCI6MTc4ODMyOTE2NiwiZ2VvQnlwYXNzIjpmYWxzZSwiaWF0IjoxNzg4MjgyMzY2fQ._SU_ePA60z6a8h3cSDU4dvxzTlq8k9nbYlxG-tw7HAo/live/ch11/index.m3u8?aws.manifestfilter=video_codec%3Ah265%3Bvideo_dynamic_range%3Asdr%3Bvideo_framerate%3A50%3Bvideo_height%3A1-2160&auth_key=1788282396-1dacbb1636074d15b024b0a28156e8ec-0-3fec25ffe9244a467f7c9b65dd7780d1",
+      "url": "https://gcp-live.servers8.com/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGFubmVsTmFtZSI6IkNIMTEiLCJleHAiOjE3OTMzOTY2MTMsImdlb0J5cGFzcyI6ZmFsc2UsImhhc1N1YnNjcmlwdGlvbnMiOmZhbHNlLCJpYXQiOjE3OTMzNzg2MTMsImlwIjoiNS4xNzUuMTUwLjEzMSIsImlwX3Y0IjoiNS4xNzUuMTUwLjEzMSIsImlwX3Y2IjoiIiwibGl2ZUlkIjoiOGloendpNWwxajRuOG5waDNycjJjZXJkZyIsImxpdmVUeXBlIjoibWF0Y2giLCJuYmYiOjE3OTMzNzg1NTMsInF1YWxpdHlGaWx0ZXIiOiJhdWRpb19sYW5ndWFnZTphcmEsZW5nO3ZpZGVvX2R5bmFtaWNfcmFuZ2U6c2RyO3ZpZGVvX2hlaWdodDoxLTM2MCIsInVzZXJBZ2VudCI6Ik1vemlsbGEvNS4wIChXaW5kb3dzIE5UIDEwLjA7IFdpbjY0OyB4NjQ7IHJ2OjE1OS4wKSBHZWNrby8yMDEwMDEwMSBGaXJlZm94LzE1OS4wIiwidXNlcklkIjoibzlqV0U3MTJqbFJGeXB1VDA1UXR2dmpqNjQzMiJ9.nVXQp0fB_TM5KUlbJUxtJiSaVrV6RgdDQOGAZqJGhLs/live/CH11/index.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "THM2_HDR",
