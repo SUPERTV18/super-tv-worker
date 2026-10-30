@@ -1,4 +1,97 @@
 {
+  "SUPER TV": [
+    {
+      "id": "22",
+      "name": "Bein 4K",
+      "url": "https://hdr-plasma4k-extraali4k.b-cdn.net/order/4k_tod.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8"
+    },
+    {
+      "id": "supertv1",
+      "name": "SUPER TV 1 (multi)",
+      "url": "https://super-livetv-rho.vercel.app/SUPERTV_1.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "supertv2",
+      "name": "SUPER TV 2 (multi)",
+      "url": "https://super-livetv-rho.vercel.app/SUPERTV_2.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "supertv3",
+      "name": "SUPER TV 3 (multi)",
+      "url": "https://super-livetv-rho.vercel.app/SUPERTV_3.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "supertv4",
+      "name": "SUPER TV 4 (multi)",
+      "url": "https://super-livetv-rho.vercel.app/SUPERTV_4.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "stvquraan",
+      "name": "SUPER TV قرأن (multi)",
+      "url": "https://super-livetv-rho.vercel.app/SUPERTV_QURAAN.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "stvaflam",
+      "name": "SUPER TV افلام (multi)",
+      "url": "https://super-livetv-rho.vercel.app/SUPERTV_AFLAM.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "stvseries",
+      "name": "SUPER TV مسلسلات (multi)",
+      "url": "https://super-livetv-rho.vercel.app/SUPERTV_MUSALSALAT.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "stvkids",
+      "name": "SUPER TV اطفال (multi)",
+      "url": "https://super-livetv-rho.vercel.app/SUPERTV_KIDS.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    }
+  ],
   "Bein Sports": [
     {
       "id": "TOD1",
@@ -1358,99 +1451,6 @@
       "id": "bmax4_360",
       "name": "Bein Max 4 (360)",
       "url": "https://supertv.super-stv.workers.dev/?url=http://h42.reelpush.online/live/31009988005/index.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    }
-  ],
-  "SUPER TV": [
-    {
-      "id": "22",
-      "name": "Bein 4K",
-      "url": "https://hdr-plasma4k-extraali4k.b-cdn.net/order/4k_tod.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8"
-    },
-    {
-      "id": "supertv1",
-      "name": "SUPER TV 1 (multi)",
-      "url": "https://super-livetv-rho.vercel.app/SUPERTV_1.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "supertv2",
-      "name": "SUPER TV 2 (multi)",
-      "url": "https://super-livetv-rho.vercel.app/SUPERTV_2.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "supertv3",
-      "name": "SUPER TV 3 (multi)",
-      "url": "https://super-livetv-rho.vercel.app/SUPERTV_3.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "supertv4",
-      "name": "SUPER TV 4 (multi)",
-      "url": "https://super-livetv-rho.vercel.app/SUPERTV_4.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "stvquraan",
-      "name": "SUPER TV قرأن (multi)",
-      "url": "https://super-livetv-rho.vercel.app/SUPERTV_QURAAN.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "stvaflam",
-      "name": "SUPER TV افلام (multi)",
-      "url": "https://super-livetv-rho.vercel.app/SUPERTV_AFLAM.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "stvseries",
-      "name": "SUPER TV مسلسلات (multi)",
-      "url": "https://super-livetv-rho.vercel.app/SUPERTV_MUSALSALAT.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "stvkids",
-      "name": "SUPER TV اطفال (multi)",
-      "url": "https://super-livetv-rho.vercel.app/SUPERTV_KIDS.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
