@@ -2945,6 +2945,11 @@ async function adminApi(request, env, url) {
     return json({ error: "غير مصرح. تحقق من مفتاح الإدارة." }, 401);
   }
 
+  if (url.pathname.startsWith("/api/admin/matches")) {
+    const matchesResponse = await matchesAdminApi(request, env, url);
+    if (matchesResponse) return matchesResponse;
+  }
+
   // Protected in-admin HLS preview. Accept a saved channel ID/group only;
   // never accept an arbitrary upstream URL from the browser.
   if (url.pathname === "/api/admin/preview" && (request.method === "POST" || request.method === "GET")) {
@@ -3463,6 +3468,152 @@ async function adminApi(request, env, url) {
   }
 
   return json({ error: "Method not allowed" }, 405);
+}
+
+// ============================================================
+// MATCHES ADMIN  (جدول المباريات)
+// يعدّل ملف matchesdawry.json في مستودع match-api- على GitHub.
+// الـ API العام https://matches-api.super-stv.workers.dev/api/matches يقرأ منه.
+// Secret مطلوب:  MATCHES_GITHUB_TOKEN  (Contents: Read and write على SUPERTV18/match-api-)
+// لو لم يوجد يُستخدم GITHUB_TOKEN (يلزم أن يملك صلاحية على المستودع نفسه).
+// ============================================================
+
+const MATCHES_GH = { owner: "SUPERTV18", repo: "match-api-", path: "matchesdawry.json", branch: "main" };
+const MATCHES_MAX = 1500;
+
+function matchesToken(env) { return env.MATCHES_GITHUB_TOKEN || env.GITHUB_TOKEN || ""; }
+
+async function matchesGh(env, path, init) {
+  const token = matchesToken(env);
+  if (!token) throw Object.assign(new Error("يجب ضبط Secret باسم MATCHES_GITHUB_TOKEN في إعدادات Worker."), { status: 503 });
+  const res = await fetch("https://api.github.com/repos/" + MATCHES_GH.owner + "/" + MATCHES_GH.repo + path, {
+    ...(init || {}),
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "SUPER-TV-Admin",
+      ...((init && init.headers) || {})
+    }
+  });
+  return res;
+}
+
+function matchesB64Decode(b64) {
+  const bin = atob(String(b64).replace(/\s/g, ""));
+  return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+}
+function matchesB64Encode(text) {
+  return btoa(Array.from(new TextEncoder().encode(text), b => String.fromCharCode(b)).join(""));
+}
+
+async function matchesReadFile(env, ref) {
+  const q = "?ref=" + encodeURIComponent(ref || MATCHES_GH.branch);
+  const res = await matchesGh(env, "/contents/" + MATCHES_GH.path + q);
+  if (res.status === 404) throw Object.assign(new Error("ملف المباريات غير موجود في المستودع."), { status: 404 });
+  if (!res.ok) throw Object.assign(new Error("تعذر قراءة ملف المباريات من GitHub: " + res.status), { status: 502 });
+  const meta = await res.json();
+  let text;
+  if (meta.content && meta.encoding === "base64") text = matchesB64Decode(meta.content);
+  else {
+    // الملفات الأكبر من 1MB لا تأتي بمحتوى: نقرأ blob
+    const b = await matchesGh(env, "/git/blobs/" + meta.sha);
+    if (!b.ok) throw Object.assign(new Error("تعذر قراءة المحتوى: " + b.status), { status: 502 });
+    text = matchesB64Decode((await b.json()).content);
+  }
+  let data;
+  try { data = JSON.parse(text.replace(/^﻿/, "")); } catch { throw Object.assign(new Error("ملف المباريات الحالي ليس JSON صالحًا."), { status: 502 }); }
+  return { data, sha: meta.sha };
+}
+
+function validateMatches(data) {
+  if (!Array.isArray(data)) return "الملف يجب أن يكون مصفوفة مباريات";
+  if (data.length > MATCHES_MAX) return "عدد المباريات أكبر من الحد المسموح (" + MATCHES_MAX + ")";
+  for (let i = 0; i < data.length; i++) {
+    const m = data[i], n = "المباراة رقم " + (i + 1);
+    if (!m || typeof m !== "object" || Array.isArray(m)) return n + " غير صالحة";
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(String(m.time || ""))) return n + ": صيغة الوقت يجب أن تكون YYYY-MM-DDTHH:mm:ss";
+    if (!String(m.league || "").trim()) return n + ": البطولة مطلوبة";
+    for (const k of ["team1", "team2"]) {
+      const t = m[k];
+      if (t == null) continue;
+      if (typeof t !== "object" || Array.isArray(t)) return n + ": " + k + " غير صالح";
+    }
+    if (!String(m.title || "").trim() && !(m.team1 && m.team1.name) && !(m.team2 && m.team2.name)) return n + ": يلزم عنوان أو اسم فريق";
+    if (m.channels != null) {
+      if (!Array.isArray(m.channels)) return n + ": القنوات يجب أن تكون قائمة";
+      for (const c of m.channels) {
+        if (!c || typeof c !== "object" || !String(c.name || "").trim() || !String(c.url || "").trim()) return n + ": قناة بدون اسم أو رابط";
+        if (!/^(go:[\w.\-]+|https?:\/\/\S+)$/i.test(String(c.url).trim())) return n + ": رابط قناة غير مدعوم (" + c.url + ")";
+      }
+    }
+  }
+  return "";
+}
+
+async function matchesSave(env, data, sha, message) {
+  const body = {
+    message: message || "Update matches from SUPER LIVE TV Admin",
+    content: matchesB64Encode(JSON.stringify(data, null, 2) + "\n"),
+    sha,
+    branch: MATCHES_GH.branch
+  };
+  const res = await matchesGh(env, "/contents/" + MATCHES_GH.path, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  });
+  const out = await res.json().catch(() => ({}));
+  if (res.status === 409 || res.status === 422) throw Object.assign(new Error("الملف تغيّر على GitHub أثناء الحفظ. أعد التحميل وحاول مرة أخرى."), { status: 409 });
+  if (!res.ok) throw Object.assign(new Error(out.message || ("فشل الكتابة إلى GitHub: " + res.status)), { status: 502 });
+  return { sha: out.content && out.content.sha, commit: out.commit && out.commit.sha };
+}
+
+async function matchesAdminApi(request, env, url) {
+  const p = url.pathname, method = request.method;
+  try {
+    if (p === "/api/admin/matches" && method === "GET") {
+      const { data, sha } = await matchesReadFile(env);
+      return json({ matches: data, sha });
+    }
+    if (p === "/api/admin/matches" && method === "POST") {
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "JSON غير صالح" }, 400); }
+      const list = Array.isArray(body) ? body : body && body.matches;
+      const err = validateMatches(list);
+      if (err) return json({ error: err }, 400);
+      const cur = await matchesReadFile(env);
+      const base = request.headers.get("X-Base-Sha");
+      if (base && base !== cur.sha) return json({ error: "تم تعديل الجدول من مكان آخر بعد تحميله. حدّث الصفحة ثم أعد التعديل.", currentSha: cur.sha }, 409);
+      const saved = await matchesSave(env, list, cur.sha, body && body.message);
+      return json({ status: "ok", message: "تم حفظ جدول المباريات في GitHub", sha: saved.sha, commit: saved.commit, count: list.length });
+    }
+    if (p === "/api/admin/matches/history" && method === "GET") {
+      const sha = url.searchParams.get("sha");
+      if (sha) {
+        if (!/^[0-9a-f]{7,40}$/i.test(sha)) return json({ error: "رقم نسخة غير صالح" }, 400);
+        const { data } = await matchesReadFile(env, sha);
+        return json({ matches: data, sha });
+      }
+      const res = await matchesGh(env, "/commits?path=" + encodeURIComponent(MATCHES_GH.path) + "&sha=" + MATCHES_GH.branch + "&per_page=30");
+      if (!res.ok) return json({ error: "تعذر قراءة السجل: " + res.status }, 502);
+      const rows = await res.json();
+      return json({ commits: rows.map(c => ({ sha: c.sha, message: (c.commit.message || "").split("\n")[0], date: c.commit.author && c.commit.author.date, author: c.commit.author && c.commit.author.name })) });
+    }
+    if (p === "/api/admin/matches/restore" && method === "POST") {
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "JSON غير صالح" }, 400); }
+      const sha = String(body && body.sha || "");
+      if (!/^[0-9a-f]{7,40}$/i.test(sha)) return json({ error: "رقم نسخة غير صالح" }, 400);
+      const old = await matchesReadFile(env, sha);
+      const err = validateMatches(old.data);
+      if (err) return json({ error: "النسخة المختارة غير صالحة: " + err }, 400);
+      const cur = await matchesReadFile(env);
+      const saved = await matchesSave(env, old.data, cur.sha, "Restore matches to " + sha.slice(0, 7) + " from SUPER LIVE TV Admin");
+      return json({ status: "ok", message: "تم استرجاع النسخة " + sha.slice(0, 7), sha: saved.sha, commit: saved.commit });
+    }
+  } catch (e) {
+    return json({ error: e.message || "خطأ غير متوقع" }, e.status || 500);
+  }
+  return null;
 }
 
 // ============================================================
