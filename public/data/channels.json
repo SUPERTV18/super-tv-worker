@@ -329,6 +329,14 @@
         "User-Agent": "OSCARTV2021",
         "Referer": "",
         "Origin": ""
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://10g.vitarani.com/live/DuWplb6wGAwV0A_NhVTeDA__/master.m3u8",
+      "backupEnabled": true,
+      "backupHeaders": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.128 Safari/537.36",
+        "Referer": "https://salmal1000.com/",
+        "Origin": "https://salmal1000.com"
       }
     },
     {
