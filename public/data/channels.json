@@ -440,7 +440,9 @@
         "Referer": "",
         "Origin": ""
       },
-      "endpoint": "m3u8"
+      "endpoint": "m3u8",
+      "backupUrl": "https://yassineerrayexetv.lovable.app/hls/47.m3u8",
+      "backupEnabled": true
     },
     {
       "id": "b5_LOW",
