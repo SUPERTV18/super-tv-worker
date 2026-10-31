@@ -403,10 +403,7 @@
         "User-Agent": "OSCARTV2021",
         "Referer": "",
         "Origin": ""
-      },
-      "endpoint": "m3u8",
-      "backupUrl": "https://yassineerrayexetv.lovable.app/hls/44.m3u8",
-      "backupEnabled": true
+      }
     },
     {
       "id": "b2_LOW",
@@ -416,7 +413,10 @@
         "User-Agent": "OSCARTV2021",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://yassineerrayexetv.lovable.app/hls/45.m3u8",
+      "backupEnabled": true
     },
     {
       "id": "b3_LOW",
