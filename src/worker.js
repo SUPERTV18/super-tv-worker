@@ -3869,7 +3869,9 @@ export class ViewerTracker {
         watchedMs,
         sessionWatchedMs,
         // Throttle durable writes to once every 60 seconds per viewer session.
-        lastSeen: existing && now - Number(existing.lastSeen || 0) < 60000
+        lastSeen: existing &&
+          (!channelId || channelId === String(existing.ch || "")) &&
+          now - Number(existing.lastSeen || 0) < 60000
           ? existing.lastSeen
           : (Number(body.now) || now),
         lastSeenDate: dateKey,
