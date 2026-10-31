@@ -1588,7 +1588,7 @@ async function rewriteURIAttributes(
 // HLS clients request many playlists/segments. Reuse a successful
 // tracker result briefly so each segment does not call the Durable Object.
 const viewerRequestCache = new Map();
-const VIEWER_TRACKER_CACHE_MS = 12000;
+const VIEWER_TRACKER_CACHE_MS = 60000;
 
 async function trackViewerRequest(env, request, channelId = "") {
   if (!env.TRACKER) return false;
@@ -1599,7 +1599,7 @@ async function trackViewerRequest(env, request, channelId = "") {
   const cached = viewerRequestCache.get(sessionHash);
 
   // A channel change must be recorded immediately; ordinary HLS segments
-  // reuse the last successful check for up to 12 seconds.
+  // reuse the last successful check for up to 60 seconds.
   if (cached && now - cached.at < VIEWER_TRACKER_CACHE_MS &&
       (!channelId || channelId === cached.channelId)) {
     return cached.blocked === true;
@@ -3845,11 +3845,11 @@ export class ViewerTracker {
       const existing = await this.state.storage.get(key);
       // Segment requests refresh activity but do not create an unknown session.
       if (!channelId && !existing) return json({ status: "ignored", reason: "session-not-found" });
-      // Avoid a durable storage write for every HLS segment. Refresh at most once per
-      // 15 seconds unless the viewer switches channels.
+      // Avoid repeated Durable Object storage work. Refresh at most once per
+      // 60 seconds unless the viewer switches channels.
       if (existing &&
           (!channelId || channelId === String(existing.ch || "")) &&
-          now - Number(existing.lastSeen || 0) < 15000) {
+          now - Number(existing.lastSeen || 0) < 60000) {
         return json({ status: "ok", throttled: true });
       }
       const previousLastSeen = Number(existing?.lastSeen || 0);
@@ -3874,10 +3874,11 @@ export class ViewerTracker {
         sessionStartedAt: isNewVisit ? (Number(body.now) || now) : (Number(existing?.sessionStartedAt) || Number(body.now) || now),
         watchedMs,
         sessionWatchedMs,
-        // Throttle durable writes to once every 15 seconds per viewer session.
-        lastSeen: existing && now - Number(existing.lastSeen || 0) < 15000
+        // Throttle durable writes to once every 60 seconds per viewer session.
+        lastSeen: existing && now - Number(existing.lastSeen || 0) < 60000
           ? existing.lastSeen
           : (Number(body.now) || now),
+        lastSeenDate: dateKey,
         country: String(body.country || existing?.country || "").slice(0, 80),
         city: String(body.city || existing?.city || "").slice(0, 100),
         org: String(body.org || existing?.org || "").slice(0, 160),
@@ -3897,13 +3898,19 @@ export class ViewerTracker {
           country: record.country, city: record.city, org: record.org
         });
       }
-      await this.state.storage.put("day:" + dateKey + ":" + sessionId, { sessionId, date: dateKey });
+      if (!existing || existing.lastSeenDate !== dateKey) {
+        await this.state.storage.put("day:" + dateKey + ":" + sessionId, { sessionId, date: dateKey });
+      }
       return json({ status: "ok", newVisit: isNewVisit });
     }
 
     if (url.pathname === "/history" && request.method === "GET") {
       const all = await this.state.storage.list({ prefix: "viewer:", limit: 10000 });
+      const blockedAll = await this.state.storage.list({ prefix: "blocked:", limit: 2000 });
+      const blocked = [...blockedAll.values()].sort((a, b) => Number(b.blockedAt) - Number(a.blockedAt));
+      const blockedIds = new Set(blocked.map(v => String(v.sessionId)));
       const viewers = [...all.values()].filter(v => v && v.sessionId)
+        .map(v => ({ ...v, blocked: blockedIds.has(String(v.sessionId)) }))
         .sort((a, b) => Number(b.lastSeen || 0) - Number(a.lastSeen || 0));
       const limit = Math.max(1, Math.min(2000, Number(url.searchParams.get("limit")) || 500));
       const visits = await this.state.storage.list({ prefix: "visit:", limit: 10000 });
@@ -3946,19 +3953,23 @@ export class ViewerTracker {
         statsTimezone: "Africa/Cairo",
         activityHeatmap, activityHeatmapTimezone: "UTC",
         viewers: viewers.slice(0, limit).map(v => ({...v, device: v.device || classifyViewerDevice(v.ua), app: v.app || classifyViewerApp(v.ua)})),
+        blocked, blockedCount: blocked.length,
         timestamp: new Date().toISOString()
       });
     }
 
     if (url.pathname === "/list" && request.method === "GET") {
       const all = await this.state.storage.list({ prefix: "viewer:", limit: 2000 });
+      const blockedAll = await this.state.storage.list({ prefix: "blocked:", limit: 2000 });
+      const blocked = [...blockedAll.values()].sort((a, b) => Number(b.blockedAt) - Number(a.blockedAt));
+      const blockedIds = new Set(blocked.map(v => String(v.sessionId)));
       const viewers = [];
       for (const [, v] of all) {
         if (!v || now - Number(v.lastSeen || 0) > ACTIVE_MS) continue;
-        viewers.push(v);
+        viewers.push({ ...v, blocked: blockedIds.has(String(v.sessionId)) });
       }
       viewers.sort((a, b) => Number(b.lastSeen) - Number(a.lastSeen));
-      return json({ serverTime: now, viewers, activeSessions: viewers.length });
+      return json({ serverTime: now, viewers, activeSessions: viewers.length, blocked, blockedCount: blocked.length });
     }
 
     return json({ error: "Not found" }, 404);
