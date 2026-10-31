@@ -1204,7 +1204,7 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 
 <section class="page" id="page-matches">
 <div class="pagehead"><div><div class="crumb">لوحة التحكم<i>/</i><b>جدول المباريات</b></div><h2>جدول المباريات</h2><p class="muted">يعدّل ملف <code>matchesdawry.json</code> في GitHub، ومنه يقرأ الـ API الذي يعرضه التطبيق.</p></div>
-<div class="h-row"><button class="soft" id="mRefresh" type="button"><span data-ico="refresh" data-size="16"></span>تحديث</button><button class="soft" id="mHistory" type="button"><span data-ico="history" data-size="16"></span>السجل</button><button class="soft" id="mClean" type="button"><span data-ico="trash" data-size="16"></span>تنظيف القديم</button><button class="primary" id="mAdd" type="button"><span data-ico="plus" data-size="16"></span>إضافة مباراة</button></div></div>
+<div class="h-row"><label class="chkrow" style="margin:0;font-size:13px!important" title="يحفظ كل تعديل في GitHub بعد ثانية من تطبيقه"><input type="checkbox" id="mAutoSave" style="width:18px;height:18px;accent-color:#35c9ff"> حفظ تلقائي</label><button class="soft" id="mRefresh" type="button"><span data-ico="refresh" data-size="16"></span>تحديث</button><button class="soft" id="mHistory" type="button"><span data-ico="history" data-size="16"></span>السجل</button><button class="soft" id="mClean" type="button"><span data-ico="trash" data-size="16"></span>تنظيف القديم</button><button class="primary" id="mAdd" type="button"><span data-ico="plus" data-size="16"></span>إضافة مباراة</button></div></div>
 <div id="mBar" class="banner hidden" role="status"><span><span data-ico="alert"></span><span id="mBarTxt">تعديلات لم تُحفظ بعد</span></span><div style="display:flex;gap:8px"><button type="button" id="mSave" style="background:linear-gradient(120deg,#35c9ff,#6f9bff);color:#04121f;border-color:transparent">حفظ في GitHub</button><button type="button" id="mDiscard">تجاهل</button></div></div>
 <div class="stats">
 <div class="stat"><div class="stat-top"><span class="label">مباريات اليوم</span></div><div class="num" id="mStToday">—</div><div class="sub" id="mStTodaySub"> </div></div>
@@ -2052,6 +2052,8 @@ let palOpen=false,palItems=[],palIdx=0;
 /* ===== matches (جدول المباريات) ===== */
 const M={list:[],saved:new Map(),sha:"",day:"",loaded:false,k:0,newKeys:new Set(),removed:0};
 const M_API_URL="https://matches-api.super-stv.workers.dev/api/matches";
+function mAuto(){try{return localStorage.getItem("stvMatchesAuto")!=="0"}catch(e){return true}}
+function mTouch(){M.failed=false;clearTimeout(M.timer);if(!mAuto()||!mUnsaved())return;if(M.saving){M.again=true;return}M.timer=setTimeout(()=>mSave(true),1200)}
 function mClone(o){return JSON.parse(JSON.stringify(o))}
 function mStrip(m){const o={...m};delete o._k;return o}
 function mSig(m){return JSON.stringify(mStrip(m))}
@@ -2103,7 +2105,7 @@ function renderMatches(){
  if(M.day!=="all"&&!tabs.some(t=>t.k===M.day))tabs.push({k:M.day,top:"يوم محدد",sub:M.day});
  $("mDays").innerHTML=tabs.map(t=>'<button type="button" role="tab" aria-selected="'+(t.k===M.day)+'" class="mday'+(t.k===M.day?" on":"")+'" data-day="'+t.k+'">'+esc(t.top)+'<b>'+(counts.get(t.k)||0)+'</b><small>'+esc(t.sub)+'</small></button>').join("")+'<button type="button" role="tab" aria-selected="'+(M.day==="all")+'" class="mday'+(M.day==="all"?" on":"")+'" data-day="all">الكل<b>'+base.length+'</b><small>كل الأيام</small></button>';
  const rows=mFiltered(false),box=$("mList");
- const n=mUnsaved();$("mBar").classList.toggle("hidden",!n);$("mBarTxt").textContent="تعديلات لم تُحفظ بعد ("+n+") — لن تظهر في التطبيق قبل الحفظ";
+ const n=mUnsaved();$("mBar").classList.toggle("hidden",!n);$("mBarTxt").textContent=M.saving?"جارٍ الحفظ في GitHub…":(M.failed?"تعذّر الحفظ التلقائي — اضغط «حفظ في GitHub» لإعادة المحاولة":mAuto()?"سيُحفظ تلقائيًا خلال لحظات ("+n+")":"تعديلات لم تُحفظ بعد ("+n+") — لن تظهر في التطبيق قبل الحفظ");
  if(!rows.length){box.className="empty";box.textContent=M.list.length?"لا توجد مباريات مطابقة في هذا اليوم. جرّب «الكل» أو أضف مباراة جديدة.":"الجدول فارغ. أضف أول مباراة.";return}
  box.className="";
  const groups=new Map();rows.forEach(m=>{const g=M.day==="all"?String(m.time).slice(0,10):mLeagueLabel(m.league);if(!groups.has(g))groups.set(g,[]);groups.get(g).push(m)});
@@ -2162,19 +2164,20 @@ async function mEdit(key,mode){
   if(!out.extra)out.extra=false;
   const st=g("meStop").value,rs=g("meResume").value;if(st)out.stoppedAt=st+":00";else delete out.stoppedAt;if(rs)out.resumeAt=rs+":00";else delete out.resumeAt;
   if(orig&&mode!=="dup"){Object.assign(orig,out)}else{M.list.push({...out,_k:++M.k})}
-  M.day=d;renderMatches();notify("تم تطبيق التعديل — اضغط «حفظ في GitHub» ليظهر في التطبيق");return}
+  M.day=d;renderMatches();notify(mAuto()?"تم التطبيق — جارٍ الحفظ تلقائيًا…":"تم تطبيق التعديل — اضغط «حفظ في GitHub» ليظهر في التطبيق");mTouch();return}
 }
-async function mDelete(key){const m=M.list.find(x=>x._k===key);if(!m)return;const ok=await openDialog({title:"حذف المباراة؟",text:((m.team1||{}).name||"")+" × "+((m.team2||{}).name||"")+" — سيتم الحذف من GitHub عند الحفظ.",ok:"حذف",danger:true});if(!ok)return;M.list=M.list.filter(x=>x._k!==key);renderMatches()}
-async function mClean(){const v=await openDialog({title:"تنظيف المباريات القديمة",text:"احذف كل المباريات التي مرّ على موعدها أكثر من عدد الأيام التالي. لن يُحفظ شيء قبل الضغط على «حفظ في GitHub».",ok:"معاينة",input:{label:"عدد الأيام",value:"3"}});if(v==null)return;const days=Math.max(0,parseInt(v,10));if(!Number.isFinite(days))return notify("أدخل رقمًا صحيحًا","error");const lim=mMs(mCairoNow())-days*864e5,del=M.list.filter(m=>mMs(m.time)<lim);if(!del.length)return notify("لا توجد مباريات أقدم من "+days+" يوم");const ok=await openDialog({title:"حذف "+del.length+" مباراة قديمة؟",text:"ستُحذف من القائمة الحالية (ويمكن الرجوع عنها بزر «تجاهل» قبل الحفظ).",ok:"حذف",danger:true});if(!ok)return;const ks=new Set(del.map(m=>m._k));M.list=M.list.filter(m=>!ks.has(m._k));renderMatches()}
-async function mSave(){
+async function mDelete(key){const m=M.list.find(x=>x._k===key);if(!m)return;const ok=await openDialog({title:"حذف المباراة؟",text:((m.team1||{}).name||"")+" × "+((m.team2||{}).name||"")+" — سيتم الحذف من GitHub عند الحفظ.",ok:"حذف",danger:true});if(!ok)return;M.list=M.list.filter(x=>x._k!==key);renderMatches();mTouch()}
+async function mClean(){const v=await openDialog({title:"تنظيف المباريات القديمة",text:"احذف كل المباريات التي مرّ على موعدها أكثر من عدد الأيام التالي. لن يُحفظ شيء قبل الضغط على «حفظ في GitHub».",ok:"معاينة",input:{label:"عدد الأيام",value:"3"}});if(v==null)return;const days=Math.max(0,parseInt(v,10));if(!Number.isFinite(days))return notify("أدخل رقمًا صحيحًا","error");const lim=mMs(mCairoNow())-days*864e5,del=M.list.filter(m=>mMs(m.time)<lim);if(!del.length)return notify("لا توجد مباريات أقدم من "+days+" يوم");const ok=await openDialog({title:"حذف "+del.length+" مباراة قديمة؟",text:"ستُحذف من القائمة الحالية (ويمكن الرجوع عنها بزر «تجاهل» قبل الحفظ).",ok:"حذف",danger:true});if(!ok)return;const ks=new Set(del.map(m=>m._k));M.list=M.list.filter(m=>!ks.has(m._k));renderMatches();mTouch()}
+async function mSave(auto){
+ clearTimeout(M.timer);if(M.saving){M.again=true;return}
  const btn=$("mSave"),n=mUnsaved();if(!n)return;
  const added=M.list.filter(m=>!M.saved.has(m._k)).length,mod=M.list.filter(m=>M.saved.has(m._k)&&M.saved.get(m._k)!==mSig(m)).length,keys=new Set(M.list.map(m=>m._k)),del=[...M.saved.keys()].filter(k=>!keys.has(k)).length;
- const ok=await openDialog({title:"حفظ جدول المباريات؟",text:"سيُكتب الملف في GitHub ويظهر في التطبيق: "+added+" جديدة · "+mod+" معدّلة · "+del+" محذوفة.",ok:"حفظ في GitHub"});if(!ok)return;
+ if(!auto){const ok=await openDialog({title:"حفظ جدول المباريات؟",text:"سيُكتب الملف في GitHub ويظهر في التطبيق: "+added+" جديدة · "+mod+" معدّلة · "+del+" محذوفة.",ok:"حفظ في GitHub"});if(!ok)return}
  let fixed=0;const payload=M.list.slice().sort((a,b)=>String(a.time).localeCompare(String(b.time))).map(m=>{const o=mClone(mStrip(m));["team1","team2"].forEach(k=>{if(o[k]&&o[k].flag){const f=mFlagFix(o[k].flag);if(f!==o[k].flag){o[k].flag=f;fixed++}}});return o});
- btn.disabled=true;
+ btn.disabled=true;M.saving=true;
  try{const r=await api("/api/admin/matches",{method:"POST",headers:M.sha?{"X-Base-Sha":M.sha}:{},body:JSON.stringify({matches:payload})});M.sha=r.sha||M.sha;mBuildFromApi(payload);$("mSha").textContent="النسخة الحالية: "+String(M.sha).slice(0,7);renderMatches();notify((r.message||"تم الحفظ")+(fixed?" · أُصلح "+fixed+" شعار":""))}
- catch(e){if(e.status===409){await openDialog({title:"تغيّر الجدول من مكان آخر",text:"عُدّل الملف على GitHub بعد تحميله هنا، لذلك لم يُحفظ شيء حتى لا تُمسح تعديلات الآخرين. سيُعاد تحميل الجدول الآن وتُفقد تعديلاتك غير المحفوظة.",ok:"فهمت"});await loadMatches(true)}else notify(e.message,"error")}
- finally{btn.disabled=false}}
+ catch(e){if(e.status===409){await openDialog({title:"تغيّر الجدول من مكان آخر",text:"عُدّل الملف على GitHub بعد تحميله هنا، لذلك لم يُحفظ شيء حتى لا تُمسح تعديلات الآخرين. سيُعاد تحميل الجدول الآن وتُفقد تعديلاتك غير المحفوظة.",ok:"فهمت"});await loadMatches(true)}else{M.failed=true;notify((auto?"تعذّر الحفظ التلقائي: ":"")+e.message,"error")}}
+ finally{btn.disabled=false;M.saving=false;renderMatches();if(M.again){M.again=false;mTouch()}}}
 async function mHistory(){
  const w=document.createElement("div");w.className="mhist";w.innerHTML='<div class="muted">جار التحميل...</div>';let pick=null;
  const done=openDialog({title:"سجل جدول المباريات",text:"كل حفظ يُسجَّل كتعديل على GitHub. الاسترجاع يُسجَّل كتعديل جديد.",ok:"إغلاق",body:w});
@@ -2189,8 +2192,9 @@ $("mDays").addEventListener("click",e=>{const b=e.target.closest("[data-day]");i
 $("mAdd").onclick=()=>{if(!M.loaded)return notify("انتظر تحميل الجدول أولًا","error");mEdit(null)};
 $("mRefresh").onclick=async()=>{if(mUnsaved()){const ok=await openDialog({title:"تجاهل التعديلات غير المحفوظة؟",text:"التحديث سيعيد تحميل الجدول من GitHub.",ok:"تحديث",danger:true});if(!ok)return}loadMatches(true)};
 $("mHistory").onclick=mHistory;$("mClean").onclick=()=>M.loaded?mClean():notify("انتظر تحميل الجدول أولًا","error");
-$("mSave").onclick=mSave;
-$("mDiscard").onclick=async()=>{const ok=await openDialog({title:"تجاهل كل التعديلات؟",text:"سيرجع الجدول لآخر نسخة محفوظة.",ok:"تجاهل",danger:true});if(!ok)return;await loadMatches(true)};
+$("mSave").onclick=()=>mSave(false);
+$("mAutoSave").checked=mAuto();$("mAutoSave").onchange=e=>{try{localStorage.setItem("stvMatchesAuto",e.target.checked?"1":"0")}catch(_){}if(e.target.checked)mTouch();else clearTimeout(M.timer);renderMatches();notify(e.target.checked?"الحفظ التلقائي مفعّل":"الحفظ التلقائي متوقف — احفظ يدويًا")};
+$("mDiscard").onclick=async()=>{clearTimeout(M.timer);const ok=await openDialog({title:"تجاهل كل التعديلات؟",text:"سيرجع الجدول لآخر نسخة محفوظة.",ok:"تجاهل",danger:true});if(!ok)return;await loadMatches(true)};
 $("mOpenApi").onclick=()=>window.open(M_API_URL,"_blank","noopener,noreferrer");$("mCopyApi").onclick=()=>copyText(M_API_URL,"رابط الـ API");
 window.addEventListener("beforeunload",e=>{if(M.loaded&&mUnsaved()){e.preventDefault();e.returnValue=""}});
 setInterval(()=>{if(document.visibilityState==="visible"&&M.loaded&&$("page-matches").classList.contains("active")&&$("modal").classList.contains("hidden"))renderMatches()},60000);
