@@ -1581,6 +1581,63 @@ async function rewriteURIAttributes(
 
 }
 
+
+// ============================================================
+// LOW-COST VIEWER TRACKING (isolate-local request coalescing)
+// ============================================================
+// HLS clients request many playlists/segments. Reuse a successful
+// tracker result briefly so each segment does not call the Durable Object.
+const viewerRequestCache = new Map();
+const VIEWER_TRACKER_CACHE_MS = 12000;
+
+async function trackViewerRequest(env, request, channelId = "") {
+  if (!env.TRACKER) return false;
+  const ip = getClientIP(request);
+  const ua = request.headers.get("User-Agent") || "";
+  const sessionHash = await sha256(ip + "|" + ua);
+  const now = Date.now();
+  const cached = viewerRequestCache.get(sessionHash);
+
+  // A channel change must be recorded immediately; ordinary HLS segments
+  // reuse the last successful check for up to 12 seconds.
+  if (cached && now - cached.at < VIEWER_TRACKER_CACHE_MS &&
+      (!channelId || channelId === cached.channelId)) {
+    return cached.blocked === true;
+  }
+
+  const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
+  const response = await stub.fetch("https://viewer-tracker/heartbeat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sessionId: sessionHash,
+      ip,
+      ua,
+      channelId: channelId ? String(channelId) : "",
+      firstName: "",
+      country: request.cf?.country || "",
+      city: request.cf?.city || "",
+      org: request.cf?.asOrganization || "",
+      now
+    })
+  });
+
+  if (response.status === 403) return true;
+  if (response.ok) {
+    viewerRequestCache.set(sessionHash, {
+      at: now,
+      channelId: channelId ? String(channelId) : (cached?.channelId || "")
+    });
+    if (viewerRequestCache.size > 5000) {
+      for (const [key, value] of viewerRequestCache) {
+        if (now - value.at > VIEWER_TRACKER_CACHE_MS * 2) viewerRequestCache.delete(key);
+        if (viewerRequestCache.size <= 4000) break;
+      }
+    }
+  }
+  return false;
+}
+
 // ============================================================
 // HLS ENTRY POINT
 // ============================================================
@@ -1635,42 +1692,15 @@ async function hlsApi(
 
   }
 
-  // Check block list on every HLS request, including playlist and segment requests.
+  // One coalesced Durable Object call handles both block checking and heartbeat.
+  // The short isolate-local cache prevents a DO request for every HLS segment.
   try {
-    if (env.TRACKER) {
-      const sessionHash = await sha256(getClientIP(request) + "|" + (request.headers.get("User-Agent") || ""));
-      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
-      const check = await stub.fetch("https://viewer-tracker/is-blocked", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: sessionHash })
-      });
-      if (check.ok && (await check.json()).blocked) return text("هذا الجهاز محظور من تشغيل البث", 403);
-    }
-  } catch (e) { console.warn("BLOCK_CHECK_ERROR", String(e.message || e)); }
-
-  // Refresh the viewer heartbeat from HLS segment/playlist requests.
-  // Durable Object throttles writes per session; no KV operations are used.
-  try {
-    if (env.TRACKER) {
-      const ip = getClientIP(request);
-      const ua = request.headers.get("User-Agent") || "";
-      const sessionHash = await sha256(ip + "|" + ua);
-      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
-      await stub.fetch("https://viewer-tracker/heartbeat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: sessionHash,
-          ip,
-          ua,
-          country: request.cf?.country || "",
-          city: request.cf?.city || "",
-          org: request.cf?.asOrganization || "",
-          now: Date.now()
-        })
-      });
+    if (await trackViewerRequest(env, request)) {
+      return text("هذا الجهاز محظور من تشغيل البث", 403);
     }
   } catch (viewerError) {
-    console.warn("VIEWER_HEARTBEAT_ERROR", String(viewerError.message || viewerError));
+    // Tracking failures must never interrupt playback.
+    console.warn("VIEWER_TRACKING_ERROR", String(viewerError.message || viewerError));
   }
 
   const target =
@@ -1983,13 +2013,14 @@ async function playApi(
 
     }
 
-    if (env.TRACKER) {
-      const sessionHash = await sha256(getClientIP(request) + "|" + (request.headers.get("User-Agent") || ""));
-      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
-      const check = await stub.fetch("https://viewer-tracker/is-blocked", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: sessionHash })
-      });
-      if (check.ok && (await check.json()).blocked) return text("هذا الجهاز محظور من تشغيل البث", 403);
+    // One Durable Object request now checks block status and creates/updates
+    // the viewer session together. Tracking errors remain non-blocking for playback.
+    try {
+      if (await trackViewerRequest(env, request, String(id))) {
+        return text("هذا الجهاز محظور من تشغيل البث", 403);
+      }
+    } catch (viewerError) {
+      console.warn("VIEWER_TRACKING_ERROR", String(viewerError.message || viewerError));
     }
 
     // ========================================================
@@ -1997,31 +2028,6 @@ async function playApi(
     // ========================================================
 
     incrementViewer(id);
-    try {
-      if (env.TRACKER) {
-        const ip = getClientIP(request);
-        const ua = request.headers.get("User-Agent") || "";
-        const sessionHash = await sha256(ip + "|" + ua);
-        const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
-        await stub.fetch("https://viewer-tracker/heartbeat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId: sessionHash,
-            ip,
-            ua,
-            channelId: String(id),
-            firstName: "",
-            country: request.cf?.country || "",
-            city: request.cf?.city || "",
-            org: request.cf?.asOrganization || "",
-            now: Date.now()
-          })
-        });
-      }
-    } catch (viewerError) {
-      console.warn("VIEWER_TRACKING_ERROR", String(viewerError.message || viewerError));
-    }
 
     // ========================================================
     // ADMIN API
