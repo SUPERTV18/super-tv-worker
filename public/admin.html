@@ -879,7 +879,7 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 .mcard{position:relative;display:flex;flex-direction:column;gap:14px;padding:16px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(150deg,var(--surface-1),var(--surface-2));min-width:0;transition:transform .2s,border-color .2s}
 .mcard:hover{transform:translateY(-2px);border-color:#326181}
 .mcard.live{border-color:#2f8f73;box-shadow:0 0 0 1px #35dfa222}
-.mcard.warn{border-color:#7a5a22}
+.mcard.hid{border-style:dashed;border-color:#7a5a22}.mcard.warn{border-color:#7a5a22}
 .mcard.ended{opacity:.72}
 .mcard.isnew{border-color:var(--blue);box-shadow:0 0 0 1px #35c9ff33}
 .mcard.ismod{border-color:var(--amber)}
@@ -1213,7 +1213,7 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 <div class="stat"><div class="stat-top"><span class="label">بدون قناة</span></div><div class="num" id="mStNoCh" style="color:var(--amber)">—</div><div class="sub" id="mStNoChSub">مباريات قادمة أو جارية</div></div>
 </div>
 <div class="mday-tabs" id="mDays" role="tablist" aria-label="أيام المباريات"></div>
-<div class="toolbar"><div class="searchbox"><span data-ico="search" data-size="16"></span><input id="mSearch" type="search" placeholder="ابحث باسم فريق أو بطولة أو قناة" aria-label="بحث في المباريات"></div><select id="mLeague" aria-label="البطولة"><option value="">كل البطولات</option></select><select id="mState" aria-label="الحالة"><option value="">كل الحالات</option><option value="live">مباشر</option><option value="soon">قادمة</option><option value="end">انتهت</option><option value="nochan">بدون قناة</option></select></div>
+<div class="toolbar"><div class="searchbox"><span data-ico="search" data-size="16"></span><input id="mSearch" type="search" placeholder="ابحث باسم فريق أو بطولة أو قناة" aria-label="بحث في المباريات"></div><select id="mLeague" aria-label="البطولة"><option value="">كل البطولات</option></select><select id="mState" aria-label="الحالة"><option value="">كل الحالات</option><option value="live">مباشر</option><option value="soon">قادمة</option><option value="end">انتهت</option><option value="nochan">بدون قناة</option><option value="shown">ظاهرة في التطبيق (اليوم)</option><option value="hidden">مخفية (x)</option></select></div>
 <div id="mList" class="empty">جار تحميل الجدول...</div>
 <div class="panel" style="margin-top:20px"><h3>مصدر البيانات</h3><div class="minfo">
 <div><b>ملف GitHub</b><code>SUPERTV18/match-api- · matchesdawry.json</code><br><span class="muted" id="mSha">—</span></div>
@@ -2057,6 +2057,7 @@ function mTouch(){M.failed=false;clearTimeout(M.timer);if(!mAuto()||!mUnsaved())
 function mClone(o){return JSON.parse(JSON.stringify(o))}
 function mStrip(m){const o={...m};delete o._k;return o}
 function mSig(m){return JSON.stringify(mStrip(m))}
+function mHidden(m){return /\sx\s*$/i.test(String(m&&m.league||""))}
 function mLeagueLabel(s){return String(s||"").replace(/\s+x\s*$/i,"").trim()||"بدون بطولة"}
 function mCairoNow(){try{return new Intl.DateTimeFormat("sv-SE",{timeZone:"Africa/Cairo",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(new Date()).replace(" ","T")}catch(e){return new Date(Date.now()+2*3600e3).toISOString().slice(0,19)}}
 function mMs(s){return Date.parse(String(s||"").slice(0,19)+"Z")}
@@ -2076,7 +2077,7 @@ async function loadMatches(force){
  try{const r=await api("/api/admin/matches");M.worker=activeWorker;M.sha=r.sha||"";mBuildFromApi(Array.isArray(r.matches)?r.matches:[]);M.loaded=true;$("mSha").textContent="النسخة الحالية: "+String(M.sha).slice(0,7);if(!M.day)M.day=mDayKey(0);renderMatches()}
  catch(e){M.loaded=false;box.className="empty";box.textContent=e.status===503?"لم يُضبط مفتاح GitHub لهذه الصفحة. أضف Secret باسم MATCHES_GITHUB_TOKEN في إعدادات الـ Worker (صلاحية Contents: Read and write على SUPERTV18/match-api-).":e.status===404?"مسارات المباريات غير موجودة في هذا الـ Worker. أضف كود matches-admin.js وأعد النشر.":e.message}}
 function mFiltered(ignoreDay){const q=$("mSearch").value.trim().toLowerCase(),lg=$("mLeague").value,stf=$("mState").value,now=mMs(mCairoNow());
- return M.list.filter(m=>{if(!ignoreDay&&M.day!=="all"&&String(m.time).slice(0,10)!==M.day)return false;if(lg&&mLeagueLabel(m.league)!==lg)return false;const s=mStatus(m,now);if(stf==="nochan"){if(!(s.k!=="end"&&!(m.channels||[]).length))return false}else if(stf&&s.k!==stf)return false;
+ return M.list.filter(m=>{if(!ignoreDay&&M.day!=="all"&&String(m.time).slice(0,10)!==M.day)return false;if(lg&&mLeagueLabel(m.league)!==lg)return false;const s=mStatus(m,now);if(stf==="nochan"){if(!(s.k!=="end"&&!(m.channels||[]).length))return false}else if(stf==="hidden"){if(!mHidden(m))return false}else if(stf==="shown"){if(mHidden(m)||String(m.time).slice(0,10)!==mDayKey(0))return false}else if(stf&&s.k!==stf)return false;
   if(q){const hay=[m.title,m.league,m.team1&&m.team1.name,m.team2&&m.team2.name,...(m.channels||[]).map(c=>c.name)].join(" ").toLowerCase();if(!hay.includes(q))return false}return true}).sort((a,b)=>String(a.time).localeCompare(String(b.time)))}
 function mCard(m,now){const s=mStatus(m,now),t1=m.team1||{},t2=m.team2||{},ch=m.channels||[],tm=String(m.time).slice(11,16);
  let mid,top;
@@ -2086,17 +2087,18 @@ function mCard(m,now){const s=mStatus(m,now),t1=m.team1||{},t2=m.team2||{},ch=m.
  else{mid='<div class="mtime" style="color:var(--muted)">'+esc(tm)+'</div><div class="muted">انتهت</div>';top='<span class="st st-end">انتهت</span>'}
  const chh=ch.length?ch.slice(0,8).map(c=>'<span class="mchan'+(/^https?:/i.test(c.url)?' ext':'')+'" title="'+esc(c.url)+'"><i></i>'+esc(c.name)+'</span>').join("")+(ch.length>8?'<span class="muted">+'+(ch.length-8)+'</span>':""):(s.k==="end"?'<span class="muted">لا توجد قنوات</span>':'<span class="st st-off">⚠ بدون قناة</span>');
  const issues=[];if(mBadFlag(t1)||mBadFlag(t2))issues.push("شعار مكسور (يُصلح عند الحفظ)");if(!String(t1.name||"").trim()||!String(t2.name||"").trim())issues.push("اسم فريق ناقص");
- const cls=["mcard",s.k==="live"?"live":"",s.k==="end"?"ended":"",s.k!=="end"&&!ch.length?"warn":"",!M.saved.has(m._k)?"isnew":(M.saved.get(m._k)!==mSig(m)?"ismod":"")].filter(Boolean).join(" ");
+ const hid=mHidden(m),today=String(m.time).slice(0,10)===mDayKey(0),vis=hid?'<span class="st st-stop" title="علامة x بجانب البطولة: لا تظهر في التطبيق">🙈 مخفية</span>':(today?'<span class="st st-live" title="بدون علامة x وتاريخها اليوم"><i></i>ظاهرة</span>':'');top='<span style="display:flex;gap:6px;align-items:center">'+vis+top+'</span>';
+ const cls=["mcard",hid?"hid":"",s.k==="live"?"live":"",s.k==="end"?"ended":"",s.k!=="end"&&!ch.length?"warn":"",!M.saved.has(m._k)?"isnew":(M.saved.get(m._k)!==mSig(m)?"ismod":"")].filter(Boolean).join(" ");
  return '<div class="'+cls+'" data-k="'+m._k+'"><div class="mtop"><span class="lg">'+esc(mLeagueLabel(m.league))+(M.day==="all"?" · "+esc(String(m.time).slice(5,10).replace("-","/")):"")+'</span>'+top+'</div>'
  +'<div class="mteams"><div class="mteam">'+mFlag(t1)+'<span>'+esc(t1.name||"—")+'</span></div><div class="mmid">'+mid+'</div><div class="mteam">'+mFlag(t2)+'<span>'+esc(t2.name||"—")+'</span></div></div>'
  +'<div class="mchans">'+chh+'</div>'
- +'<div class="mfoot"><span>'+(issues.length?'<span class="st st-off">'+esc(issues.join(" · "))+'</span>':(!M.saved.has(m._k)?'<span class="st st-soon">جديدة — لم تُحفظ</span>':(M.saved.get(m._k)!==mSig(m)?'<span class="st st-off">معدّلة — لم تُحفظ</span>':ch.length+" قناة")))+'</span><span class="actions"><button type="button" class="soft icon sm" data-mact="edit" aria-label="تعديل المباراة" title="تعديل">'+ico("edit",15)+'</button><button type="button" class="soft icon sm" data-mact="dup" aria-label="نسخ المباراة" title="نسخ">'+ico("copy",15)+'</button><button type="button" class="danger icon sm" data-mact="del" aria-label="حذف المباراة" title="حذف">'+ico("trash",15)+'</button></span></div></div>'}
+ +'<div class="mfoot"><span>'+(issues.length?'<span class="st st-off">'+esc(issues.join(" · "))+'</span>':(!M.saved.has(m._k)?'<span class="st st-soon">جديدة — لم تُحفظ</span>':(M.saved.get(m._k)!==mSig(m)?'<span class="st st-off">معدّلة — لم تُحفظ</span>':ch.length+" قناة")))+'</span><span class="actions"><button type="button" class="soft icon sm" data-mact="hide" aria-label="'+(hid?"إظهار المباراة في التطبيق":"إخفاء المباراة عن التطبيق")+'" title="'+(hid?"إظهار (إزالة x)":"إخفاء (إضافة x)")+'">'+ico("eye",15)+'</button><button type="button" class="soft icon sm" data-mact="edit" aria-label="تعديل المباراة" title="تعديل">'+ico("edit",15)+'</button><button type="button" class="soft icon sm" data-mact="dup" aria-label="نسخ المباراة" title="نسخ">'+ico("copy",15)+'</button><button type="button" class="danger icon sm" data-mact="del" aria-label="حذف المباراة" title="حذف">'+ico("trash",15)+'</button></span></div></div>'}
 function renderMatches(){
  if(!M.loaded)return;
  const now=mMs(mCairoNow()),today=mDayKey(0),all=M.list;
  const st=all.map(m=>mStatus(m,now));
  const tdy=all.filter(m=>String(m.time).slice(0,10)===today),live=all.filter((m,i)=>st[i].k==="live"),soon=all.filter((m,i)=>st[i].k==="soon"),noch=all.filter((m,i)=>st[i].k!=="end"&&!(m.channels||[]).length);
- $("mStToday").textContent=tdy.length;$("mStTodaySub").textContent=new Set(tdy.map(m=>mLeagueLabel(m.league))).size+" بطولة";
+ $("mStToday").textContent=tdy.length;{const vt=tdy.filter(m=>!mHidden(m)).length;$("mStTodaySub").textContent=vt+" ظاهرة في التطبيق · "+(tdy.length-vt)+" مخفية"}
  $("mStLive").textContent=live.length;$("mStLive").style.color=live.length?"var(--green)":"";$("mStLiveSub").textContent=live[0]?((live[0].team1||{}).name||"")+" × "+((live[0].team2||{}).name||""):"لا مباريات جارية";
  $("mStSoon").textContent=soon.length;$("mStNoCh").textContent=noch.length;
  const sel=$("mLeague"),cur=sel.value,labels=[...new Set(all.map(m=>mLeagueLabel(m.league)))].sort((a,b)=>a.localeCompare(b,"ar"));sel.innerHTML='<option value="">كل البطولات</option>'+labels.map(l=>'<option>'+esc(l)+'</option>').join("");if(labels.includes(cur))sel.value=cur;
@@ -2127,12 +2129,12 @@ async function mEdit(key,mode){
  const orig=key!=null?M.list.find(m=>m._k===key):null;
  const base=orig?mClone(mStrip(orig)):{league:"",title:"",time:mDayKey(0)+"T21:00:00",team1:{name:"",flag:""},team2:{name:"",flag:""},extra:false,channels:[]};
  if(mode==="dup"){delete base.stoppedAt;delete base.resumeAt;delete base.status}
- const known=mKnownChannels(),bundles=mBundles(known),leagues=[...new Set(M.list.map(m=>m.league).filter(Boolean))],teams=new Map();M.list.forEach(m=>[m.team1,m.team2].forEach(t=>{if(t&&t.name&&!teams.has(t.name))teams.set(t.name,t.flag||"")}));
+ const known=mKnownChannels(),bundles=mBundles(known),leagues=[...new Set(M.list.map(m=>String(m.league||"").replace(/\s+x\s*$/i,"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar")),teams=new Map();M.list.forEach(m=>[m.team1,m.team2].forEach(t=>{if(t&&t.name&&!teams.has(t.name))teams.set(t.name,t.flag||"")}));
  let chans=(base.channels||[]).map(c=>({name:c.name,url:c.url})),autoTitle=!base.title||base.title===((base.team1||{}).name||"")+" × ";
  const sp=mSplit(base.time),w=document.createElement("div");w.className="medit";
  w.innerHTML='<datalist id="meLeagues">'+leagues.map(l=>'<option value="'+esc(l)+'">').join("")+'</datalist><datalist id="meTeams">'+[...teams.keys()].map(n=>'<option value="'+esc(n)+'">').join("")+'</datalist>'
- +'<div class="formgrid"><div class="field wide"><label for="meLeague">البطولة</label><input id="meLeague" list="meLeagues" value="'+esc(base.league||"")+'" placeholder="اختر من القائمة أو اكتب بطولة جديدة"></div>'
- +'<div class="field"><label for="meT1">الفريق الأول</label><input id="meT1" list="meTeams" value="'+esc((base.team1||{}).name||"")+'"></div><div class="field"><label for="meT2">الفريق الثاني</label><input id="meT2" list="meTeams" value="'+esc((base.team2||{}).name||"")+'"></div>'
+ +'<div class="formgrid"><div class="field wide"><label for="meLeague">البطولة</label><input id="meLeague" list="meLeagues" value="'+esc(String(base.league||"").replace(/\s+x\s*$/i,"").trim())+'" placeholder="اختر من القائمة أو اكتب بطولة جديدة"></div>'
+ +'<div class="field wide"><label class="chkrow" style="margin:0"><input type="checkbox" id="meHide" style="width:18px;height:18px;accent-color:#35c9ff"'+(mHidden(base)?" checked":"")+'> إخفاء المباراة عن التطبيق (تُضاف علامة x بجانب اسم البطولة)</label></div><div class="field"><label for="meT1">الفريق الأول</label><input id="meT1" list="meTeams" value="'+esc((base.team1||{}).name||"")+'"></div><div class="field"><label for="meT2">الفريق الثاني</label><input id="meT2" list="meTeams" value="'+esc((base.team2||{}).name||"")+'"></div>'
  +'<div class="field"><label for="meF1">رابط شعار الأول</label><input id="meF1" dir="ltr" value="'+esc((base.team1||{}).flag||"")+'" placeholder="يُملأ تلقائيًا للفرق المعروفة"></div><div class="field"><label for="meF2">رابط شعار الثاني</label><input id="meF2" dir="ltr" value="'+esc((base.team2||{}).flag||"")+'"></div>'
  +'<div class="field"><label for="meDate">التاريخ</label><input id="meDate" type="date" value="'+esc(sp.date)+'"></div><div class="field"><label for="meTime">الوقت (توقيت القاهرة)</label><input id="meTime" type="time" value="'+esc(sp.time)+'"></div></div>'
  +'<h4>القنوات الناقلة</h4><div class="mpick"><div class="sel" id="meSel"></div><div class="muted" style="margin:0">حزم جاهزة — تضيف كل الجودات مرة واحدة (اضغط مرة ثانية لإزالتها)</div><div class="pool" id="meBundles"></div><input type="search" id="mePoolQ" placeholder="ابحث في القنوات المستخدمة سابقًا ('+known.length+')"><div class="pool" id="mePool"></div>'
@@ -2155,17 +2157,18 @@ async function mEdit(key,mode){
  for(;;){
   const ok=await openDialog({title:orig&&mode!=="dup"?"تعديل المباراة":"إضافة مباراة",text:"تُحفظ التعديلات على GitHub عند الضغط على «حفظ في GitHub».",ok:"تطبيق",body:w});
   if(!ok)return;
-  const lg=g("meLeague").value.trim(),n1=g("meT1").value.trim(),n2=g("meT2").value.trim(),d=g("meDate").value,t=g("meTime").value;
+  const lg=g("meLeague").value.replace(/\s+x\s*$/i,"").trim(),hideIt=g("meHide").checked,n1=g("meT1").value.trim(),n2=g("meT2").value.trim(),d=g("meDate").value,t=g("meTime").value;
   let err="";if(!lg)err="اختر البطولة";else if(!n1||!n2)err="أدخل اسم الفريقين";else if(!d||!t)err="أدخل التاريخ والوقت";
   const f1=mFlagFix(g("meF1").value),f2=mFlagFix(g("meF2").value);
   if(!err&&((f1&&!/^https?:\/\//i.test(f1))||(f2&&!/^https?:\/\//i.test(f2))))err="رابط الشعار يجب أن يبدأ بـ http(s)://";
   if(err){notify(err,"error");continue}
-  const out={...base,league:lg,title:g("meTitle").value.trim()||(n1+" × "),time:d+"T"+t+":00",team1:{...(base.team1||{}),name:n1,flag:f1},team2:{...(base.team2||{}),name:n2,flag:f2},channels:chans.map(c=>({name:c.name,url:c.url}))};
+  const out={...base,league:lg+(hideIt?" x":""),title:g("meTitle").value.trim()||(n1+" × "),time:d+"T"+t+":00",team1:{...(base.team1||{}),name:n1,flag:f1},team2:{...(base.team2||{}),name:n2,flag:f2},channels:chans.map(c=>({name:c.name,url:c.url}))};
   if(!out.extra)out.extra=false;
   const st=g("meStop").value,rs=g("meResume").value;if(st)out.stoppedAt=st+":00";else delete out.stoppedAt;if(rs)out.resumeAt=rs+":00";else delete out.resumeAt;
   if(orig&&mode!=="dup"){Object.assign(orig,out)}else{M.list.push({...out,_k:++M.k})}
   M.day=d;renderMatches();notify(mAuto()?"تم التطبيق — جارٍ الحفظ تلقائيًا…":"تم تطبيق التعديل — اضغط «حفظ في GitHub» ليظهر في التطبيق");mTouch();return}
 }
+function mToggleHide(key){const m=M.list.find(x=>x._k===key);if(!m)return;const clean=String(m.league||"").replace(/\s+x\s*$/i,"").trim();m.league=mHidden(m)?clean:clean+" x";renderMatches();notify(mHidden(m)?"أُخفيت المباراة عن التطبيق (x)":"ستظهر المباراة في التطبيق");mTouch()}
 async function mDelete(key){const m=M.list.find(x=>x._k===key);if(!m)return;const ok=await openDialog({title:"حذف المباراة؟",text:((m.team1||{}).name||"")+" × "+((m.team2||{}).name||"")+" — سيتم الحذف من GitHub عند الحفظ.",ok:"حذف",danger:true});if(!ok)return;M.list=M.list.filter(x=>x._k!==key);renderMatches();mTouch()}
 async function mClean(){const v=await openDialog({title:"تنظيف المباريات القديمة",text:"احذف كل المباريات التي مرّ على موعدها أكثر من عدد الأيام التالي. لن يُحفظ شيء قبل الضغط على «حفظ في GitHub».",ok:"معاينة",input:{label:"عدد الأيام",value:"3"}});if(v==null)return;const days=Math.max(0,parseInt(v,10));if(!Number.isFinite(days))return notify("أدخل رقمًا صحيحًا","error");const lim=mMs(mCairoNow())-days*864e5,del=M.list.filter(m=>mMs(m.time)<lim);if(!del.length)return notify("لا توجد مباريات أقدم من "+days+" يوم");const ok=await openDialog({title:"حذف "+del.length+" مباراة قديمة؟",text:"ستُحذف من القائمة الحالية (ويمكن الرجوع عنها بزر «تجاهل» قبل الحفظ).",ok:"حذف",danger:true});if(!ok)return;const ks=new Set(del.map(m=>m._k));M.list=M.list.filter(m=>!ks.has(m._k));renderMatches();mTouch()}
 async function mSave(auto){
@@ -2186,7 +2189,7 @@ async function mHistory(){
  w.onclick=e=>{const b=e.target.closest("[data-sha]");if(b){pick=b.dataset.sha;$("dlgOk").click()}};
  await done;if(!pick)return;
  const sha=pick;try{const s=await api("/api/admin/matches/history?sha="+encodeURIComponent(sha)),ok=await openDialog({title:"استرجاع النسخة "+sha.slice(0,7)+"؟",text:"النسخة تحتوي "+(s.matches||[]).length+" مباراة، والحالية "+M.list.length+". سيستبدل الجدول الحالي ويُحفظ كتعديل جديد.",ok:"استرجاع",danger:true});if(!ok)return;const r=await api("/api/admin/matches/restore",{method:"POST",body:JSON.stringify({sha})});notify(r.message||"تم الاسترجاع");await loadMatches(true)}catch(e){notify(e.message,"error")}}
-$("mList").addEventListener("click",e=>{const b=e.target.closest("[data-mact]");if(!b)return;const card=b.closest("[data-k]"),k=+card.dataset.k,a=b.dataset.mact;if(a==="edit")mEdit(k);else if(a==="dup")mEdit(k,"dup");else if(a==="del")mDelete(k)});
+$("mList").addEventListener("click",e=>{const b=e.target.closest("[data-mact]");if(!b)return;const card=b.closest("[data-k]"),k=+card.dataset.k,a=b.dataset.mact;if(a==="edit")mEdit(k);else if(a==="dup")mEdit(k,"dup");else if(a==="hide")mToggleHide(k);else if(a==="del")mDelete(k)});
 $("mDays").addEventListener("click",e=>{const b=e.target.closest("[data-day]");if(!b)return;M.day=b.dataset.day;renderMatches()});
 ["mSearch","mLeague","mState"].forEach(id=>$(id).addEventListener(id==="mSearch"?"input":"change",renderMatches));
 $("mAdd").onclick=()=>{if(!M.loaded)return notify("انتظر تحميل الجدول أولًا","error");mEdit(null)};
