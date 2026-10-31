@@ -447,17 +447,17 @@
     {
       "id": "b5_LOW",
       "name": "Bein Sports 5 LOW",
-      "url": "http://assets.pushyourcss.world:8080/assets/res2/java2/1450.css?x=/hls",
+      "url": "https://yassineerrayexetv.lovable.app/hls/48.m3u8",
       "headers": {
-        "User-Agent": "OSCARTV2021",
+        "User-Agent": "FFLASHTV/1.0&Referer",
         "Referer": "",
         "Origin": ""
       },
       "endpoint": "m3u8",
-      "backupUrl": "https://yassineerrayexetv.lovable.app/hls/48.m3u8",
+      "backupUrl": "http://assets.pushyourcss.world:8080/assets/res2/java2/1450.css?x=/hls",
       "backupEnabled": true,
       "backupHeaders": {
-        "User-Agent": "FFLASHTV/1.0&Referer",
+        "User-Agent": "OSCARTV2021",
         "Referer": "",
         "Origin": ""
       }
