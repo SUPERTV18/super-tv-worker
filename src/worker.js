@@ -3573,13 +3573,14 @@ async function matchesSave(env, data, sha, message, path) {
 // ------------------------------------------------------------
 const MATCHES_CONFIG_PATH = "matches-config.json";
 function matchesDefaultConfig() {
-  return { templates: [], autoPublish: { enabled: false, hoursBefore: 2 }, alerts: { enabled: false, minutesBefore: 60, noChannels: true } };
+  return { templates: [], teams: [], autoPublish: { enabled: false, hoursBefore: 2 }, alerts: { enabled: false, minutesBefore: 60, noChannels: true } };
 }
 function matchesNormalizeConfig(c) {
   const d = matchesDefaultConfig();
   c = c && typeof c === "object" && !Array.isArray(c) ? c : {};
   return {
     templates: Array.isArray(c.templates) ? c.templates : [],
+    teams: Array.isArray(c.teams) ? c.teams : [],
     autoPublish: { ...d.autoPublish, ...(c.autoPublish || {}) },
     alerts: { ...d.alerts, ...(c.alerts || {}) }
   };
@@ -3598,6 +3599,17 @@ function validateMatchesConfig(c) {
     if (!Array.isArray(t.channels) || t.channels.length > 60) return "قنوات القالب غير صالحة";
     for (const ch of t.channels) {
       if (!ch || !String(ch.name || "").trim() || !/^(go:[\w.\-]+|https?:\/\/\S+)$/i.test(String(ch.url || "").trim())) return "قناة غير صالحة داخل القالب «" + t.name + "»";
+    }
+  }
+  if (c.teams !== undefined) {
+    if (!Array.isArray(c.teams) || c.teams.length > 3000) return "مكتبة الفرق غير صالحة";
+    const names = new Set();
+    for (const t of c.teams) {
+      const n = t && String(t.name || "").trim();
+      if (!n || n.length > 80 || names.has(n)) return "اسم فريق مفقود أو مكرر في المكتبة";
+      names.add(n);
+      const f = String(t.flag || "").trim();
+      if (f && !/^https?:\/\/\S+$/i.test(f)) return "رابط شعار غير صالح للفريق «" + n + "»";
     }
   }
   const a = c.autoPublish || {}, al = c.alerts || {};
