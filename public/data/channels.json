@@ -834,12 +834,13 @@
     {
       "id": "56",
       "name": "Thmanyah 2 HD",
-      "url": "https://oscartv.super-stv.workers.dev/?id=90&go=245&file=.m3u8",
+      "url": "https://blcco.linkip.org/live/3454_.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "57",
