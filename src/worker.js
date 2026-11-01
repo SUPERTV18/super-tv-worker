@@ -3507,10 +3507,10 @@ function matchesB64Encode(text) {
   return btoa(Array.from(new TextEncoder().encode(text), b => String.fromCharCode(b)).join(""));
 }
 
-async function matchesReadFile(env, ref) {
+async function matchesReadFile(env, ref, path, optional) {
   const q = "?ref=" + encodeURIComponent(ref || MATCHES_GH.branch);
-  const res = await matchesGh(env, "/contents/" + MATCHES_GH.path + q);
-  if (res.status === 404) throw Object.assign(new Error("ملف المباريات غير موجود في المستودع."), { status: 404 });
+  const res = await matchesGh(env, "/contents/" + (path || MATCHES_GH.path) + q);
+  if (res.status === 404) { if (optional) return null; throw Object.assign(new Error("ملف المباريات غير موجود في المستودع."), { status: 404 }); }
   if (!res.ok) throw Object.assign(new Error("تعذر قراءة ملف المباريات من GitHub: " + res.status), { status: 502 });
   const meta = await res.json();
   let text;
@@ -3551,14 +3551,14 @@ function validateMatches(data) {
   return "";
 }
 
-async function matchesSave(env, data, sha, message) {
+async function matchesSave(env, data, sha, message, path) {
   const body = {
     message: message || "Update matches from SUPER LIVE TV Admin",
     content: matchesB64Encode(JSON.stringify(data, null, 2) + "\n"),
-    sha,
     branch: MATCHES_GH.branch
   };
-  const res = await matchesGh(env, "/contents/" + MATCHES_GH.path, {
+  if (sha) body.sha = sha;
+  const res = await matchesGh(env, "/contents/" + (path || MATCHES_GH.path), {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
   });
   const out = await res.json().catch(() => ({}));
@@ -3567,9 +3567,188 @@ async function matchesSave(env, data, sha, message) {
   return { sha: out.content && out.content.sha, commit: out.commit && out.commit.sha };
 }
 
+
+// ------------------------------------------------------------
+// CONFIG (قوالب القنوات + النشر التلقائي + التنبيهات) -> matches-config.json
+// ------------------------------------------------------------
+const MATCHES_CONFIG_PATH = "matches-config.json";
+function matchesDefaultConfig() {
+  return { templates: [], autoPublish: { enabled: false, hoursBefore: 2 }, alerts: { enabled: false, minutesBefore: 60, noChannels: true } };
+}
+function matchesNormalizeConfig(c) {
+  const d = matchesDefaultConfig();
+  c = c && typeof c === "object" && !Array.isArray(c) ? c : {};
+  return {
+    templates: Array.isArray(c.templates) ? c.templates : [],
+    autoPublish: { ...d.autoPublish, ...(c.autoPublish || {}) },
+    alerts: { ...d.alerts, ...(c.alerts || {}) }
+  };
+}
+function validateMatchesConfig(c) {
+  if (!c || typeof c !== "object" || Array.isArray(c)) return "الإعدادات غير صالحة";
+  if (!Array.isArray(c.templates) || c.templates.length > 200) return "قائمة القوالب غير صالحة";
+  const ids = new Set();
+  for (const t of c.templates) {
+    if (!t || typeof t !== "object") return "قالب غير صالح";
+    const id = String(t.id || "").trim();
+    if (!id || ids.has(id)) return "معرّف قالب مفقود أو مكرر";
+    ids.add(id);
+    if (!String(t.name || "").trim() || String(t.name).length > 80) return "اسم القالب مطلوب (حتى 80 حرفًا)";
+    if (String(t.desc || "").length > 200) return "وصف القالب طويل";
+    if (!Array.isArray(t.channels) || t.channels.length > 60) return "قنوات القالب غير صالحة";
+    for (const ch of t.channels) {
+      if (!ch || !String(ch.name || "").trim() || !/^(go:[\w.\-]+|https?:\/\/\S+)$/i.test(String(ch.url || "").trim())) return "قناة غير صالحة داخل القالب «" + t.name + "»";
+    }
+  }
+  const a = c.autoPublish || {}, al = c.alerts || {};
+  if (typeof a.enabled !== "boolean" || !(Number(a.hoursBefore) >= 0.25 && Number(a.hoursBefore) <= 24)) return "إعدادات النشر التلقائي غير صالحة";
+  if (typeof al.enabled !== "boolean" || !(Number(al.minutesBefore) >= 5 && Number(al.minutesBefore) <= 720)) return "إعدادات التنبيهات غير صالحة";
+  return "";
+}
+async function matchesLoadConfig(env) {
+  const r = await matchesReadFile(env, null, MATCHES_CONFIG_PATH, true);
+  if (!r) return { config: matchesDefaultConfig(), sha: null };
+  return { config: matchesNormalizeConfig(r.data), sha: r.sha };
+}
+
+// ------------------------------------------------------------
+// CRON: نشر تلقائي (إزالة x قبل البداية) + تنبيهات Telegram
+// ------------------------------------------------------------
+function matchesCairoNow() {
+  try {
+    return new Intl.DateTimeFormat("sv-SE", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).format(new Date()).replace(" ", "T");
+  } catch { return new Date(Date.now() + 2 * 3600e3).toISOString().slice(0, 19); }
+}
+function matchesMs(s) { return Date.parse(String(s || "").slice(0, 19) + "Z"); }
+function matchesIsHidden(m) { return /\sx\s*$/i.test(String(m && m.league || "")); }
+function matchesTitle(m) { return ((m.team1 && m.team1.name) || "") + " × " + ((m.team2 && m.team2.name) || ""); }
+function matchesEsc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function matchesTelegramReady(env) { return Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID); }
+async function matchesTelegram(env, html) {
+  if (!matchesTelegramReady(env)) throw new Error("لم يُضبط TELEGRAM_BOT_TOKEN و TELEGRAM_CHAT_ID في الـ Worker.");
+  const res = await fetch("https://api.telegram.org/bot" + env.TELEGRAM_BOT_TOKEN + "/sendMessage", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: html, parse_mode: "HTML", disable_web_page_preview: true })
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok || out.ok === false) throw new Error("Telegram: " + (out.description || res.status));
+  return true;
+}
+// منع تكرار التنبيه: KV لو متاح وإلا Cache API
+async function matchesSeen(env, key) {
+  try {
+    if (env.DATA_KV) return Boolean(await env.DATA_KV.get("mt:" + key));
+    return Boolean(await caches.default.match(new Request("https://matches-alerts.local/" + encodeURIComponent(key))));
+  } catch { return false; }
+}
+async function matchesMarkSeen(env, key) {
+  try {
+    if (env.DATA_KV) await env.DATA_KV.put("mt:" + key, "1", { expirationTtl: 172800 });
+    else await caches.default.put(new Request("https://matches-alerts.local/" + encodeURIComponent(key)), new Response("1", { headers: { "Cache-Control": "max-age=172800" } }));
+  } catch {}
+}
+async function matchesStoreLastRun(env, out) {
+  try {
+    const body = JSON.stringify({ at: out.at, published: out.published.length, alerts: out.alerts.length, errors: out.errors, dry: out.dry });
+    if (env.DATA_KV) await env.DATA_KV.put("mt:lastRun", body, { expirationTtl: 30 * 86400 });
+    else await caches.default.put(new Request("https://matches-alerts.local/lastRun"), new Response(body, { headers: { "Cache-Control": "max-age=2592000" } }));
+  } catch {}
+}
+async function matchesLoadLastRun(env) {
+  try {
+    if (env.DATA_KV) return JSON.parse(await env.DATA_KV.get("mt:lastRun") || "null");
+    const r = await caches.default.match(new Request("https://matches-alerts.local/lastRun"));
+    return r ? await r.json() : null;
+  } catch { return null; }
+}
+async function matchesRunCron(env, dry) {
+  const out = { at: matchesCairoNow(), dry: Boolean(dry), published: [], alerts: [], errors: [], telegram: matchesTelegramReady(env) };
+  const now = matchesMs(out.at);
+  const { config } = await matchesLoadConfig(env);
+  let cur = await matchesReadFile(env);
+  let list = cur.data;
+  // 1) نشر تلقائي
+  if (config.autoPublish.enabled) {
+    const windowMs = Number(config.autoPublish.hoursBefore) * 3600e3;
+    const changed = [];
+    const next = list.map(m => {
+      if (!matchesIsHidden(m)) return m;
+      const st = matchesMs(m.time);
+      if (!(st - now <= windowMs && now - st <= 3 * 3600e3)) return m;
+      changed.push(m);
+      return { ...m, league: String(m.league).replace(/\s+x\s*$/i, "") };
+    });
+    if (changed.length) {
+      out.published = changed.map(m => ({ title: matchesTitle(m), time: m.time }));
+      if (!dry) {
+        try { await matchesSave(env, next, cur.sha, "Auto-publish " + changed.length + " match(es) before kickoff"); list = next; }
+        catch (e) {
+          if (e.status === 409) { // الملف تغيّر: أعد القراءة مرة واحدة
+            cur = await matchesReadFile(env);
+            const retry = cur.data.map(m => { const hit = changed.some(c => c.time === m.time && matchesTitle(c) === matchesTitle(m)); return hit && matchesIsHidden(m) ? { ...m, league: String(m.league).replace(/\s+x\s*$/i, "") } : m; });
+            try { await matchesSave(env, retry, cur.sha, "Auto-publish " + changed.length + " match(es) before kickoff"); list = retry; } catch (e2) { out.errors.push(e2.message); }
+          } else out.errors.push(e.message);
+        }
+      } else list = next;
+    }
+  }
+  // 2) تنبيهات
+  if (config.alerts.enabled) {
+    const horizon = Number(config.alerts.minutesBefore) * 60e3;
+    const msgs = [];
+    for (const m of list) {
+      const st = matchesMs(m.time);
+      if (!(st > now && st - now <= horizon)) continue;
+      if (config.alerts.noChannels && !(m.channels || []).length) {
+        const key = "nochan|" + m.time + "|" + matchesTitle(m);
+        msgs.push({ key, text: "⚠️ <b>مباراة بدون قنوات</b>\n" + matchesEsc(matchesTitle(m)) + "\n🕒 " + matchesEsc(String(m.time).slice(11, 16)) + " (بتوقيت القاهرة) — بعد " + Math.round((st - now) / 60e3) + " دقيقة" });
+      }
+    }
+    if (out.published.length && !dry) {
+      const key = "pub|" + out.at.slice(0, 13) + "|" + out.published.map(p => p.time).join(",");
+      msgs.push({ key, text: "✅ <b>نُشرت تلقائيًا في التطبيق</b>\n" + out.published.map(p => "• " + matchesEsc(p.title) + " — " + matchesEsc(String(p.time).slice(11, 16))).join("\n") });
+    }
+    for (const m of msgs) {
+      out.alerts.push(m.text.split("\n")[0].replace(/<[^>]+>/g, "") + " — " + m.key.split("|").slice(-1)[0]);
+      if (dry) continue;
+      if (!matchesTelegramReady(env)) { if (!out.errors.includes("TELEGRAM غير مضبوط")) out.errors.push("TELEGRAM غير مضبوط"); continue; }
+      if (await matchesSeen(env, m.key)) { out.alerts.pop(); continue; }
+      try { await matchesTelegram(env, m.text); await matchesMarkSeen(env, m.key); } catch (e) { out.errors.push(e.message); }
+    }
+  }
+  if (!dry) await matchesStoreLastRun(env, out);
+  return out;
+}
+
 async function matchesAdminApi(request, env, url) {
   const p = url.pathname, method = request.method;
   try {
+    if (p === "/api/admin/matches/config" && method === "GET") {
+      const { config, sha } = await matchesLoadConfig(env);
+      return json({ config, sha, lastRun: await matchesLoadLastRun(env), telegram: matchesTelegramReady(env) });
+    }
+    if (p === "/api/admin/matches/config" && method === "POST") {
+      let body;
+      try { body = await request.json(); } catch { return json({ error: "JSON غير صالح" }, 400); }
+      const cfg = body && body.config;
+      const err = validateMatchesConfig(cfg);
+      if (err) return json({ error: err }, 400);
+      const cur = await matchesLoadConfig(env);
+      const base = request.headers.get("X-Base-Sha");
+      if (base && cur.sha && base !== cur.sha) return json({ error: "تم تعديل الإعدادات من مكان آخر. حدّث الصفحة ثم أعد المحاولة.", currentSha: cur.sha }, 409);
+      const clean = matchesNormalizeConfig(cfg);
+      const saved = await matchesSave(env, clean, cur.sha, "Update matches config from SUPER LIVE TV Admin", MATCHES_CONFIG_PATH);
+      return json({ status: "ok", message: "تم حفظ الإعدادات", sha: saved.sha });
+    }
+    if (p === "/api/admin/matches/run" && method === "POST") {
+      let body = {};
+      try { body = await request.json(); } catch {}
+      return json(await matchesRunCron(env, body && body.dry !== false));
+    }
+    if (p === "/api/admin/matches/telegram-test" && method === "POST") {
+      await matchesTelegram(env, "✅ <b>SUPER LIVE TV</b>\nتنبيهات المباريات شغالة.");
+      return json({ status: "ok", message: "أُرسلت رسالة تجريبية إلى Telegram" });
+    }
     if (p === "/api/admin/matches" && method === "GET") {
       const { data, sha } = await matchesReadFile(env);
       return json({ matches: data, sha });
@@ -3973,6 +4152,13 @@ export class ViewerTracker {
 }
 
 export default {
+
+  // Cron Trigger: نشر تلقائي للمباريات (إزالة x قبل البداية)
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      matchesRunCron(env, false).catch(e => console.error("MATCHES CRON ERROR", e && e.message))
+    );
+  },
 
   async fetch(
     request,
