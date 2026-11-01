@@ -1142,6 +1142,15 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 .mx-imp pre{white-space:pre-wrap;font-size:12px;background:var(--surface-3);border-radius:10px;padding:10px;max-height:160px;overflow:auto}
 .mx-emptyline{color:var(--muted);font-size:13px;padding:10px 2px}
 @media(max-width:640px){.mx-row{grid-template-columns:48px 14px minmax(0,1fr)}.mx-row .act{grid-column:3;flex-direction:row;padding:0 0 8px}.mx-trow{grid-template-columns:40px minmax(0,1fr)}.mx-trow>:nth-child(n+3){grid-column:2}}
+.mtag.mord{cursor:grab;padding:3px 4px;gap:4px}
+.mtag.mord:active{cursor:grabbing}
+.mtag.mord .no{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:7px;background:#0a2a25;color:#7ff0c4;font-size:11px}
+:root[data-theme="light"] .mtag.mord .no{background:#0a6b4d;color:#fff}
+.mtag.mord .mv{all:unset;cursor:pointer;display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:6px;font-size:14px;font-weight:800;opacity:.75}
+.mtag.mord .mv:hover,.mtag.mord .mv:focus-visible{opacity:1;background:#ffffff1f;outline:none}
+:root[data-theme="light"] .mtag.mord .mv:hover{background:#0a6b4d22}
+.mtag.mord .rm{color:var(--red)}
+.mtag.mord .nm{padding:0 2px}
 </style>
 </head>
 <body>
@@ -1462,8 +1471,8 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 <div class="panel"><h3>معاينة كما يراها التطبيق</h3><p class="muted" style="font-size:13px;margin:0 0 10px">تقرأ رابط الـ API الحقيقي وتقارنه بما تتوقع اللوحة ظهوره (بدون x وتاريخها اليوم).</p><button class="soft" type="button" data-mx="preview"><span data-ico="target" data-size="16"></span>فحص الآن</button><div id="mxPreview" class="mx-prev"></div></div></div></div>
 </section>
 <section class="page" id="page-mteams">
-<div class="pagehead"><div><div class="crumb">المباريات<i>/</i><b>الفرق والبطولات</b></div><h2>الفرق والبطولات</h2><p class="muted">عدّل اسم الفريق أو شعاره أو البطولة مرة واحدة ويتغير في كل المباريات.</p></div>
-<div class="h-row"><button class="soft" type="button" data-mx="refresh"><span data-ico="refresh" data-size="16"></span>تحديث</button></div></div>
+<div class="pagehead"><div><div class="crumb">المباريات<i>/</i><b>الفرق والبطولات</b></div><h2>الفرق والبطولات</h2><p class="muted">عدّل اسم الفريق أو شعاره أو البطولة مرة واحدة ويتغير في كل المباريات. شعارات الأندية تُحفظ في مكتبة دائمة ولا تُحذف مع المباريات القديمة.</p></div>
+<div class="h-row"><button class="soft" type="button" data-mx="libfill">املأ الشعارات الناقصة</button><button class="primary" type="button" data-mx="libadd"><span data-ico="plus" data-size="16"></span>فريق للمكتبة</button><button class="soft" type="button" data-mx="refresh"><span data-ico="refresh" data-size="16"></span>تحديث</button></div></div>
 <div class="banner hidden mx-bar" data-mxbar role="status"><span><span data-ico="alert"></span><span data-mxbartxt>تعديلات لم تُحفظ</span></span><div style="display:flex;gap:8px"><button type="button" data-mx="save" style="background:linear-gradient(120deg,#35c9ff,#6f9bff);color:#04121f;border-color:transparent">حفظ في GitHub</button></div></div>
 <div class="toolbar"><div class="searchbox"><span data-ico="search" data-size="16"></span><input id="mxTeamQ" type="search" placeholder="ابحث باسم فريق أو بطولة" aria-label="بحث"></div><select id="mxTeamF" aria-label="تصفية"><option value="">الكل</option><option value="bad">بها مشكلة (شعار)</option></select></div>
 <div class="panel"><h3>الفرق</h3><div id="mxTeams" class="mx-list"></div></div>
@@ -1616,7 +1625,7 @@ $("dashboardCustomize").addEventListener("click",()=>{$("dashboardPrefs").classL
 $("saveDashboardPrefs").addEventListener("click",saveDashboardPrefs);
 $("resetDashboardPrefs").addEventListener("click",()=>{try{localStorage.removeItem(DASH_PREF_KEY)}catch(e){}applyDashboardPrefs(DASH_WIDGET_DEFAULTS);notify("تمت استعادة الواجهة الافتراضية")});
 applyDashboardPrefs();
-function showPage(name){const target=document.getElementById("page-"+name);if(target){target.classList.remove("page-enter");void target.offsetWidth;target.classList.add("page-enter")}document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));document.querySelectorAll(".nav").forEach(b=>{const on=b.dataset.page===name;b.classList.toggle("active",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});if(name==="editor"&&!editing)clearEditor();if(name==="errors")loadErrorLogs();if(name==="ops")refreshOperations();if(name==="viewers")startViewers();else stopViewers();if(name==="overview")startDashboardViewers();else stopDashboardViewers();if(name==="history")loadHistory();if(name==="matches"){loadMatches();mxLoadCfg().catch(()=>{})}if(MX_PAGES.includes(name))mxEnter(name);window.scrollTo({top:0})}
+function showPage(name){const target=document.getElementById("page-"+name);if(target){target.classList.remove("page-enter");void target.offsetWidth;target.classList.add("page-enter")}document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="page-"+name));document.querySelectorAll(".nav").forEach(b=>{const on=b.dataset.page===name;b.classList.toggle("active",on);if(on)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});if(name==="editor"&&!editing)clearEditor();if(name==="errors")loadErrorLogs();if(name==="ops")refreshOperations();if(name==="viewers")startViewers();else stopViewers();if(name==="overview")startDashboardViewers();else stopDashboardViewers();if(name==="history")loadHistory();if(name==="matches"){loadMatches();mxLoadCfg().then(mxSyncLib).catch(()=>{})}if(MX_PAGES.includes(name))mxEnter(name);window.scrollTo({top:0})}
 document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
 document.getElementById("openSeriesAdmin")?.addEventListener("click",()=>window.open("https://series-stv.pages.dev/admin","_blank","noopener,noreferrer"));
 document.getElementById("reloadSeriesAdmin")?.addEventListener("click",()=>{const f=document.getElementById("seriesAdminFrame");if(f){f.src="https://series-stv.pages.dev/admin";}});
@@ -2392,7 +2401,7 @@ async function mEdit(key,mode){
  const orig=key!=null?M.list.find(m=>m._k===key):null;
  const base=orig?mClone(mStrip(orig)):{league:"",title:"",time:mDayKey(0)+"T21:00:00",team1:{name:"",flag:""},team2:{name:"",flag:""},extra:false,channels:[]};
  if(mode==="dup"){delete base.stoppedAt;delete base.resumeAt;delete base.status}
- const known=mKnownChannels(),bundles=mBundles(known),leagues=[...new Set(M.list.map(m=>String(m.league||"").replace(/\s+x\s*$/i,"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar")),teams=new Map();M.list.forEach(m=>[m.team1,m.team2].forEach(t=>{if(t&&t.name&&!teams.has(t.name))teams.set(t.name,t.flag||"")}));
+ const known=mKnownChannels(),bundles=mBundles(known),leagues=[...new Set(M.list.map(m=>String(m.league||"").replace(/\s+x\s*$/i,"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar")),teams=new Map();M.list.forEach(m=>[m.team1,m.team2].forEach(t=>{if(t&&t.name&&!teams.has(t.name))teams.set(t.name,t.flag||"")}));((C.cfg&&C.cfg.teams)||[]).forEach(t=>{if(t.name&&!teams.get(t.name))teams.set(t.name,t.flag||"")});
  let chans=(base.channels||[]).map(c=>({name:c.name,url:c.url})),autoTitle=!base.title||base.title===((base.team1||{}).name||"")+" × ";
  const sp=mSplit(base.time),w=document.createElement("div");w.className="medit";
  w.innerHTML='<datalist id="meLeagues">'+leagues.map(l=>'<option value="'+esc(l)+'">').join("")+'</datalist><datalist id="meTeams">'+[...teams.keys()].map(n=>'<option value="'+esc(n)+'">').join("")+'</datalist>'
@@ -2405,10 +2414,10 @@ async function mEdit(key,mode){
  +'<div class="mrow3"><input id="meCn" placeholder="اسم قناة مخصصة"><input id="meCu" dir="ltr" placeholder="go:CODE أو https://..."><button type="button" class="soft" id="meCadd">إضافة</button></div></div>'
  +'<details class="adv" style="margin-top:14px"><summary><span>خيارات متقدمة</span><span data-ico="chev"></span></summary><div class="formgrid"><div class="field wide"><label for="meTitle">العنوان (title) كما يقرأه التطبيق</label><input id="meTitle" value="'+esc(base.title||"")+'"></div><div class="field"><label for="meStop">أُوقفت عند</label><input id="meStop" type="datetime-local" value="'+esc(String(base.stoppedAt||"").slice(0,16))+'"></div><div class="field"><label for="meResume">تستأنف عند</label><input id="meResume" type="datetime-local" value="'+esc(String(base.resumeAt||"").slice(0,16))+'"></div></div></details>';
  const g=id=>w.querySelector("#"+id);
- function drawSel(){g("meSel").innerHTML=chans.map((c,i)=>'<button type="button" class="mtag on" data-i="'+i+'" title="'+esc(c.url)+'">'+esc(c.name)+' <small>'+esc(mCode(c.url))+'</small> <span class="x" aria-label="إزالة">×</span></button>').join("")}
+ function drawSel(){g("meSel").innerHTML=mxChipsHtml(chans)}
  function drawBundles(){const q=g("mePoolQ").value.trim().toLowerCase(),have=new Set(chans.map(c=>c.url));g("meBundles").innerHTML=bundles.filter(b=>{const h=(b.label+" "+b.key).toLowerCase();return !q||q.split(/\s+/).every(t=>h.includes(t))}).map(b=>{const all=b.items.every(i=>have.has(i.url));const some=b.items.some(i=>have.has(i.url));return '<button type="button" class="mtag bundle'+(all?" on":"")+'" data-b="'+esc(b.key)+'" title="'+esc(b.items.map(i=>i.name+" ("+mCode(i.url)+")").join(" · "))+'">'+(all?"✓ ":some?"◐ ":"+ ")+esc(b.label)+' <small>'+esc(b.items.map(i=>i.name).join(" · "))+'</small></button>'}).join("")||'<span class="muted">لا توجد حزم مطابقة</span>'}
  function drawPool(){drawBundles();const q=g("mePoolQ").value.trim().toLowerCase(),have=new Set(chans.map(c=>c.url));g("mePool").innerHTML=known.filter(k=>!have.has(k.url)&&(!q||(k.name+" "+k.url).toLowerCase().includes(q))).slice(0,60).map(k=>'<button type="button" class="mtag" data-u="'+esc(k.url)+'" title="'+esc(k.url)+'">+ '+esc(k.name)+' <small>'+esc(mCode(k.url))+'</small></button>').join("")||'<span class="muted">لا نتائج</span>'}
- g("meSel").onclick=e=>{const b=e.target.closest("[data-i]");if(!b)return;chans.splice(+b.dataset.i,1);drawSel();drawPool()};
+ mxBindReorder(g("meSel"),chans,()=>{drawSel();drawPool()});
  g("meBundles").onclick=e=>{const b=e.target.closest("[data-b]");if(!b)return;const bd=bundles.find(x=>x.key===b.dataset.b);if(!bd)return;const have=new Set(chans.map(c=>c.url));if(bd.items.every(i=>have.has(i.url))){const rm=new Set(bd.items.map(i=>i.url));chans=chans.filter(c=>!rm.has(c.url))}else bd.items.forEach(i=>{if(!have.has(i.url))chans.push({name:i.name,url:i.url})});drawSel();drawPool()};
  g("mePool").onclick=e=>{const b=e.target.closest("[data-u]");if(!b)return;const k=known.find(x=>x.url===b.dataset.u);if(k){chans.push({name:k.name,url:k.url});drawSel();drawPool()}};
  g("mePoolQ").oninput=drawPool;
@@ -2468,17 +2477,22 @@ setInterval(()=>{if(document.visibilityState==="visible"&&M.loaded&&$("page-matc
 
 /* MATCHES_JS_END */
 /* MATCHES SECTION v2 JS */
-const C={cfg:null,sha:null,tg:false,last:null,loaded:false,dirty:false,loading:null};
+const C={cfg:null,syncing:false,sha:null,tg:false,last:null,loaded:false,dirty:false,loading:null};
 const MX_PAGES=["mtoday","mteams","mtemplates","mauto","mhistory"];
 function mxActive(){const a=document.querySelector(".page.active");return a?a.id.replace("page-",""):""}
-function mxDefaultCfg(){return{templates:[],autoPublish:{enabled:false,hoursBefore:2},alerts:{enabled:false,minutesBefore:60,noChannels:true}}}
+function mxDefaultCfg(){return{templates:[],teams:[],autoPublish:{enabled:false,hoursBefore:2},alerts:{enabled:false,minutesBefore:60,noChannels:true}}}
 async function mxLoadCfg(force){
  if(C.loaded&&!force&&C.worker===activeWorker)return C.cfg;if(C.loading)return C.loading;
  C.loading=(async()=>{try{const r=await api("/api/admin/matches/config");C.cfg={...mxDefaultCfg(),...r.config,autoPublish:{...mxDefaultCfg().autoPublish,...(r.config||{}).autoPublish},alerts:{...mxDefaultCfg().alerts,...(r.config||{}).alerts}};C.sha=r.sha||null;C.tg=!!r.telegram;C.last=r.lastRun||null;C.loaded=true;C.dirty=false;C.worker=activeWorker;return C.cfg}finally{C.loading=null}})();
  return C.loading}
-async function mxSaveCfg(){
- if(!C.cfg)return;try{const r=await api("/api/admin/matches/config",{method:"POST",headers:C.sha?{"X-Base-Sha":C.sha}:{},body:JSON.stringify({config:C.cfg})});notify(r.message||"تم حفظ الإعدادات");await mxLoadCfg(true);mxRender()}
+async function mxSaveCfg(quiet){
+ if(!C.cfg)return;try{const r=await api("/api/admin/matches/config",{method:"POST",headers:C.sha?{"X-Base-Sha":C.sha}:{},body:JSON.stringify({config:C.cfg})});if(quiet){C.sha=r.sha||C.sha;return}notify(r.message||"تم حفظ الإعدادات");await mxLoadCfg(true);mxRender()}
  catch(e){if(e.status===409){notify(e.message,"error");await mxLoadCfg(true);mxRender()}else notify(e.message,"error")}}
+function mxLib(){if(!C.cfg.teams)C.cfg.teams=[];return C.cfg.teams}
+async function mxSyncLib(){
+ if(!C.loaded||!M.loaded||C.syncing)return;const lib=mxLib(),have=new Set(lib.map(t=>t.name));let add=0;
+ M.list.forEach(m=>[m.team1,m.team2].forEach(t=>{if(!t||!String(t.name||"").trim())return;const n=t.name.trim(),f=mFlagFix(t.flag);if(!/^https?:\/\//i.test(f||"")||have.has(n))return;lib.push({name:n,flag:f});have.add(n);add++}));
+ if(!add)return;C.syncing=true;try{await mxSaveCfg(true)}catch(e){}finally{C.syncing=false}}
 function mxSync(){const n=M.loaded?mUnsaved():0;document.querySelectorAll("[data-mxbar]").forEach(b=>{b.classList.toggle("hidden",!n);const t=b.querySelector("[data-mxbartxt]");if(t)t.textContent=M.saving?"جارٍ الحفظ في GitHub…":M.failed?"تعذّر الحفظ التلقائي — اضغط «حفظ في GitHub»":(mAuto()?"سيُحفظ تلقائيًا خلال لحظات (":"تعديلات لم تُحفظ (")+n+")"})}
 function mxTitle(m){return((m.team1||{}).name||"—")+" × "+((m.team2||{}).name||"—")}
 function mxKnownCodes(){const c=new Map();M.list.forEach(m=>(m.channels||[]).forEach(ch=>{const u=String(ch.url||"");if(/^go:/i.test(u)){const k=u.slice(3);c.set(k,(c.get(k)||0)+1)}}));return c}
@@ -2505,20 +2519,28 @@ function mxToday(){
  const is=mxIssues();$("mxAlerts").innerHTML=is.length?is.map(i=>'<div class="mx-alert '+i.l+'"><span data-ico="'+(i.l==="i"?"info":"alert")+'" data-size="16"></span><div class="b">'+esc(i.t)+'</div>'+(i.k?'<button type="button" class="soft" data-mxedit="'+i.k+'" style="padding:5px 10px;font-size:12px">فتح</button>':"")+'</div>').join(""):'<div class="mx-emptyline">✓ لا توجد مشاكل — كل شيء سليم.</div>';
  paintIcons($("page-mtoday"))}
 function mxTeamsData(){const t=new Map();M.list.forEach(m=>[m.team1,m.team2].forEach(x=>{if(!x||!String(x.name||"").trim())return;const n=x.name.trim(),o=t.get(n)||{name:n,n:0,flags:new Map()};o.n++;const f=String(x.flag||"").trim();o.flags.set(f,(o.flags.get(f)||0)+1);t.set(n,o)}));return[...t.values()].map(o=>{const fl=[...o.flags.entries()].sort((a,b)=>b[1]-a[1]);const best=(fl.find(([f])=>/^https?:\/\//i.test(f))||[""])[0];const issue=fl.some(([f])=>f&&!/^https?:\/\//i.test(f))?"شعار مكسور":(fl.filter(([f])=>f).length>1?"شعارات مختلفة":(!fl.some(([f])=>f)?"بدون شعار":""));return{name:o.name,n:o.n,flag:best,issue}}).sort((a,b)=>a.name.localeCompare(b.name,"ar"))}
+function mxTeamsAll(){const base=mxTeamsData(),lib=new Map(((C.cfg&&C.cfg.teams)||[]).map(t=>[t.name,t])),seen=new Set();const out=base.map(t=>{seen.add(t.name);const l=lib.get(t.name);return{...t,inLib:!!l,flag:t.flag||(l?l.flag:""),issue:(t.issue==="بدون شعار"&&l&&l.flag)?"":t.issue,libFlag:l?l.flag:""}});lib.forEach(l=>{if(!seen.has(l.name))out.push({name:l.name,n:0,flag:l.flag,issue:"",inLib:true,libFlag:l.flag})});return out.sort((a,b)=>a.name.localeCompare(b.name,"ar"))}
 function mxTeams(){
  const q=$("mxTeamQ").value.trim().toLowerCase(),f=$("mxTeamF").value;
- const teams=mxTeamsData().filter(t=>(!q||t.name.toLowerCase().includes(q))&&(!f||t.issue));
- $("mxTeams").innerHTML=teams.length?teams.map(t=>'<div class="mx-trow'+(t.issue?" bad":"")+'">'+mFlag({name:t.name,flag:t.flag})+'<div class="nm">'+esc(t.name)+'<small>'+t.n+' مباراة'+(t.issue?' · <span style="color:var(--amber)">'+t.issue+'</span>':"")+'</small></div><span></span><button type="button" class="soft" data-mxteam="'+esc(t.name)+'">تعديل</button></div>').join(""):'<div class="mx-emptyline">لا نتائج.</div>';
+ const teams=mxTeamsAll().filter(t=>(!q||t.name.toLowerCase().includes(q))&&(!f||t.issue));
+ $("mxTeams").innerHTML=teams.length?teams.map(t=>'<div class="mx-trow'+(t.issue?" bad":"")+'">'+mFlag({name:t.name,flag:t.flag})+'<div class="nm">'+esc(t.name)+'<small>'+(t.n?t.n+' مباراة':'في المكتبة فقط')+(t.inLib?' · <span style="color:var(--green)">🔒 محفوظ':'')+(t.inLib?'</span>':'')+(t.issue?' · <span style="color:var(--amber)">'+t.issue+'</span>':"")+'</small></div><span></span><span style="display:flex;gap:6px"><button type="button" class="soft" data-mxteam="'+esc(t.name)+'">تعديل</button>'+(t.inLib&&!t.n?'<button type="button" class="soft" data-mxlibdel="'+esc(t.name)+'">حذف</button>':'')+'</span></div>').join(""):'<div class="mx-emptyline">لا نتائج.</div>';
  const lg=new Map();M.list.forEach(m=>{const l=mLeagueLabel(m.league),o=lg.get(l)||{n:0,h:0};o.n++;if(mHidden(m))o.h++;lg.set(l,o)});
  const ls=[...lg.entries()].filter(([l])=>!q||l.toLowerCase().includes(q)).sort((a,b)=>a[0].localeCompare(b[0],"ar"));
  $("mxLeagues").innerHTML=ls.length?ls.map(([l,o])=>'<div class="mx-trow"><span style="font-size:22px">🏆</span><div class="nm">'+esc(l)+'<small>'+o.n+' مباراة · '+o.h+' مخفية</small></div><span></span><button type="button" class="soft" data-mxleague="'+esc(l)+'">إعادة تسمية</button></div>').join(""):'<div class="mx-emptyline">لا نتائج.</div>';
  paintIcons($("page-mteams"))}
 async function mxEditTeam(name){
- const cur=mxTeamsData().find(t=>t.name===name);if(!cur)return;
+ const cur=mxTeamsAll().find(t=>t.name===name);if(!cur)return;
  const w=document.createElement("div");w.className="formgrid";w.innerHTML='<div class="field wide"><label for="mtN">اسم الفريق</label><input id="mtN" value="'+esc(name)+'"></div><div class="field wide"><label for="mtF">رابط الشعار (يُطبّق على كل مبارياته)</label><input id="mtF" dir="ltr" value="'+esc(cur.flag)+'" placeholder="https://..."></div><div class="field wide muted" style="font-size:12px">سيتغير في '+cur.n+' مباراة. اترك الشعار فارغًا للإبقاء على الحالي.</div>';
  for(;;){const ok=await openDialog({title:"تعديل الفريق",text:"",ok:"تطبيق على كل المباريات",body:w});if(!ok)return;const nn=w.querySelector("#mtN").value.trim(),nf=mFlagFix(w.querySelector("#mtF").value);if(!nn){notify("أدخل اسم الفريق","error");continue}if(nf&&!/^https?:\/\//i.test(nf)){notify("رابط الشعار يجب أن يبدأ بـ http(s)://","error");continue}
   let c=0;M.list.forEach(m=>{["team1","team2"].forEach(k=>{const t=m[k];if(t&&String(t.name||"").trim()===name){if(nn!==name)t.name=nn;if(nf)t.flag=nf;c++}});if(nn!==name&&m.title&&String(m.title).includes(name))m.title=String(m.title).split(" × ").map(p=>p.trim()===name?nn:p).join(" × ")});
-  renderMatches();notify("تم التعديل في "+c+" موضع"+(mAuto()?" — جارٍ الحفظ…":""));mTouch();return}}
+  if(C.cfg){const lib=mxLib(),fl=nf||cur.flag||"";let e=lib.find(t=>t.name===name);if(e){e.name=nn;e.flag=fl}else if(/^https?:\/\//i.test(fl))lib.push({name:nn,flag:fl});const dup=lib.filter(t=>t.name===nn);if(dup.length>1)lib.splice(lib.indexOf(dup[1]),1);mxSaveCfg(true).catch(()=>{})}
+  renderMatches();notify("تم التعديل في "+c+" موضع وحُفظ في مكتبة الشعارات"+(mAuto()?" — جارٍ الحفظ…":""));mTouch();return}}
+async function mxLibAdd(){
+ if(!C.cfg)return notify("انتظر تحميل الإعدادات","error");
+ const w=document.createElement("div");w.className="formgrid";w.innerHTML='<div class="field wide"><label for="mlN">اسم الفريق</label><input id="mlN" maxlength="80"></div><div class="field wide"><label for="mlF">رابط الشعار</label><input id="mlF" dir="ltr" placeholder="https://..."></div>';
+ for(;;){const ok=await openDialog({title:"إضافة فريق للمكتبة",text:"الشعارات في المكتبة لا تُحذف مهما حذفت من المباريات.",ok:"حفظ",body:w});if(!ok)return;const n=w.querySelector("#mlN").value.trim(),f=mFlagFix(w.querySelector("#mlF").value);if(!n||!/^https?:\/\//i.test(f)){notify("اسم الفريق ورابط شعار صحيح (https://)","error");continue}
+  const lib=mxLib(),e=lib.find(t=>t.name===n);if(e)e.flag=f;else lib.push({name:n,flag:f});await mxSaveCfg(true);notify("حُفظ في المكتبة");mxTeams();return}}
+function mxLibFill(){let c=0;const lib=new Map(mxLib().map(t=>[t.name,t.flag]));M.list.forEach(m=>["team1","team2"].forEach(k=>{const t=m[k];if(t&&!String(t.flag||"").trim()&&lib.get(String(t.name||"").trim())){t.flag=lib.get(t.name.trim());c++}}));if(!c)return notify("لا توجد شعارات ناقصة تُملأ من المكتبة");renderMatches();notify("مُلئ "+c+" شعار من المكتبة"+(mAuto()?" — جارٍ الحفظ…":""));mTouch()}
 async function mxEditLeague(l){const v=await openDialog({title:"إعادة تسمية البطولة",text:"ستتغير في كل مبارياتها مع الإبقاء على علامة x للمخفية.",ok:"تطبيق",input:{label:"اسم البطولة",value:l}});if(v==null)return;const nn=String(v).replace(/\s+x\s*$/i,"").trim();if(!nn||nn===l)return;let c=0;M.list.forEach(m=>{if(mLeagueLabel(m.league)===l){m.league=nn+(mHidden(m)?" x":"");c++}});renderMatches();notify("تغيّرت البطولة في "+c+" مباراة");mTouch()}
 /* templates */
 function mxTplChips(t){return(t.channels||[]).map(c=>'<span class="mchan" title="'+esc(c.url)+'"><i></i>'+esc(c.name)+'</span>').join("")||'<span class="muted">بدون قنوات</span>'}
@@ -2533,10 +2555,11 @@ async function mxTplEdit(id){
  const w=document.createElement("div");w.className="medit";w.innerHTML='<div class="formgrid"><div class="field wide"><label for="mtplN">اسم القالب</label><input id="mtplN" maxlength="80" value="'+esc(ex?ex.name:"")+'" placeholder="مثال: بين 1 كامل"></div><div class="field wide"><label for="mtplD">وصف (اختياري)</label><input id="mtplD" maxlength="200" value="'+esc(ex?ex.desc||"":"")+'"></div></div><h4>قنوات القالب</h4><div class="mpick"><div class="sel" id="mtSel"></div><div class="muted" style="margin:0">حزم جاهزة</div><div class="pool" id="mtBun"></div><input id="mtQ" type="search" placeholder="ابحث في القنوات المعروفة" style="margin-top:8px"><div class="pool" id="mtPool"></div><div class="mrow3"><input id="mtCn" placeholder="اسم قناة مخصصة"><input id="mtCu" dir="ltr" placeholder="go:CODE أو https://..."><button type="button" class="soft" id="mtCadd">إضافة</button></div></div>';
  const g=s=>w.querySelector("#"+s);
  function draw(){const have=new Set(chans.map(c=>c.url)),q=g("mtQ").value.trim().toLowerCase();
-  g("mtSel").innerHTML=chans.map((c,i)=>'<button type="button" class="mtag on" data-i="'+i+'" title="'+esc(c.url)+'">'+esc(c.name)+' <small>'+esc(mCode(c.url))+'</small> <span>×</span></button>').join("")||'<span class="muted">لم تُضف قنوات بعد</span>';
+  g("mtSel").innerHTML=mxChipsHtml(chans)||'<span class="muted">لم تُضف قنوات بعد</span>';
   g("mtBun").innerHTML=bundles.filter(b=>!q||(b.label+b.key).toLowerCase().includes(q.replace(/\s+/g,""))||b.label.toLowerCase().includes(q)).slice(0,14).map(b=>'<button type="button" class="mtag" data-b="'+esc(b.key)+'">+ '+esc(b.label)+' <small>'+b.items.length+' جودات</small></button>').join("");
   g("mtPool").innerHTML=known.filter(k=>!have.has(k.url)&&(!q||(k.name+" "+k.url).toLowerCase().includes(q))).slice(0,30).map(k=>'<button type="button" class="mtag" data-u="'+esc(k.url)+'">+ '+esc(k.name)+' <small>'+esc(mCode(k.url))+'</small></button>').join("")}
- w.onclick=e=>{const a=e.target.closest("[data-i]"),b=e.target.closest("[data-b]"),u=e.target.closest("[data-u]");if(a){chans.splice(+a.dataset.i,1)}else if(b){const bd=bundles.find(x=>x.key===b.dataset.b);if(bd){const have=new Set(chans.map(c=>c.url));bd.items.forEach(i=>{if(!have.has(i.url))chans.push({name:i.name,url:i.url})})}}else if(u){const k=known.find(x=>x.url===u.dataset.u);if(k)chans.push({name:k.name,url:k.url})}else return;draw()};
+ mxBindReorder(g("mtSel"),chans,draw);
+ w.onclick=e=>{if(e.target.closest("#mtSel"))return;const a=e.target.closest("[data-i]"),b=e.target.closest("[data-b]"),u=e.target.closest("[data-u]");if(a){chans.splice(+a.dataset.i,1)}else if(b){const bd=bundles.find(x=>x.key===b.dataset.b);if(bd){const have=new Set(chans.map(c=>c.url));bd.items.forEach(i=>{if(!have.has(i.url))chans.push({name:i.name,url:i.url})})}}else if(u){const k=known.find(x=>x.url===u.dataset.u);if(k)chans.push({name:k.name,url:k.url})}else return;draw()};
  g("mtQ").oninput=draw;g("mtCadd").onclick=()=>{const n=g("mtCn").value.trim(),u=g("mtCu").value.trim();if(!n||!/^(go:[\w.\-]+|https?:\/\/\S+)$/i.test(u))return notify("اسم القناة ورابط صحيح (go:CODE أو https://)","error");if(chans.some(c=>c.url===u))return;chans.push({name:n,url:u});g("mtCn").value="";g("mtCu").value="";draw()};
  draw();
  for(;;){const ok=await openDialog({title:ex?"تعديل القالب":"قالب جديد",text:"",ok:"حفظ القالب",body:w});if(!ok)return;const name=g("mtplN").value.trim();if(!name){notify("أدخل اسم القالب","error");continue}if(!chans.length){notify("أضف قناة واحدة على الأقل","error");continue}
@@ -2583,7 +2606,7 @@ async function mxPreview(){
 async function mxImport(){
  if(!M.loaded)return notify("انتظر تحميل الجدول أولًا","error");
  try{await mxLoadCfg()}catch(e){}
- const tpls=(C.cfg&&C.cfg.templates)||[],flags=new Map();M.list.forEach(m=>[m.team1,m.team2].forEach(t=>{if(t&&t.name&&/^https?:/i.test(t.flag||"")&&!flags.has(t.name))flags.set(t.name,t.flag)}));
+ const tpls=(C.cfg&&C.cfg.templates)||[],flags=new Map();M.list.forEach(m=>[m.team1,m.team2].forEach(t=>{if(t&&t.name&&/^https?:/i.test(t.flag||"")&&!flags.has(t.name))flags.set(t.name,t.flag)}));((C.cfg&&C.cfg.teams)||[]).forEach(t=>{if(!flags.has(t.name))flags.set(t.name,t.flag)});
  const w=document.createElement("div");w.className="mx-imp";w.innerHTML='<p class="muted" style="font-size:13px;margin:0 0 8px">سطر لكل مباراة بصيغة:<br><code dir="ltr">2026-11-02 21:00 | الأهلي × الزمالك | الدوري المصري | اسم القالب</code><br>القالب اختياري'+(tpls.length?" (المتاح: "+tpls.map(t=>esc(t.name)).join("، ")+")":"")+'. الشعارات تُملأ من الفرق المعروفة.</p><textarea id="imT" spellcheck="false" placeholder="2026-11-02 21:00 | فريق 1 × فريق 2 | البطولة"></textarea><label class="chkrow" style="margin:10px 0"><input type="checkbox" id="imH" checked style="width:18px;height:18px;accent-color:#35c9ff"> إضافتها مخفية (x) لتُنشر تلقائيًا أو يدويًا لاحقًا</label><pre id="imP">اكتب أو الصق المباريات…</pre>';
  const parse=()=>{const out=[],errs=[];w.querySelector("#imT").value.split(/\r?\n/).forEach((ln,i)=>{if(!ln.trim())return;const p=ln.split("|").map(s=>s.trim()),mt=(p[0]||"").match(/^(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})$/),tm=(p[1]||"").split(/\s+[×xX]\s+|\s+-\s+|\s+vs\s+/i).map(s=>s.trim());if(!mt)return errs.push("سطر "+(i+1)+": التاريخ/الوقت غير صحيح");if(tm.length!==2||!tm[0]||!tm[1])return errs.push("سطر "+(i+1)+": اكتب الفريقين بصيغة «أ × ب»");if(!p[2])return errs.push("سطر "+(i+1)+": البطولة مطلوبة");let ch=[];if(p[3]){const t=tpls.find(t=>t.name===p[3]);if(!t)return errs.push("سطر "+(i+1)+": القالب «"+p[3]+"» غير موجود");ch=t.channels.map(c=>({name:c.name,url:c.url}))}
   out.push({league:p[2].replace(/\s+x\s*$/i,"")+(w.querySelector("#imH").checked?" x":""),title:tm[0]+" × "+tm[1],time:mt[1]+"T"+mt[2].padStart(2,"0")+":"+mt[3]+":00",team1:{name:tm[0],flag:flags.get(tm[0])||""},team2:{name:tm[1],flag:flags.get(tm[1])||""},extra:false,channels:ch})});return{out,errs}};
@@ -2596,8 +2619,8 @@ async function mxEnter(name){
  const fail=()=>{if(!M.loaded){const m=name==="mtoday"?"mxTimeline":name==="mteams"?"mxTeams":name==="mtemplates"?"mxTplBox":name==="mauto"?"mxAutoBox":"";if(m)$(m).innerHTML='<div class="empty">تعذّر تحميل الجدول — افتح «الجدول الكامل» لرؤية السبب.</div>'}};
  if(name==="mhistory")return mxHist();
  await loadMatches();if(!M.loaded)return fail();
- if(name!=="mteams"){try{await mxLoadCfg()}catch(e){if(name==="mtemplates"||name==="mauto"){const b=name==="mtemplates"?"mxTplBox":"mxAutoBox";$(b).innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}}
- mxRender()}
+ if(true){try{await mxLoadCfg()}catch(e){if(name==="mtemplates"||name==="mauto"){const b=name==="mtemplates"?"mxTplBox":"mxAutoBox";$(b).innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}}
+ mxRender();mxSyncLib().catch(()=>{})}
 document.addEventListener("click",async e=>{
  const t=e.target;let b;
  if(b=t.closest("[data-mx]")){const a=b.dataset.mx;
@@ -2605,12 +2628,13 @@ document.addEventListener("click",async e=>{
   else if(a==="add"){if(!M.loaded)return notify("انتظر تحميل الجدول أولًا","error");mEdit(null)}
   else if(a==="save")mSave(false);else if(a==="preview")mxPreview();
   else if(a==="cfgreload"){try{await mxLoadCfg(true);mxRender()}catch(er){notify(er.message,"error")}}
-  else if(a==="cfgsave")mxSaveCfg();else if(a==="tplnew")mxTplEdit(null);else if(a==="histreload")mxHist();
+  else if(a==="libadd")mxLibAdd();else if(a==="libfill")mxLibFill();else if(a==="cfgsave")mxSaveCfg();else if(a==="tplnew")mxTplEdit(null);else if(a==="histreload")mxHist();
   else if(a==="tgtest"){b.disabled=true;try{const r=await api("/api/admin/matches/telegram-test",{method:"POST",body:"{}"});notify(r.message||"أُرسلت")}catch(er){notify(er.message,"error")}b.disabled=!C.tg}
   else if(a==="dry"){b.disabled=true;const o=$("mxDry");o.innerHTML='<div class="muted">جار المحاكاة…</div>';try{const r=await api("/api/admin/matches/run",{method:"POST",body:JSON.stringify({dry:true})});o.innerHTML='<div><span class="mx-pill">الآن: '+esc(String(r.at).replace("T"," "))+' (القاهرة)</span></div>'+(r.published.length?'<div class="mx-alert i"><div class="b"><b>ستُنشر الآن:</b><br>'+r.published.map(p=>esc(p.title)+" — "+esc(String(p.time).slice(11,16))).join("<br>")+'</div></div>':'<div class="mx-alert i">لا توجد مباريات للنشر الآن'+(C.cfg.autoPublish.enabled?"":" (النشر التلقائي غير مفعّل أو لم يُحفظ)")+'.</div>')+(r.alerts.length?'<div class="mx-alert w"><div class="b"><b>تنبيهات ستُرسل:</b><br>'+r.alerts.map(esc).join("<br>")+'</div></div>':"")+(r.errors.length?'<div class="mx-alert e">'+r.errors.map(esc).join("<br>")+'</div>':"")}catch(er){o.innerHTML='<div class="mx-alert e">'+esc(er.message)+'</div>'}b.disabled=false}
   return}
  if(b=t.closest("[data-mxoff]")){M.mxOff=+b.dataset.mxoff;mxToday();return}
  if(b=t.closest("[data-mxedit]")){mEdit(+b.dataset.mxedit);return}
+ if(b=t.closest("[data-mxlibdel]")){const n=b.dataset.mxlibdel,ok=await openDialog({title:"حذف من المكتبة؟",text:"«"+n+"» ليس في أي مباراة. سيُحذف شعاره من المكتبة.",ok:"حذف",danger:true});if(ok){C.cfg.teams=mxLib().filter(x=>x.name!==n);await mxSaveCfg(true);mxTeams()}return}
  if(b=t.closest("[data-mxteam]")){mxEditTeam(b.dataset.mxteam);return}
  if(b=t.closest("[data-mxleague]")){mxEditLeague(b.dataset.mxleague);return}
  if(b=t.closest("[data-mxrestore]")){mxRestore(b.dataset.mxrestore);return}
@@ -2619,6 +2643,14 @@ document.addEventListener("change",e=>{const c=e.target.closest&&e.target.closes
 ["mxTeamQ","mxTeamF"].forEach(id=>$(id).addEventListener(id==="mxTeamQ"?"input":"change",()=>mxTeams()));
 setInterval(()=>{if(document.visibilityState==="visible"&&M.loaded&&mxActive()==="mtoday"&&$("modal").classList.contains("hidden"))mxToday()},60000);
 $("mHistory").insertAdjacentHTML("beforebegin",'<button class="soft" id="mImport" type="button"><span data-ico="plus" data-size="16"></span>استيراد نص</button>');$("mImport").onclick=mxImport;paintIcons($("mImport").parentNode);
+const _mxSave=mSave;mSave=async function(a){await _mxSave(a);mxSyncLib().catch(()=>{})};
+function mxChipsHtml(ch){return ch.map((c,i)=>'<span class="mtag on mord" draggable="true" data-pos="'+i+'" title="'+esc(c.url)+' — اسحب لتغيير الترتيب"><b class="no">'+(i+1)+'</b><button type="button" class="mv" data-mv="-1" data-p="'+i+'" aria-label="تقديم">→</button><span class="nm">'+esc(c.name)+' <small>'+esc(mCode(c.url))+'</small></span><button type="button" class="mv" data-mv="1" data-p="'+i+'" aria-label="تأخير">←</button><button type="button" class="mv rm" data-i="'+i+'" aria-label="إزالة">×</button></span>').join("")}
+function mxBindReorder(el,chans,redraw){
+ el.onclick=e=>{const m=e.target.closest("[data-mv]");if(m&&m.dataset.p!==undefined){const i=+m.dataset.p,j=i+ +m.dataset.mv;if(j<0||j>=chans.length)return;[chans[i],chans[j]]=[chans[j],chans[i]];redraw();return}const x=e.target.closest("[data-i]");if(x){chans.splice(+x.dataset.i,1);redraw()}};
+ let from=null;el.ondragstart=e=>{const c=e.target.closest("[data-pos]");if(!c)return;from=+c.dataset.pos;e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",String(from))}catch(_){}};
+ el.ondragover=e=>{if(from!==null)e.preventDefault()};
+ el.ondrop=e=>{e.preventDefault();const c=e.target.closest("[data-pos]");if(from===null||!c)return;const to=+c.dataset.pos;if(to!==from){const[it]=chans.splice(from,1);chans.splice(to,0,it);redraw()}from=null};
+ el.ondragend=()=>{from=null}}
 /* MATCHES_V2_END */
 
 const PAGES=[["overview","نظرة عامة","grid"],["channels","إدارة القنوات","tv"],["editor","إضافة / تعديل","plus"],["tester","اختبار المصدر","target"],["health","فحص القنوات","pulse"],["mtoday","لوحة اليوم (المباريات)","pulse"],["matches","الجدول الكامل (المباريات)","ball"],["mteams","الفرق والبطولات","users"],["mtemplates","قوالب القنوات","tv"],["mauto","النشر التلقائي للمباريات","target"],["mhistory","سجل المباريات","history"],["viewers","المشاهدون الآن","users"],["smartlinks","مدير الروابط الذكي","link"],["errors","سجل الأخطاء","alert"],["history","سجل التعديلات","history"],["security","الحماية والإعدادات","shield"],["logs","حالة النظام","log"],["seriesadmin","إدارة الأفلام والمسلسلات","tv"]];
