@@ -823,12 +823,13 @@
     {
       "id": "55",
       "name": "Thmanyah 1 HD",
-      "url": "https://oscartv.super-stv.workers.dev/?id=80&go=243&file=.m3u8",
+      "url": "https://blcco.linkip.org/live/3455_.m3u8",
       "headers": {
-        "User-Agent": "OSCARTV2020",
+        "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "56",
