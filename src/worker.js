@@ -3579,7 +3579,7 @@ async function matchesSave(env, data, sha, message, path) {
 // ------------------------------------------------------------
 const MATCHES_CONFIG_PATH = "matches-config.json";
 function matchesDefaultConfig() {
-  return { templates: [], teams: [], autoPublish: { enabled: false, hoursBefore: 2 }, alerts: { enabled: false, minutesBefore: 60, noChannels: true } };
+  return { templates: [], teams: [], leagueMap: {}, autoPublish: { enabled: false, hoursBefore: 2 }, alerts: { enabled: false, minutesBefore: 60, noChannels: true } };
 }
 function matchesNormalizeConfig(c) {
   const d = matchesDefaultConfig();
@@ -3587,6 +3587,7 @@ function matchesNormalizeConfig(c) {
   return {
     templates: Array.isArray(c.templates) ? c.templates : [],
     teams: Array.isArray(c.teams) ? c.teams : [],
+    leagueMap: c.leagueMap && typeof c.leagueMap === "object" && !Array.isArray(c.leagueMap) ? c.leagueMap : {},
     autoPublish: { ...d.autoPublish, ...(c.autoPublish || {}) },
     alerts: { ...d.alerts, ...(c.alerts || {}) }
   };
@@ -3618,6 +3619,12 @@ function validateMatchesConfig(c) {
       const f = String(t.flag || "").trim();
       if (f && !/^https?:\/\/\S+$/i.test(f)) return "رابط شعار غير صالح للفريق «" + n + "»";
     }
+  }
+  if (c.leagueMap !== undefined) {
+    if (!c.leagueMap || typeof c.leagueMap !== "object" || Array.isArray(c.leagueMap)) return "خريطة أسماء البطولات غير صالحة";
+    const ks = Object.keys(c.leagueMap);
+    if (ks.length > 400) return "خريطة أسماء البطولات كبيرة";
+    for (const k of ks) { const v = c.leagueMap[k]; if (!k || k.length > 120 || typeof v !== "string" || !v.trim() || v.length > 80) return "اسم بطولة غير صالح في الخريطة"; }
   }
   const a = c.autoPublish || {}, al = c.alerts || {};
   if (typeof a.enabled !== "boolean" || !(Number(a.hoursBefore) >= 0.25 && Number(a.hoursBefore) <= 24)) return "إعدادات النشر التلقائي غير صالحة";
@@ -3764,6 +3771,12 @@ function matchesCairoOffsetMin(date) {
     return (Number(p.hour) - 12) * 60 + Number(p.minute);
   } catch { return 120; }
 }
+function matchesCairoStamp(ms) {
+  const d = new Date(ms);
+  if (isNaN(d)) return "";
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(d).map(x => [x.type, x.value]));
+  return p.year + "-" + p.month + "-" + p.day + "T" + (p.hour === "24" ? "00" : p.hour) + ":" + p.minute + ":00";
+}
 async function matchesSrcGet(path) {
   const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 9000);
   try {
@@ -3774,24 +3787,34 @@ async function matchesSrcGet(path) {
     return j.data;
   } finally { clearTimeout(tm); }
 }
-async function matchesFetchSource(date) {
-  const off = matchesCairoOffsetMin(date);
-  const tries = [date + "/[]/[]/[]/D/" + off, date + "/" + MATCHES_SRC_FALLBACK_IDS + "/D/" + off];
+async function matchesSrcDay(day, off) {
+  const tries = [day + "/[]/[]/[]/D/" + off, day + "/" + MATCHES_SRC_FALLBACK_IDS + "/D/" + off];
   let data = null, err = "";
   for (const t of tries) {
     try { const d = await matchesSrcGet(t.replace(/\[/g, "%5B").replace(/\]/g, "%5D").replace(/"/g, "%22")); if (d.length) { data = d; break; } data = data || d; }
     catch (e) { err = e && e.name === "AbortError" ? "انتهت المهلة" : String(e && e.message || e); }
   }
-  if (data === null) throw Object.assign(new Error("تعذّر قراءة المصدر: " + err), { status: 502 });
+  return { data, err };
+}
+async function matchesFetchSource(date) {
+  const off = matchesCairoOffsetMin(date);
+  const next = new Date(Date.parse(date + "T00:00:00Z") + 864e5).toISOString().slice(0, 10);
+  const [r1, r2] = await Promise.all([matchesSrcDay(date, off), matchesSrcDay(next, off)]);
+  if (r1.data === null && r2.data === null) throw Object.assign(new Error("تعذّر قراءة المصدر: " + (r1.err || r2.err)), { status: 502 });
+  const seen = new Set(), data = [];
+  for (const m of [...(r1.data || []), ...(r2.data || [])]) { const k = m.match_id || JSON.stringify(m); if (!seen.has(k)) { seen.add(k); data.push(m); } }
   const matches = [];
   for (const m of data) {
     const h = m.home_team || {}, a = m.away_team || {};
-    if (!h.title || !a.title || !m.match_date || !m.match_time) continue;
-    if (m.match_date !== date) continue;
+    if (!h.title || !a.title) continue;
+    // نعتمد على الـ timestamp (UTC) ونحوّله لتوقيت القاهرة، لأن match_time يأتي بتوقيت المصدر (السعودية)
+    const ts = Number(m.match_timestamp);
+    const time = ts > 0 ? matchesCairoStamp(ts * 1000) : (m.match_date && m.match_time ? m.match_date + "T" + String(m.match_time).slice(0, 8) : "");
+    if (!time || time.slice(0, 10) !== date) continue;
     matches.push({
       id: String(m.match_id || ""),
       league: String((m.championship && m.championship.title) || "").trim() || "بدون بطولة",
-      time: m.match_date + "T" + String(m.match_time).slice(0, 8),
+      time,
       team1: { name: String(h.title).trim(), flag: matchesSrcLogo(h.image) },
       team2: { name: String(a.title).trim(), flag: matchesSrcLogo(a.image) }
     });
