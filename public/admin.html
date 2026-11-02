@@ -1095,6 +1095,12 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 /* MATCHES SECTION v2 */
 .nav-accordion[data-nav-group="matches"]>.nav-group-trigger .nav-group-icon{background:linear-gradient(145deg,#0a8f5b,#0b6a8f);color:#a6ffd9}
 .mx-bar{margin-bottom:14px}
+.mx-files{display:inline-flex;gap:6px;padding:4px;border:1px solid var(--line);border-radius:14px;background:var(--surface-3);margin-bottom:12px}
+.mx-file{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;min-width:120px;padding:6px 14px;border-radius:10px;font-weight:800;font-size:13px;color:var(--muted);text-align:center}
+.mx-file small{font-weight:500;font-size:10px;opacity:.8;direction:ltr}
+.mx-file.on{background:linear-gradient(120deg,#35c9ff,#6f9bff);color:#04121f}
+.mx-file:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+:root[data-theme="light"] .mx-file.on{background:linear-gradient(120deg,#087eb5,#3f6fe0);color:#fff}
 .mx-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:start}
 @media(max-width:1000px){.mx-grid{grid-template-columns:1fr}}
 .mx-time{position:relative;display:flex;flex-direction:column;gap:0;padding-inline-start:4px}
@@ -1442,6 +1448,7 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 
 
 <section class="page" id="page-matches">
+<div class="mx-files" data-mxfiles role="tablist" aria-label="اختيار الجدول"></div>
 <div class="pagehead"><div><div class="crumb">لوحة التحكم<i>/</i><b>جدول المباريات</b></div><h2>جدول المباريات</h2><p class="muted">يعدّل ملف <code>matchesdawry.json</code> في GitHub، ومنه يقرأ الـ API الذي يعرضه التطبيق.</p></div>
 <div class="h-row"><label class="chkrow" style="margin:0;font-size:13px!important" title="يحفظ كل تعديل في GitHub بعد ثانية من تطبيقه"><input type="checkbox" id="mAutoSave" style="width:18px;height:18px;accent-color:#35c9ff"> حفظ تلقائي</label><button class="soft" id="mRefresh" type="button"><span data-ico="refresh" data-size="16"></span>تحديث</button><button class="soft" id="mHistory" type="button"><span data-ico="history" data-size="16"></span>السجل</button><button class="soft" id="mClean" type="button"><span data-ico="trash" data-size="16"></span>تنظيف القديم</button><button class="primary" id="mAdd" type="button"><span data-ico="plus" data-size="16"></span>إضافة مباراة</button></div></div>
 <div id="mBar" class="banner hidden" role="status"><span><span data-ico="alert"></span><span id="mBarTxt">تعديلات لم تُحفظ بعد</span></span><div style="display:flex;gap:8px"><button type="button" id="mSave" style="background:linear-gradient(120deg,#35c9ff,#6f9bff);color:#04121f;border-color:transparent">حفظ في GitHub</button><button type="button" id="mDiscard">تجاهل</button></div></div>
@@ -1455,13 +1462,14 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 <div class="toolbar"><div class="searchbox"><span data-ico="search" data-size="16"></span><input id="mSearch" type="search" placeholder="ابحث باسم فريق أو بطولة أو قناة" aria-label="بحث في المباريات"></div><select id="mLeague" aria-label="البطولة"><option value="">كل البطولات</option></select><select id="mState" aria-label="الحالة"><option value="">كل الحالات</option><option value="live">مباشر</option><option value="soon">قادمة</option><option value="end">انتهت</option><option value="nochan">بدون قناة</option><option value="shown">ظاهرة في التطبيق (اليوم)</option><option value="hidden">مخفية (x)</option></select></div>
 <div id="mList" class="empty">جار تحميل الجدول...</div>
 <div class="panel" style="margin-top:20px"><h3>مصدر البيانات</h3><div class="minfo">
-<div><b>ملف GitHub</b><code>SUPERTV18/match-api- · matchesdawry.json</code><br><span class="muted" id="mSha">—</span></div>
+<div><b>ملف GitHub</b><code>SUPERTV18/match-api- · <span id="mFileName">matchesdawry.json</span></code><br><span class="muted" id="mSha">—</span></div>
 <div><b>رابط التطبيق (API)</b><code>https://matches-api.super-stv.workers.dev/api/matches</code><br><button class="soft" id="mOpenApi" type="button" style="margin-top:8px;padding:7px 12px;font-size:12px">فتح في تبويب جديد</button> <button class="soft" id="mCopyApi" type="button" style="margin-top:8px;padding:7px 12px;font-size:12px">نسخ</button></div>
 <div><b>ملاحظات</b>الأوقات بتوقيت القاهرة كما في الملف. الحفظ يرتّب المباريات بالوقت ويصلح الشعارات المكسورة تلقائيًا، ولا يمسّ باقي الحقول.</div>
 </div></div>
 </section>
 
 <section class="page" id="page-mtoday">
+<div class="mx-files" data-mxfiles role="tablist" aria-label="اختيار الجدول"></div>
 <div class="pagehead"><div><div class="crumb">المباريات<i>/</i><b>لوحة اليوم</b></div><h2>لوحة اليوم</h2><p class="muted">كل مباريات اليوم بالترتيب الزمني: تحكّم في ظهورها في التطبيق وراقب ما ينقصها قبل البداية.</p></div>
 <div class="h-row"><button class="soft" type="button" data-mx="refresh"><span data-ico="refresh" data-size="16"></span>تحديث</button><button class="primary" type="button" data-mx="add"><span data-ico="plus" data-size="16"></span>إضافة مباراة</button></div></div>
 <div class="banner hidden mx-bar" data-mxbar role="status"><span><span data-ico="alert"></span><span data-mxbartxt>تعديلات لم تُحفظ</span></span><div style="display:flex;gap:8px"><button type="button" data-mx="save" style="background:linear-gradient(120deg,#35c9ff,#6f9bff);color:#04121f;border-color:transparent">حفظ في GitHub</button></div></div>
@@ -1471,6 +1479,7 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 <div class="panel"><h3>معاينة كما يراها التطبيق</h3><p class="muted" style="font-size:13px;margin:0 0 10px">تقرأ رابط الـ API الحقيقي وتقارنه بما تتوقع اللوحة ظهوره (بدون x وتاريخها اليوم).</p><button class="soft" type="button" data-mx="preview"><span data-ico="target" data-size="16"></span>فحص الآن</button><div id="mxPreview" class="mx-prev"></div></div></div></div>
 </section>
 <section class="page" id="page-mteams">
+<div class="mx-files" data-mxfiles role="tablist" aria-label="اختيار الجدول"></div>
 <div class="pagehead"><div><div class="crumb">المباريات<i>/</i><b>الفرق والبطولات</b></div><h2>الفرق والبطولات</h2><p class="muted">عدّل اسم الفريق أو شعاره أو البطولة مرة واحدة ويتغير في كل المباريات. شعارات الأندية تُحفظ في مكتبة دائمة ولا تُحذف مع المباريات القديمة.</p></div>
 <div class="h-row"><button class="soft" type="button" data-mx="libfill">املأ الشعارات الناقصة</button><button class="primary" type="button" data-mx="libadd"><span data-ico="plus" data-size="16"></span>فريق للمكتبة</button><button class="soft" type="button" data-mx="refresh"><span data-ico="refresh" data-size="16"></span>تحديث</button></div></div>
 <div class="banner hidden mx-bar" data-mxbar role="status"><span><span data-ico="alert"></span><span data-mxbartxt>تعديلات لم تُحفظ</span></span><div style="display:flex;gap:8px"><button type="button" data-mx="save" style="background:linear-gradient(120deg,#35c9ff,#6f9bff);color:#04121f;border-color:transparent">حفظ في GitHub</button></div></div>
@@ -1489,6 +1498,7 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 <div id="mxAutoBox"><div class="empty">جار التحميل...</div></div>
 </section>
 <section class="page" id="page-mhistory">
+<div class="mx-files" data-mxfiles role="tablist" aria-label="اختيار الجدول"></div>
 <div class="pagehead"><div><div class="crumb">المباريات<i>/</i><b>سجل المباريات</b></div><h2>سجل المباريات</h2><p class="muted">كل حفظ هو تعديل على GitHub. يمكنك الرجوع لأي نسخة سابقة.</p></div>
 <div class="h-row"><button class="soft" type="button" data-mx="histreload"><span data-ico="refresh" data-size="16"></span>تحديث</button></div></div>
 <div class="panel"><div id="mxHist" class="mhist" style="max-height:none"><div class="empty">جار التحميل...</div></div></div>
@@ -2322,8 +2332,10 @@ $("refreshHistory").onclick=loadHistory;
 let palOpen=false,palItems=[],palIdx=0;
 /* MATCHES_JS_START */
 /* ===== matches (جدول المباريات) ===== */
-const M={list:[],saved:new Map(),sha:"",day:"",loaded:false,k:0,newKeys:new Set(),removed:0};
+const M={file:(function(){try{return localStorage.getItem("stvMatchesFile")==="national"?"national":"league"}catch(e){return"league"}})(),list:[],saved:new Map(),sha:"",day:"",loaded:false,k:0,newKeys:new Set(),removed:0};
 const M_API_URL="https://matches-api.super-stv.workers.dev/api/matches";
+function mQ(extra){return"?file="+M.file+(extra||"")}
+function mFileName(){return M.file==="national"?"matches.json":"matchesdawry.json"}
 function mAuto(){try{return localStorage.getItem("stvMatchesAuto")!=="0"}catch(e){return true}}
 function mTouch(){M.failed=false;clearTimeout(M.timer);if(!mAuto()||!mUnsaved())return;if(M.saving){M.again=true;return}M.timer=setTimeout(()=>mSave(true),1200)}
 function mClone(o){return JSON.parse(JSON.stringify(o))}
@@ -2346,7 +2358,7 @@ function mBuildFromApi(arr){M.k=0;M.list=arr.map(m=>({...m,_k:++M.k}));M.saved=n
 async function loadMatches(force){
  if(M.loaded&&M.worker!==activeWorker)M.loaded=false;const box=$("mList");if(M.loaded&&!force){renderMatches();return}
  box.className="empty";box.textContent="جار تحميل الجدول...";
- try{const r=await api("/api/admin/matches");M.worker=activeWorker;M.sha=r.sha||"";mBuildFromApi(Array.isArray(r.matches)?r.matches:[]);M.loaded=true;$("mSha").textContent="النسخة الحالية: "+String(M.sha).slice(0,7);if(!M.day)M.day=mDayKey(0);renderMatches()}
+ try{const r=await api("/api/admin/matches"+mQ());M.worker=activeWorker;M.sha=r.sha||"";mBuildFromApi(Array.isArray(r.matches)?r.matches:[]);M.loaded=true;$("mSha").textContent="النسخة الحالية: "+String(M.sha).slice(0,7);if(!M.day)M.day=mDayKey(0);renderMatches()}
  catch(e){M.loaded=false;box.className="empty";box.textContent=e.status===503?"لم يُضبط مفتاح GitHub لهذه الصفحة. أضف Secret باسم MATCHES_GITHUB_TOKEN في إعدادات الـ Worker (صلاحية Contents: Read and write على SUPERTV18/match-api-).":e.status===404?"مسارات المباريات غير موجودة في هذا الـ Worker. أضف كود matches-admin.js وأعد النشر.":e.message}}
 function mFiltered(ignoreDay){const q=$("mSearch").value.trim().toLowerCase(),lg=$("mLeague").value,stf=$("mState").value,now=mMs(mCairoNow());
  return M.list.filter(m=>{if(!ignoreDay&&M.day!=="all"&&String(m.time).slice(0,10)!==M.day)return false;if(lg&&mLeagueLabel(m.league)!==lg)return false;const s=mStatus(m,now);if(stf==="nochan"){if(!(s.k!=="end"&&!(m.channels||[]).length))return false}else if(stf==="hidden"){if(!mHidden(m))return false}else if(stf==="shown"){if(mHidden(m)||String(m.time).slice(0,10)!==mDayKey(0))return false}else if(stf&&s.k!==stf)return false;
@@ -2451,17 +2463,17 @@ async function mSave(auto){
  if(!auto){const ok=await openDialog({title:"حفظ جدول المباريات؟",text:"سيُكتب الملف في GitHub ويظهر في التطبيق: "+added+" جديدة · "+mod+" معدّلة · "+del+" محذوفة.",ok:"حفظ في GitHub"});if(!ok)return}
  let fixed=0;const payload=M.list.slice().sort((a,b)=>String(a.time).localeCompare(String(b.time))).map(m=>{const o=mClone(mStrip(m));["team1","team2"].forEach(k=>{if(o[k]&&o[k].flag){const f=mFlagFix(o[k].flag);if(f!==o[k].flag){o[k].flag=f;fixed++}}});return o});
  btn.disabled=true;M.saving=true;
- try{const r=await api("/api/admin/matches",{method:"POST",headers:M.sha?{"X-Base-Sha":M.sha}:{},body:JSON.stringify({matches:payload})});M.sha=r.sha||M.sha;mBuildFromApi(payload);$("mSha").textContent="النسخة الحالية: "+String(M.sha).slice(0,7);renderMatches();notify((r.message||"تم الحفظ")+(fixed?" · أُصلح "+fixed+" شعار":""))}
+ try{const r=await api("/api/admin/matches"+mQ(),{method:"POST",headers:M.sha?{"X-Base-Sha":M.sha}:{},body:JSON.stringify({matches:payload})});M.sha=r.sha||M.sha;mBuildFromApi(payload);$("mSha").textContent="النسخة الحالية: "+String(M.sha).slice(0,7);renderMatches();notify((r.message||"تم الحفظ")+(fixed?" · أُصلح "+fixed+" شعار":""))}
  catch(e){if(e.status===409){await openDialog({title:"تغيّر الجدول من مكان آخر",text:"عُدّل الملف على GitHub بعد تحميله هنا، لذلك لم يُحفظ شيء حتى لا تُمسح تعديلات الآخرين. سيُعاد تحميل الجدول الآن وتُفقد تعديلاتك غير المحفوظة.",ok:"فهمت"});await loadMatches(true)}else{M.failed=true;notify((auto?"تعذّر الحفظ التلقائي: ":"")+e.message,"error")}}
  finally{btn.disabled=false;M.saving=false;renderMatches();if(M.again){M.again=false;mTouch()}}}
 async function mHistory(){
  const w=document.createElement("div");w.className="mhist";w.innerHTML='<div class="muted">جار التحميل...</div>';let pick=null;
  const done=openDialog({title:"سجل جدول المباريات",text:"كل حفظ يُسجَّل كتعديل على GitHub. الاسترجاع يُسجَّل كتعديل جديد.",ok:"إغلاق",body:w});
- try{const r=await api("/api/admin/matches/history"),rows=r.commits||[];w.innerHTML=rows.length?rows.map((c,i)=>'<div class="row"><div class="g"><b>'+esc(c.message||"—")+'</b><span class="muted">'+esc(new Date(c.date).toLocaleString("ar-EG"))+" · "+esc(c.author||"")+" · "+esc(String(c.sha).slice(0,7))+'</span></div>'+(i===0?'<span class="st st-ok"><i></i>الحالية</span>':'<button type="button" class="soft" data-sha="'+esc(c.sha)+'">استرجاع</button>')+'</div>').join(""):'<div class="empty">لا توجد تعديلات</div>'}
+ try{const r=await api("/api/admin/matches/history"+mQ()),rows=r.commits||[];w.innerHTML=rows.length?rows.map((c,i)=>'<div class="row"><div class="g"><b>'+esc(c.message||"—")+'</b><span class="muted">'+esc(new Date(c.date).toLocaleString("ar-EG"))+" · "+esc(c.author||"")+" · "+esc(String(c.sha).slice(0,7))+'</span></div>'+(i===0?'<span class="st st-ok"><i></i>الحالية</span>':'<button type="button" class="soft" data-sha="'+esc(c.sha)+'">استرجاع</button>')+'</div>').join(""):'<div class="empty">لا توجد تعديلات</div>'}
  catch(e){w.innerHTML='<div class="empty">'+esc(e.message)+'</div>'}
  w.onclick=e=>{const b=e.target.closest("[data-sha]");if(b){pick=b.dataset.sha;$("dlgOk").click()}};
  await done;if(!pick)return;
- const sha=pick;try{const s=await api("/api/admin/matches/history?sha="+encodeURIComponent(sha)),ok=await openDialog({title:"استرجاع النسخة "+sha.slice(0,7)+"؟",text:"النسخة تحتوي "+(s.matches||[]).length+" مباراة، والحالية "+M.list.length+". سيستبدل الجدول الحالي ويُحفظ كتعديل جديد.",ok:"استرجاع",danger:true});if(!ok)return;const r=await api("/api/admin/matches/restore",{method:"POST",body:JSON.stringify({sha})});notify(r.message||"تم الاسترجاع");await loadMatches(true)}catch(e){notify(e.message,"error")}}
+ const sha=pick;try{const s=await api("/api/admin/matches/history"+mQ("&sha="+encodeURIComponent(sha))),ok=await openDialog({title:"استرجاع النسخة "+sha.slice(0,7)+"؟",text:"النسخة تحتوي "+(s.matches||[]).length+" مباراة، والحالية "+M.list.length+". سيستبدل الجدول الحالي ويُحفظ كتعديل جديد.",ok:"استرجاع",danger:true});if(!ok)return;const r=await api("/api/admin/matches/restore"+mQ(),{method:"POST",body:JSON.stringify({sha})});notify(r.message||"تم الاسترجاع");await loadMatches(true)}catch(e){notify(e.message,"error")}}
 $("mList").addEventListener("click",e=>{const b=e.target.closest("[data-mact]");if(!b)return;const card=b.closest("[data-k]"),k=+card.dataset.k,a=b.dataset.mact;if(a==="edit")mEdit(k);else if(a==="dup")mEdit(k,"dup");else if(a==="hide")mToggleHide(k);else if(a==="del")mDelete(k)});
 $("mDays").addEventListener("click",e=>{const b=e.target.closest("[data-day]");if(!b)return;M.day=b.dataset.day;renderMatches()});
 ["mSearch","mLeague","mState"].forEach(id=>$(id).addEventListener(id==="mSearch"?"input":"change",renderMatches));
@@ -2589,12 +2601,12 @@ function mxAuto(){
 /* history */
 async function mxHist(){
  const box=$("mxHist");box.innerHTML='<div class="muted">جار التحميل...</div>';
- try{const r=await api("/api/admin/matches/history"),rows=r.commits||[];box.innerHTML=rows.length?rows.map((c,i)=>'<div class="row"><div class="g"><b>'+esc(c.message||"—")+'</b><span class="muted">'+esc(new Date(c.date).toLocaleString("ar-EG"))+" · "+esc(c.author||"")+" · "+esc(String(c.sha).slice(0,7))+'</span></div>'+(i===0?'<span class="st st-ok"><i></i>الحالية</span>':'<button type="button" class="soft" data-mxrestore="'+esc(c.sha)+'">استرجاع</button>')+'</div>').join(""):'<div class="empty">لا توجد تعديلات</div>'}
+ try{const r=await api("/api/admin/matches/history"+mQ()),rows=r.commits||[];box.innerHTML=rows.length?rows.map((c,i)=>'<div class="row"><div class="g"><b>'+esc(c.message||"—")+'</b><span class="muted">'+esc(new Date(c.date).toLocaleString("ar-EG"))+" · "+esc(c.author||"")+" · "+esc(String(c.sha).slice(0,7))+'</span></div>'+(i===0?'<span class="st st-ok"><i></i>الحالية</span>':'<button type="button" class="soft" data-mxrestore="'+esc(c.sha)+'">استرجاع</button>')+'</div>').join(""):'<div class="empty">لا توجد تعديلات</div>'}
  catch(e){box.innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}
-async function mxRestore(sha){try{const s=await api("/api/admin/matches/history?sha="+encodeURIComponent(sha)),ok=await openDialog({title:"استرجاع النسخة "+sha.slice(0,7)+"؟",text:"النسخة تحتوي "+(s.matches||[]).length+" مباراة، والحالية "+M.list.length+". سيستبدل الجدول الحالي ويُحفظ كتعديل جديد.",ok:"استرجاع",danger:true});if(!ok)return;const r=await api("/api/admin/matches/restore",{method:"POST",body:JSON.stringify({sha})});notify(r.message||"تم الاسترجاع");await loadMatches(true);mxHist()}catch(e){notify(e.message,"error")}}
+async function mxRestore(sha){try{const s=await api("/api/admin/matches/history"+mQ("&sha="+encodeURIComponent(sha))),ok=await openDialog({title:"استرجاع النسخة "+sha.slice(0,7)+"؟",text:"النسخة تحتوي "+(s.matches||[]).length+" مباراة، والحالية "+M.list.length+". سيستبدل الجدول الحالي ويُحفظ كتعديل جديد.",ok:"استرجاع",danger:true});if(!ok)return;const r=await api("/api/admin/matches/restore"+mQ(),{method:"POST",body:JSON.stringify({sha})});notify(r.message||"تم الاسترجاع");await loadMatches(true);mxHist()}catch(e){notify(e.message,"error")}}
 /* preview as app */
 async function mxPreview(){
- const box=$("mxPreview");box.innerHTML='<div class="muted">جار الفحص…</div>';
+ const box=$("mxPreview");if(M.file!=="league"){box.innerHTML='<div class="mx-alert i">المعاينة متاحة لجدول الدوريات فقط (رابط التطبيق الحالي يقرأ منه).</div>';return}box.innerHTML='<div class="muted">جار الفحص…</div>';
  try{const res=await fetch(M_API_URL,{cache:"no-store"});if(!res.ok)throw new Error("HTTP "+res.status);const j=await res.json(),arr=Array.isArray(j)?j:(j.matches||j.data||[]);
   const key=m=>String(m.time).slice(0,16)+"|"+String((m.team1||{}).name||"").trim(),today=mDayKey(0);
   const exp=M.list.filter(m=>!mHidden(m)&&String(m.time).slice(0,10)===today),expK=new Set(exp.map(key)),gotK=new Set(arr.map(key));
@@ -2613,11 +2625,11 @@ async function mxImport(){
  const show=()=>{const{out,errs}=parse();w.querySelector("#imP").textContent=(out.length?"✓ "+out.length+" مباراة جاهزة للإضافة\n":"")+errs.join("\n")||"اكتب أو الصق المباريات…"};w.oninput=show;w.onchange=show;
  for(;;){const ok=await openDialog({title:"استيراد مباريات من نص",text:"",ok:"إضافة للجدول",body:w});if(!ok)return;const{out,errs}=parse();if(errs.length){notify(errs[0],"error");continue}if(!out.length){notify("لا توجد مباريات لإضافتها","error");continue}out.forEach(m=>M.list.push({...m,_k:++M.k}));M.day=out[0].time.slice(0,10);renderMatches();notify("أُضيفت "+out.length+" مباراة"+(mAuto()?" — جارٍ الحفظ…":""));mTouch();return}}
 /* render + events */
-function mxRender(){mxSync();if(!M.loaded)return;const id=mxActive();if(id==="mtoday")mxToday();else if(id==="mteams")mxTeams();else if(id==="mtemplates")mxTemplates();else if(id==="mauto")mxAuto()}
+function mxRender(){mxFiles();mxSync();if(!M.loaded)return;const id=mxActive();if(id==="mtoday")mxToday();else if(id==="mteams")mxTeams();else if(id==="mtemplates")mxTemplates();else if(id==="mauto")mxAuto()}
 const _mxRM=renderMatches;renderMatches=function(){_mxRM();mxRender()};
 async function mxEnter(name){
  const fail=()=>{if(!M.loaded){const m=name==="mtoday"?"mxTimeline":name==="mteams"?"mxTeams":name==="mtemplates"?"mxTplBox":name==="mauto"?"mxAutoBox":"";if(m)$(m).innerHTML='<div class="empty">تعذّر تحميل الجدول — افتح «الجدول الكامل» لرؤية السبب.</div>'}};
- if(name==="mhistory")return mxHist();
+ mxFiles();if(name==="mhistory")return mxHist();
  await loadMatches();if(!M.loaded)return fail();
  if(true){try{await mxLoadCfg()}catch(e){if(name==="mtemplates"||name==="mauto"){const b=name==="mtemplates"?"mxTplBox":"mxAutoBox";$(b).innerHTML='<div class="empty">'+esc(e.message)+'</div>'}}}
  mxRender();mxSyncLib().catch(()=>{})}
@@ -2651,6 +2663,8 @@ function mxBindReorder(el,chans,redraw){
  el.ondragover=e=>{if(from!==null)e.preventDefault()};
  el.ondrop=e=>{e.preventDefault();const c=e.target.closest("[data-pos]");if(from===null||!c)return;const to=+c.dataset.pos;if(to!==from){const[it]=chans.splice(from,1);chans.splice(to,0,it);redraw()}from=null};
  el.ondragend=()=>{from=null}}
+function mxFiles(){document.querySelectorAll("[data-mxfiles]").forEach(el=>{el.innerHTML=[["league","الدوريات","matchesdawry.json"],["national","المنتخبات","matches.json"]].map(([k,l,f])=>'<button type="button" role="tab" aria-selected="'+(M.file===k)+'" class="mx-file'+(M.file===k?" on":"")+'" data-mxfile="'+k+'">'+l+'<small>'+f+'</small></button>').join("")});const f=$("mFileName");if(f)f.textContent=mFileName()}
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-mxfile]");if(!b||b.dataset.mxfile===M.file)return;if(M.loaded&&mUnsaved()){const ok=await openDialog({title:"تجاهل التعديلات غير المحفوظة؟",text:"عندك تعديلات لم تُحفظ في الجدول الحالي. التبديل سيتجاهلها.",ok:"تبديل",danger:true});if(!ok)return}clearTimeout(M.timer);M.file=b.dataset.mxfile;try{localStorage.setItem("stvMatchesFile",M.file)}catch(_){}M.loaded=false;M.list=[];M.saved=new Map();M.day=mDayKey(0);mxFiles();const id=mxActive();if(id==="mhistory")mxHist();else await loadMatches(true);mxRender()});
 /* MATCHES_V2_END */
 
 const PAGES=[["overview","نظرة عامة","grid"],["channels","إدارة القنوات","tv"],["editor","إضافة / تعديل","plus"],["tester","اختبار المصدر","target"],["health","فحص القنوات","pulse"],["mtoday","لوحة اليوم (المباريات)","pulse"],["matches","الجدول الكامل (المباريات)","ball"],["mteams","الفرق والبطولات","users"],["mtemplates","قوالب القنوات","tv"],["mauto","النشر التلقائي للمباريات","target"],["mhistory","سجل المباريات","history"],["viewers","المشاهدون الآن","users"],["smartlinks","مدير الروابط الذكي","link"],["errors","سجل الأخطاء","alert"],["history","سجل التعديلات","history"],["security","الحماية والإعدادات","shield"],["logs","حالة النظام","log"],["seriesadmin","إدارة الأفلام والمسلسلات","tv"]];
