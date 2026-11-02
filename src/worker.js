@@ -3614,6 +3614,7 @@ function validateMatchesConfig(c) {
       const n = t && String(t.name || "").trim();
       if (!n || n.length > 80 || names.has(n)) return "اسم فريق مفقود أو مكرر في المكتبة";
       names.add(n);
+      if (String(t.en || "").length > 80) return "اسم إنجليزي طويل";
       const f = String(t.flag || "").trim();
       if (f && !/^https?:\/\/\S+$/i.test(f)) return "رابط شعار غير صالح للفريق «" + n + "»";
     }
@@ -3744,6 +3745,62 @@ async function matchesRunCron(env, dry) {
   return out;
 }
 
+// ------------------------------------------------------------
+// جلب مباريات اليوم من ysscores (الأسماء والشعارات بالعربي)
+// ------------------------------------------------------------
+const MATCHES_SRC_BASE = "https://api-ar.ysscores.com/api/matches/matches_date_get/";
+const MATCHES_SRC_LOGO = "https://imgs.ysscores.com/teams/128/";
+function matchesSrcLogo(img) {
+  const f = String(img || "").trim();
+  if (!f) return "";
+  if (/^https?:\/\//i.test(f)) return f;
+  return MATCHES_SRC_LOGO + (/\.(png|jpe?g|webp|svg)$/i.test(f) ? f : f + ".png");
+}
+const MATCHES_SRC_FALLBACK_IDS = '["99376","408340"]/[]/["8633"]';
+function matchesCairoOffsetMin(date) {
+  try {
+    const d = new Date(date + "T12:00:00Z");
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(d).map(x => [x.type, x.value]));
+    return (Number(p.hour) - 12) * 60 + Number(p.minute);
+  } catch { return 120; }
+}
+async function matchesSrcGet(path) {
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 9000);
+  try {
+    const res = await fetch(MATCHES_SRC_BASE + path, { headers: { Accept: "application/json", "User-Agent": "Mozilla/5.0 SUPER-TV-Admin" }, signal: ctl.signal });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const j = await res.json();
+    if (!j || !Array.isArray(j.data)) throw new Error("شكل الرد غير متوقع");
+    return j.data;
+  } finally { clearTimeout(tm); }
+}
+async function matchesFetchSource(date) {
+  const off = matchesCairoOffsetMin(date);
+  const tries = [date + "/[]/[]/[]/D/" + off, date + "/" + MATCHES_SRC_FALLBACK_IDS + "/D/" + off];
+  let data = null, err = "";
+  for (const t of tries) {
+    try { const d = await matchesSrcGet(t.replace(/\[/g, "%5B").replace(/\]/g, "%5D").replace(/"/g, "%22")); if (d.length) { data = d; break; } data = data || d; }
+    catch (e) { err = e && e.name === "AbortError" ? "انتهت المهلة" : String(e && e.message || e); }
+  }
+  if (data === null) throw Object.assign(new Error("تعذّر قراءة المصدر: " + err), { status: 502 });
+  const matches = [];
+  for (const m of data) {
+    const h = m.home_team || {}, a = m.away_team || {};
+    if (!h.title || !a.title || !m.match_date || !m.match_time) continue;
+    if (m.match_date !== date) continue;
+    matches.push({
+      id: String(m.match_id || ""),
+      league: String((m.championship && m.championship.title) || "").trim() || "بدون بطولة",
+      time: m.match_date + "T" + String(m.match_time).slice(0, 8),
+      team1: { name: String(h.title).trim(), flag: matchesSrcLogo(h.image) },
+      team2: { name: String(a.title).trim(), flag: matchesSrcLogo(a.image) }
+    });
+  }
+  matches.sort((x, y) => x.time.localeCompare(y.time));
+  const lg = new Map(); matches.forEach(m => lg.set(m.league, (lg.get(m.league) || 0) + 1));
+  return { leagues: [...lg.entries()].map(([label, count]) => ({ label, count })), matches, offset: off };
+}
+
 async function matchesAdminApi(request, env, url) {
   const p = url.pathname, method = request.method;
   try {
@@ -3772,6 +3829,11 @@ async function matchesAdminApi(request, env, url) {
     if (p === "/api/admin/matches/telegram-test" && method === "POST") {
       await matchesTelegram(env, "✅ <b>SUPER LIVE TV</b>\nتنبيهات المباريات شغالة.");
       return json({ status: "ok", message: "أُرسلت رسالة تجريبية إلى Telegram" });
+    }
+    if (p === "/api/admin/matches/source" && method === "GET") {
+      const date = url.searchParams.get("date") || matchesCairoNow().slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "تاريخ غير صالح" }, 400);
+      return json({ date, ...(await matchesFetchSource(date)) });
     }
     if (p === "/api/admin/matches" && method === "GET") {
       const { data, sha } = await matchesReadFile(env, null, matchesFileOf(url));
