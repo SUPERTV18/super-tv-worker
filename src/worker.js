@@ -3480,6 +3480,12 @@ async function adminApi(request, env, url) {
 
 const MATCHES_GH = { owner: "SUPERTV18", repo: "match-api-", path: "matchesdawry.json", branch: "main" };
 const MATCHES_MAX = 1500;
+// ملفات الجداول المتاحة: league = الدوريات (الافتراضي) ، national = المنتخبات
+const MATCHES_FILES = { league: "matchesdawry.json", national: "matches.json" };
+function matchesFileOf(url) {
+  const k = url.searchParams.get("file") || "league";
+  return MATCHES_FILES[k] || MATCHES_FILES.league;
+}
 
 function matchesToken(env) { return env.MATCHES_GITHUB_TOKEN || env.GITHUB_TOKEN || ""; }
 
@@ -3677,7 +3683,11 @@ async function matchesRunCron(env, dry) {
   const out = { at: matchesCairoNow(), dry: Boolean(dry), published: [], alerts: [], errors: [], telegram: matchesTelegramReady(env) };
   const now = matchesMs(out.at);
   const { config } = await matchesLoadConfig(env);
-  let cur = await matchesReadFile(env);
+  const all = [];
+  for (const file of Object.values(MATCHES_FILES)) {
+  let cur;
+  try { cur = await matchesReadFile(env, null, file, true); } catch (e) { out.errors.push(file + ": " + e.message); continue; }
+  if (!cur || !Array.isArray(cur.data)) continue;
   let list = cur.data;
   // 1) نشر تلقائي
   if (config.autoPublish.enabled) {
@@ -3691,24 +3701,26 @@ async function matchesRunCron(env, dry) {
       return { ...m, league: String(m.league).replace(/\s+x\s*$/i, "") };
     });
     if (changed.length) {
-      out.published = changed.map(m => ({ title: matchesTitle(m), time: m.time }));
+      out.published.push(...changed.map(m => ({ title: matchesTitle(m) + (file === MATCHES_FILES.national ? " (منتخبات)" : ""), time: m.time })));
       if (!dry) {
-        try { await matchesSave(env, next, cur.sha, "Auto-publish " + changed.length + " match(es) before kickoff"); list = next; }
+        try { await matchesSave(env, next, cur.sha, "Auto-publish " + changed.length + " match(es) before kickoff", file); list = next; }
         catch (e) {
           if (e.status === 409) { // الملف تغيّر: أعد القراءة مرة واحدة
-            cur = await matchesReadFile(env);
+            cur = await matchesReadFile(env, null, file);
             const retry = cur.data.map(m => { const hit = changed.some(c => c.time === m.time && matchesTitle(c) === matchesTitle(m)); return hit && matchesIsHidden(m) ? { ...m, league: String(m.league).replace(/\s+x\s*$/i, "") } : m; });
-            try { await matchesSave(env, retry, cur.sha, "Auto-publish " + changed.length + " match(es) before kickoff"); list = retry; } catch (e2) { out.errors.push(e2.message); }
+            try { await matchesSave(env, retry, cur.sha, "Auto-publish " + changed.length + " match(es) before kickoff", file); list = retry; } catch (e2) { out.errors.push(e2.message); }
           } else out.errors.push(e.message);
         }
       } else list = next;
     }
   }
+  all.push(...list);
+  }
   // 2) تنبيهات
   if (config.alerts.enabled) {
     const horizon = Number(config.alerts.minutesBefore) * 60e3;
     const msgs = [];
-    for (const m of list) {
+    for (const m of all) {
       const st = matchesMs(m.time);
       if (!(st > now && st - now <= horizon)) continue;
       if (config.alerts.noChannels && !(m.channels || []).length) {
@@ -3762,7 +3774,7 @@ async function matchesAdminApi(request, env, url) {
       return json({ status: "ok", message: "أُرسلت رسالة تجريبية إلى Telegram" });
     }
     if (p === "/api/admin/matches" && method === "GET") {
-      const { data, sha } = await matchesReadFile(env);
+      const { data, sha } = await matchesReadFile(env, null, matchesFileOf(url));
       return json({ matches: data, sha });
     }
     if (p === "/api/admin/matches" && method === "POST") {
@@ -3771,20 +3783,21 @@ async function matchesAdminApi(request, env, url) {
       const list = Array.isArray(body) ? body : body && body.matches;
       const err = validateMatches(list);
       if (err) return json({ error: err }, 400);
-      const cur = await matchesReadFile(env);
+      const file = matchesFileOf(url);
+      const cur = await matchesReadFile(env, null, file);
       const base = request.headers.get("X-Base-Sha");
       if (base && base !== cur.sha) return json({ error: "تم تعديل الجدول من مكان آخر بعد تحميله. حدّث الصفحة ثم أعد التعديل.", currentSha: cur.sha }, 409);
-      const saved = await matchesSave(env, list, cur.sha, body && body.message);
+      const saved = await matchesSave(env, list, cur.sha, body && body.message, file);
       return json({ status: "ok", message: "تم حفظ جدول المباريات في GitHub", sha: saved.sha, commit: saved.commit, count: list.length });
     }
     if (p === "/api/admin/matches/history" && method === "GET") {
       const sha = url.searchParams.get("sha");
       if (sha) {
         if (!/^[0-9a-f]{7,40}$/i.test(sha)) return json({ error: "رقم نسخة غير صالح" }, 400);
-        const { data } = await matchesReadFile(env, sha);
+        const { data } = await matchesReadFile(env, sha, matchesFileOf(url));
         return json({ matches: data, sha });
       }
-      const res = await matchesGh(env, "/commits?path=" + encodeURIComponent(MATCHES_GH.path) + "&sha=" + MATCHES_GH.branch + "&per_page=30");
+      const res = await matchesGh(env, "/commits?path=" + encodeURIComponent(matchesFileOf(url)) + "&sha=" + MATCHES_GH.branch + "&per_page=30");
       if (!res.ok) return json({ error: "تعذر قراءة السجل: " + res.status }, 502);
       const rows = await res.json();
       return json({ commits: rows.map(c => ({ sha: c.sha, message: (c.commit.message || "").split("\n")[0], date: c.commit.author && c.commit.author.date, author: c.commit.author && c.commit.author.name })) });
@@ -3794,11 +3807,12 @@ async function matchesAdminApi(request, env, url) {
       try { body = await request.json(); } catch { return json({ error: "JSON غير صالح" }, 400); }
       const sha = String(body && body.sha || "");
       if (!/^[0-9a-f]{7,40}$/i.test(sha)) return json({ error: "رقم نسخة غير صالح" }, 400);
-      const old = await matchesReadFile(env, sha);
+      const file = matchesFileOf(url);
+      const old = await matchesReadFile(env, sha, file);
       const err = validateMatches(old.data);
       if (err) return json({ error: "النسخة المختارة غير صالحة: " + err }, 400);
-      const cur = await matchesReadFile(env);
-      const saved = await matchesSave(env, old.data, cur.sha, "Restore matches to " + sha.slice(0, 7) + " from SUPER LIVE TV Admin");
+      const cur = await matchesReadFile(env, null, file);
+      const saved = await matchesSave(env, old.data, cur.sha, "Restore matches to " + sha.slice(0, 7) + " from SUPER LIVE TV Admin", file);
       return json({ status: "ok", message: "تم استرجاع النسخة " + sha.slice(0, 7), sha: saved.sha, commit: saved.commit });
     }
   } catch (e) {
@@ -4165,7 +4179,6 @@ export class ViewerTracker {
 
 export default {
 
-  // Cron Trigger: نشر تلقائي للمباريات (إزالة x قبل البداية)
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
       matchesRunCron(env, false).catch(e => console.error("MATCHES CRON ERROR", e && e.message))
