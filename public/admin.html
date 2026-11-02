@@ -1095,7 +1095,10 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 /* MATCHES SECTION v2 */
 .nav-accordion[data-nav-group="matches"]>.nav-group-trigger .nav-group-icon{background:linear-gradient(145deg,#0a8f5b,#0b6a8f);color:#a6ffd9}
 .mx-bar{margin-bottom:14px}
-.mx-lgs{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.mx-lgs{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:260px;overflow:auto}
+.mx-lgrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center}
+.mx-lgrow .src{overflow-wrap:anywhere;font-size:13px;font-weight:700}.mx-lgrow .src small{color:var(--muted)}
+.mx-lgrow input[data-lm]{padding:8px 10px;font-size:13px;min-width:0}
 .mx-imp .hidden{display:none}
 .mx-files{display:inline-flex;gap:6px;padding:4px;border:1px solid var(--line);border-radius:14px;background:var(--surface-3);margin-bottom:12px}
 .mx-file{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;min-width:120px;padding:6px 14px;border-radius:10px;font-weight:800;font-size:13px;color:var(--muted);text-align:center}
@@ -2494,7 +2497,7 @@ setInterval(()=>{if(document.visibilityState==="visible"&&M.loaded&&$("page-matc
 const C={cfg:null,syncing:false,sha:null,tg:false,last:null,loaded:false,dirty:false,loading:null};
 const MX_PAGES=["mtoday","mteams","mtemplates","mauto","mhistory"];
 function mxActive(){const a=document.querySelector(".page.active");return a?a.id.replace("page-",""):""}
-function mxDefaultCfg(){return{templates:[],teams:[],autoPublish:{enabled:false,hoursBefore:2},alerts:{enabled:false,minutesBefore:60,noChannels:true}}}
+function mxDefaultCfg(){return{templates:[],teams:[],leagueMap:{},autoPublish:{enabled:false,hoursBefore:2},alerts:{enabled:false,minutesBefore:60,noChannels:true}}}
 async function mxLoadCfg(force){
  if(C.loaded&&!force&&C.worker===activeWorker)return C.cfg;if(C.loading)return C.loading;
  C.loading=(async()=>{try{const r=await api("/api/admin/matches/config");C.cfg={...mxDefaultCfg(),...r.config,autoPublish:{...mxDefaultCfg().autoPublish,...(r.config||{}).autoPublish},alerts:{...mxDefaultCfg().alerts,...(r.config||{}).alerts}};C.sha=r.sha||null;C.tg=!!r.telegram;C.last=r.lastRun||null;C.loaded=true;C.dirty=false;C.worker=activeWorker;return C.cfg}finally{C.loading=null}})();
@@ -2675,16 +2678,22 @@ async function mxSource(){
  const lib=(C.cfg&&C.cfg.teams)||[],tpls=(C.cfg&&C.cfg.templates)||[];
  let saved=null;try{saved=JSON.parse(localStorage.getItem("stvSrcLeagues2")||"null")}catch(e){}
  let leagues=[],rows=[];
+ const lmap={...((C.cfg&&C.cfg.leagueMap)||{})};
+ const nrm=x=>String(x||"").split("|")[0].replace(/[\u064B-\u065F]/g,"").replace(/\s+/g," ").trim().toLowerCase();
+ const mine=[...new Set([...M.list.map(m=>mLeagueLabel(m.league)),...Object.values(lmap)])].filter(x=>x&&x!=="بدون بطولة");
+ const guess=lb=>{if(lmap[lb])return lmap[lb];const n=nrm(lb);let best=mine.find(x=>nrm(x)===n);if(!best){const c=mine.filter(x=>{const y=nrm(x);return y.length>=4&&n.length>=4&&(y.includes(n)||n.includes(y))}).sort((a,b)=>Math.abs(nrm(a).length-n.length)-Math.abs(nrm(b).length-n.length));best=c[0]}return best||String(lb).split("|")[0].trim()};
+ const nm=lb=>(lmap[lb]!==undefined?lmap[lb]:guess(lb));
  const w=document.createElement("div");w.className="mx-imp";
  w.innerHTML='<p class="muted" style="font-size:13px;margin:0 0 8px">يجلب مباريات اليوم من ysscores بالأسماء والشعارات بالعربي وبتوقيت القاهرة. اختر البطولات ثم المباريات التي تريد إضافتها.</p><div class="formgrid"><div class="field"><label for="srD">التاريخ</label><input id="srD" type="date" value="'+mDayKey(0)+'"></div><div class="field" style="align-self:end"><button type="button" class="primary" id="srGo">جلب المباريات</button></div></div><div id="srLg" class="mx-lgs"></div><div id="srRes" class="mx-list" style="margin-top:12px"></div><div id="srOpt" class="hidden" style="margin-top:12px"><label class="chkrow"><input type="checkbox" id="srH" checked style="width:18px;height:18px;accent-color:#35c9ff"> إضافتها مخفية (x)</label>'+(tpls.length?'<select id="srT" style="margin-top:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:9px;font:inherit;font-size:13px"><option value="">بدون قالب قنوات</option>'+tpls.map(t=>'<option value="'+esc(t.id)+'">'+esc(t.name)+'</option>').join("")+'</select>':"")+'</div>';
  const g=id=>w.querySelector("#"+id);
  const keyOf=(d,a,b)=>String(d).slice(0,10)+"|"+[a,b].map(x=>String(x).trim().toLowerCase()).sort().join("|");
  const exist=new Set();M.list.forEach(m=>exist.add(keyOf(m.time,(m.team1||{}).name,(m.team2||{}).name)));
  const sel=()=>new Set(saved||leagues.map(l=>l.label));
- function drawLg(){const s=sel();g("srLg").innerHTML=leagues.map(l=>'<label class="mtag'+(s.has(l.label)?" on":"")+'" style="cursor:pointer"><input type="checkbox" data-sl="'+esc(l.label)+'"'+(s.has(l.label)?" checked":"")+' style="display:none">'+esc(l.label)+' <small>'+l.count+'</small></label>').join("")}
- g("srLg").onchange=e=>{const c=e.target.closest("[data-sl]");if(!c)return;const cur=sel();c.checked?cur.add(c.dataset.sl):cur.delete(c.dataset.sl);saved=[...cur];try{localStorage.setItem("stvSrcLeagues2",JSON.stringify(saved))}catch(_){}drawLg();drawRes()};
+ function drawLg(){const s=sel();g("srLg").innerHTML='<datalist id="srNames">'+mine.map(x=>'<option value="'+esc(x)+'">').join("")+'</datalist><div class="muted" style="font-size:12px;width:100%">اسم البطولة عندك (يُحفظ للمرات القادمة):</div>'+leagues.map(l=>'<div class="mx-lgrow"><label class="mx-sw"><input type="checkbox" data-sl="'+esc(l.label)+'"'+(s.has(l.label)?" checked":"")+'><span class="tr"></span></label><span class="src" title="'+esc(l.label)+'">'+esc(l.label)+' <small>'+l.count+'</small></span><span>←</span><input data-lm="'+esc(l.label)+'" list="srNames" value="'+esc(nm(l.label))+'" aria-label="اسم البطولة عندك"></div>').join("")}
+ g("srLg").oninput=e=>{const c=e.target.closest("[data-lm]");if(!c)return;lmap[c.dataset.lm]=c.value.trim();drawRes()};
+ g("srLg").onchange=e=>{const c=e.target.closest("[data-sl]");if(!c)return;const cur=sel();c.checked?cur.add(c.dataset.sl):cur.delete(c.dataset.sl);saved=[...cur];try{localStorage.setItem("stvSrcLeagues2",JSON.stringify(saved))}catch(_){}drawRes()};
  function drawRes(){const s=sel(),vis=rows.map((x,i)=>({x,i})).filter(o=>s.has(o.x.league));
-  g("srRes").innerHTML=vis.length?vis.map(({x,i})=>{const a=mxMapTeam(x.team1,lib),b=mxMapTeam(x.team2,lib),dup=exist.has(keyOf(x.time,a.name,b.name))||exist.has(keyOf(x.time,x.team1.name,x.team2.name));return'<label class="mx-alert i" style="cursor:'+(dup?"default":"pointer")+';opacity:'+(dup?.55:1)+'"><input type="checkbox" data-r="'+i+'"'+(dup?" disabled":" checked")+' style="width:18px;height:18px;accent-color:#35c9ff"><div class="b"><b>'+esc(x.time.slice(11,16))+' · '+esc(a.name)+' × '+esc(b.name)+'</b><br><span class="muted">'+esc(x.league)+(dup?" · موجودة بالفعل":"")+'</span></div></label>'}).join(""):'<div class="mx-emptyline">'+(rows.length?"لا توجد مباريات للبطولات المختارة.":"لا توجد مباريات في هذا التاريخ.")+'</div>';
+  g("srRes").innerHTML=vis.length?vis.map(({x,i})=>{const a=mxMapTeam(x.team1,lib),b=mxMapTeam(x.team2,lib),dup=exist.has(keyOf(x.time,a.name,b.name))||exist.has(keyOf(x.time,x.team1.name,x.team2.name));return'<label class="mx-alert i" style="cursor:'+(dup?"default":"pointer")+';opacity:'+(dup?.55:1)+'"><input type="checkbox" data-r="'+i+'"'+(dup?" disabled":" checked")+' style="width:18px;height:18px;accent-color:#35c9ff"><div class="b"><b>'+esc(x.time.slice(11,16))+' · '+esc(a.name)+' × '+esc(b.name)+'</b><br><span class="muted">'+esc(nm(x.league))+(dup?" · موجودة بالفعل":"")+'</span></div></label>'}).join(""):'<div class="mx-emptyline">'+(rows.length?"لا توجد مباريات للبطولات المختارة.":"لا توجد مباريات في هذا التاريخ.")+'</div>';
   g("srOpt").classList.toggle("hidden",!vis.length)}
  async function go(){const b=g("srGo");b.disabled=true;g("srRes").innerHTML='<div class="muted">جار الجلب…</div>';
   try{const r=await api("/api/admin/matches/source?date="+encodeURIComponent(g("srD").value||mDayKey(0)));leagues=r.leagues||[];rows=r.matches||[];drawLg();drawRes()}
@@ -2693,7 +2702,8 @@ async function mxSource(){
  for(;;){const ok=await openDialog({title:"جلب مباريات من ysscores",text:"",ok:"إضافة المحدد",body:w});if(!ok)return;
   const s=sel(),picks=[...w.querySelectorAll("[data-r]:checked")].map(c=>rows[+c.dataset.r]).filter(x=>x&&s.has(x.league));if(!picks.length){notify("اختر مباراة واحدة على الأقل","error");continue}
   const hide=g("srH").checked,tp=g("srT")?tpls.find(t=>t.id===g("srT").value):null;
-  picks.forEach(x=>{const a=mxMapTeam(x.team1,lib),b=mxMapTeam(x.team2,lib);M.list.push({league:x.league+(hide?" x":""),title:a.name+" × "+b.name,time:x.time,team1:{name:a.name,flag:a.flag||""},team2:{name:b.name,flag:b.flag||""},extra:false,channels:tp?tp.channels.map(c=>({name:c.name,url:c.url})):[],_k:++M.k})});
+  picks.forEach(x=>{const a=mxMapTeam(x.team1,lib),b=mxMapTeam(x.team2,lib);M.list.push({league:(nm(x.league)||x.league)+(hide?" x":""),title:a.name+" × "+b.name,time:x.time,team1:{name:a.name,flag:a.flag||""},team2:{name:b.name,flag:b.flag||""},extra:false,channels:tp?tp.channels.map(c=>({name:c.name,url:c.url})):[],_k:++M.k})});
+  if(C.cfg){const used=new Set(picks.map(x=>x.league));C.cfg.leagueMap=C.cfg.leagueMap||{};used.forEach(k=>{const v=nm(k);if(v&&v!==k)C.cfg.leagueMap[k]=v;else delete C.cfg.leagueMap[k]});mxSaveCfg(true).catch(()=>{})}
   M.day=picks[0].time.slice(0,10);renderMatches();notify("أُضيفت "+picks.length+" مباراة"+(mAuto()?" — جارٍ الحفظ…":""));mTouch();return}}
 /* MATCHES_V2_END */
 
