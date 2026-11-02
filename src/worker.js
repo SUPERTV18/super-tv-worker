@@ -3579,7 +3579,7 @@ async function matchesSave(env, data, sha, message, path) {
 // ------------------------------------------------------------
 const MATCHES_CONFIG_PATH = "matches-config.json";
 function matchesDefaultConfig() {
-  return { templates: [], teams: [], leagueMap: {}, autoPublish: { enabled: false, hoursBefore: 2 }, alerts: { enabled: false, minutesBefore: 60, noChannels: true } };
+  return { templates: [], teams: [], leagueMap: {}, autoImport: { enabled: false, daysAhead: 1, leagues: [], hidden: true, templateId: "" }, autoPublish: { enabled: false, hoursBefore: 2 }, alerts: { enabled: false, minutesBefore: 60, noChannels: true } };
 }
 function matchesNormalizeConfig(c) {
   const d = matchesDefaultConfig();
@@ -3588,6 +3588,7 @@ function matchesNormalizeConfig(c) {
     templates: Array.isArray(c.templates) ? c.templates : [],
     teams: Array.isArray(c.teams) ? c.teams : [],
     leagueMap: c.leagueMap && typeof c.leagueMap === "object" && !Array.isArray(c.leagueMap) ? c.leagueMap : {},
+    autoImport: { ...d.autoImport, ...(c.autoImport || {}) },
     autoPublish: { ...d.autoPublish, ...(c.autoPublish || {}) },
     alerts: { ...d.alerts, ...(c.alerts || {}) }
   };
@@ -3625,6 +3626,12 @@ function validateMatchesConfig(c) {
     const ks = Object.keys(c.leagueMap);
     if (ks.length > 400) return "خريطة أسماء البطولات كبيرة";
     for (const k of ks) { const v = c.leagueMap[k]; if (!k || k.length > 120 || typeof v !== "string" || !v.trim() || v.length > 80) return "اسم بطولة غير صالح في الخريطة"; }
+  }
+  if (c.autoImport !== undefined) {
+    const ai = c.autoImport;
+    if (!ai || typeof ai !== "object" || typeof ai.enabled !== "boolean" || !Number.isInteger(Number(ai.daysAhead)) || ai.daysAhead < 0 || ai.daysAhead > 3) return "إعدادات الجلب التلقائي غير صالحة";
+    if (!Array.isArray(ai.leagues) || ai.leagues.length > 100 || ai.leagues.some(x => typeof x !== "string" || !x || x.length > 120)) return "قائمة بطولات الجلب غير صالحة";
+    if (typeof ai.hidden !== "boolean" || typeof (ai.templateId || "") !== "string") return "إعدادات الجلب التلقائي غير صالحة";
   }
   const a = c.autoPublish || {}, al = c.alerts || {};
   if (typeof a.enabled !== "boolean" || !(Number(a.hoursBefore) >= 0.25 && Number(a.hoursBefore) <= 24)) return "إعدادات النشر التلقائي غير صالحة";
@@ -3675,7 +3682,7 @@ async function matchesMarkSeen(env, key) {
 }
 async function matchesStoreLastRun(env, out) {
   try {
-    const body = JSON.stringify({ at: out.at, published: out.published.length, alerts: out.alerts.length, errors: out.errors, dry: out.dry });
+    const body = JSON.stringify({ at: out.at, imported: out.imported.length, published: out.published.length, alerts: out.alerts.length, errors: out.errors, dry: out.dry });
     if (env.DATA_KV) await env.DATA_KV.put("mt:lastRun", body, { expirationTtl: 30 * 86400 });
     else await caches.default.put(new Request("https://matches-alerts.local/lastRun"), new Response(body, { headers: { "Cache-Control": "max-age=2592000" } }));
   } catch {}
@@ -3687,10 +3694,49 @@ async function matchesLoadLastRun(env) {
     return r ? await r.json() : null;
   } catch { return null; }
 }
+function matchesNormName(x) { return String(x || "").split("|")[0].replace(/[ً-ٟ]/g, "").replace(/\s+/g, " ").trim().toLowerCase(); }
+async function matchesAutoImport(env, config, dry, out) {
+  const ai = config.autoImport;
+  if (!ai || !ai.enabled || !(ai.leagues || []).length) return;
+  const key = "imp|" + out.at.slice(0, 13);
+  if (!dry && await matchesSeen(env, key)) return;
+  let cur;
+  try { cur = await matchesReadFile(env, null, MATCHES_FILES.league); } catch (e) { out.errors.push("الجلب التلقائي: " + e.message); return; }
+  const list = Array.isArray(cur.data) ? cur.data.slice() : [];
+  const lib = config.teams || [], lmap = config.leagueMap || {};
+  const mine = [...new Set(list.map(m => String(m.league || "").replace(/\s+x\s*$/i, "").trim()).filter(Boolean))];
+  const tpl = (config.templates || []).find(t => t.id === ai.templateId);
+  const tkey = (d, a, b) => String(d).slice(0, 10) + "|" + [a, b].map(x => String(x).trim().toLowerCase()).sort().join("|");
+  const exist = new Set(list.map(m => tkey(m.time, (m.team1 || {}).name, (m.team2 || {}).name)));
+  const mapTeam = t => { const k = String(t.name || "").trim().toLowerCase(); const f = lib.find(l => l.name.toLowerCase() === k || (l.en && l.en.toLowerCase() === k)); return f ? { name: f.name, flag: f.flag || t.flag } : { name: String(t.name).trim(), flag: t.flag }; };
+  const mapLeague = lb => { if (lmap[lb]) return lmap[lb]; const n = matchesNormName(lb); return mine.find(x => matchesNormName(x) === n) || String(lb).split("|")[0].trim(); };
+  const day0 = out.at.slice(0, 10), added = [];
+  for (let i = 0; i <= Number(ai.daysAhead || 0); i++) {
+    const day = new Date(Date.parse(day0 + "T00:00:00Z") + i * 864e5).toISOString().slice(0, 10);
+    let src;
+    try { src = await matchesFetchSource(day); } catch (e) { out.errors.push("الجلب التلقائي (" + day + "): " + e.message); continue; }
+    for (const m of src.matches) {
+      if (!ai.leagues.includes(m.league)) continue;
+      const a = mapTeam(m.team1), b = mapTeam(m.team2);
+      if (exist.has(tkey(m.time, a.name, b.name)) || exist.has(tkey(m.time, m.team1.name, m.team2.name))) continue;
+      const rec = { league: mapLeague(m.league) + (ai.hidden ? " x" : ""), title: a.name + " × " + b.name, time: m.time, team1: { name: a.name, flag: a.flag || "" }, team2: { name: b.name, flag: b.flag || "" }, extra: false, channels: tpl ? tpl.channels.map(c => ({ name: c.name, url: c.url })) : [] };
+      list.push(rec); exist.add(tkey(rec.time, a.name, b.name)); added.push(rec);
+    }
+  }
+  out.imported = added.map(m => ({ title: matchesTitle(m), time: m.time }));
+  if (!added.length) { if (!dry) await matchesMarkSeen(env, key); return; }
+  if (dry) return;
+  try {
+    list.sort((x, y) => String(x.time).localeCompare(String(y.time)));
+    await matchesSave(env, list, cur.sha, "Auto-import " + added.length + " match(es) from source", MATCHES_FILES.league);
+    await matchesMarkSeen(env, key);
+  } catch (e) { out.errors.push("الجلب التلقائي: " + (e.status === 409 ? "الملف تغيّر أثناء الحفظ، ستتم إعادة المحاولة" : e.message)); out.imported = []; }
+}
 async function matchesRunCron(env, dry) {
-  const out = { at: matchesCairoNow(), dry: Boolean(dry), published: [], alerts: [], errors: [], telegram: matchesTelegramReady(env) };
+  const out = { at: matchesCairoNow(), dry: Boolean(dry), imported: [], published: [], alerts: [], errors: [], telegram: matchesTelegramReady(env) };
   const now = matchesMs(out.at);
   const { config } = await matchesLoadConfig(env);
+  try { await matchesAutoImport(env, config, dry, out); } catch (e) { out.errors.push("الجلب التلقائي: " + (e && e.message)); }
   const all = [];
   for (const file of Object.values(MATCHES_FILES)) {
   let cur;
