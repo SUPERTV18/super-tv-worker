@@ -983,7 +983,10 @@
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://krikartv4k.shaqlawatvworkersdev.workers.dev/fa5/index.m3u8",
+      "backupEnabled": true
     }
   ],
   "SPORT AR": [
