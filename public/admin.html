@@ -1095,6 +1095,7 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 /* MATCHES SECTION v2 */
 .nav-accordion[data-nav-group="matches"]>.nav-group-trigger .nav-group-icon{background:linear-gradient(145deg,#0a8f5b,#0b6a8f);color:#a6ffd9}
 .mx-bar{margin-bottom:14px}
+.mmid .mx-score{margin:6px 0 0;font-size:15px}
 .mx-score{display:inline-block;margin-inline-start:8px;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:800;background:var(--surface-2);border:1px solid var(--border);font-variant-numeric:tabular-nums}
 .mx-score.live{color:var(--green);border-color:var(--green)}
 .mx-lgs{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:260px;overflow:auto}
@@ -2381,7 +2382,7 @@ function mCard(m,now){const s=mStatus(m,now),t1=m.team1||{},t2=m.team2||{},ch=m.
  const hid=mHidden(m),today=String(m.time).slice(0,10)===mDayKey(0),vis=hid?'<span class="st st-stop" title="علامة x بجانب البطولة: لا تظهر في التطبيق">🙈 مخفية</span>':(today?'<span class="st st-live" title="بدون علامة x وتاريخها اليوم"><i></i>ظاهرة</span>':'');top='<span style="display:flex;gap:6px;align-items:center">'+vis+top+'</span>';
  const cls=["mcard",hid?"hid":"",s.k==="live"?"live":"",s.k==="end"?"ended":"",s.k!=="end"&&!ch.length?"warn":"",!M.saved.has(m._k)?"isnew":(M.saved.get(m._k)!==mSig(m)?"ismod":"")].filter(Boolean).join(" ");
  return '<div class="'+cls+'" data-k="'+m._k+'"><div class="mtop"><span class="lg">'+esc(mLeagueLabel(m.league))+(M.day==="all"?" · "+esc(String(m.time).slice(5,10).replace("-","/")):"")+'</span>'+top+'</div>'
- +'<div class="mteams"><div class="mteam">'+mFlag(t1)+'<span>'+esc(t1.name||"—")+'</span></div><div class="mmid">'+mid+'</div><div class="mteam">'+mFlag(t2)+'<span>'+esc(t2.name||"—")+'</span></div></div>'
+ +'<div class="mteams"><div class="mteam">'+mFlag(t1)+'<span>'+esc(t1.name||"—")+'</span></div><div class="mmid">'+mid+'<div data-csk="'+m._k+'"></div></div><div class="mteam">'+mFlag(t2)+'<span>'+esc(t2.name||"—")+'</span></div></div>'
  +'<div class="mchans">'+chh+'</div>'
  +'<div class="mfoot"><span>'+(issues.length?'<span class="st st-off">'+esc(issues.join(" · "))+'</span>':(!M.saved.has(m._k)?'<span class="st st-soon">جديدة — لم تُحفظ</span>':(M.saved.get(m._k)!==mSig(m)?'<span class="st st-off">معدّلة — لم تُحفظ</span>':ch.length+" قناة")))+'</span><span class="actions"><button type="button" class="soft icon sm" data-mact="hide" aria-label="'+(hid?"إظهار المباراة في التطبيق":"إخفاء المباراة عن التطبيق")+'" title="'+(hid?"إظهار (إزالة x)":"إخفاء (إضافة x)")+'">'+ico("eye",15)+'</button><button type="button" class="soft icon sm" data-mact="edit" aria-label="تعديل المباراة" title="تعديل">'+ico("edit",15)+'</button><button type="button" class="soft icon sm" data-mact="dup" aria-label="نسخ المباراة" title="نسخ">'+ico("copy",15)+'</button><button type="button" class="danger icon sm" data-mact="del" aria-label="حذف المباراة" title="حذف">'+ico("trash",15)+'</button></span></div></div>'}
 function renderMatches(){
@@ -2636,7 +2637,7 @@ async function mxImport(){
  for(;;){const ok=await openDialog({title:"استيراد مباريات من نص",text:"",ok:"إضافة للجدول",body:w});if(!ok)return;const{out,errs}=parse();if(errs.length){notify(errs[0],"error");continue}if(!out.length){notify("لا توجد مباريات لإضافتها","error");continue}out.forEach(m=>M.list.push({...m,_k:++M.k}));M.day=out[0].time.slice(0,10);renderMatches();notify("أُضيفت "+out.length+" مباراة"+(mAuto()?" — جارٍ الحفظ…":""));mTouch();return}}
 /* render + events */
 function mxRender(){mxFiles();mxSync();if(!M.loaded)return;const id=mxActive();if(id==="mtoday")mxToday();else if(id==="mteams")mxTeams();else if(id==="mtemplates")mxTemplates();else if(id==="mauto")mxAuto()}
-const _mxRM=renderMatches;renderMatches=function(){_mxRM();mxRender()};
+const _mxRM=renderMatches;renderMatches=function(){_mxRM();mxRender();mxCardsDecorate().catch(()=>{})};
 async function mxEnter(name){
  const fail=()=>{if(!M.loaded){const m=name==="mtoday"?"mxTimeline":name==="mteams"?"mxTeams":name==="mtemplates"?"mxTplBox":name==="mauto"?"mxAutoBox":"";if(m)$(m).innerHTML='<div class="empty">تعذّر تحميل الجدول — افتح «الجدول الكامل» لرؤية السبب.</div>'}};
  mxFiles();if(name==="mhistory")return mxHist();
@@ -2750,6 +2751,16 @@ async function mxRepeat(key){
  for(;;){const ok=await openDialog({title:"تكرار «"+mxTitle(m)+"»",text:"تُنشأ نسخ بنفس الوقت والقنوات في الأيام التالية.",ok:"تكرار",body:w});if(!ok)return;const e=Math.max(1,Math.min(30,parseInt(w.querySelector("#rpE").value,10)||0)),c=Math.max(1,Math.min(30,parseInt(w.querySelector("#rpN").value,10)||0));
   let n=0;const d0=String(m.time).slice(0,10);for(let i=1;i<=c;i++){const d=mxAddDays(d0,e*i);if(mxHas(m,d))continue;M.list.push(mxClone(m,d,{hide:w.querySelector("#rpH").checked}));n++}
   renderMatches();notify(n?"أُنشئت "+n+" نسخة":"النسخ موجودة بالفعل");if(n)mTouch();return}}
+/* scores on full-schedule cards */
+function mxScoreHtml(x){return'<span class="mx-score'+(x.live?" live":"")+'" title="النتيجة من المصدر — للعرض في اللوحة فقط">'+x.score.h+' - '+x.score.a+(x.live?' · مباشر':"")+'</span>'}
+async function mxCardsDecorate(){
+ if(!M.loaded||!/^\d{4}-\d\d-\d\d$/.test(M.day||"")||!$("page-matches").classList.contains("active"))return;
+ const day=M.day,c=await mxLive(day);if(M.day!==day||!$("page-matches").classList.contains("active"))return;
+ const now=mMs(mCairoNow());let info=$("mxCardInfo");if(!info){$("mDays").insertAdjacentHTML("afterend",'<div class="muted" id="mxCardInfo" style="font-size:12px;margin:-4px 2px 10px"></div>');info=$("mxCardInfo")}
+ let matched=0,total=0;
+ document.querySelectorAll("#mList [data-csk]").forEach(el=>{const m=M.list.find(v=>v._k===+el.dataset.csk);if(!m)return;total++;const x=mxFindLive(m,c.rows);if(x)matched++;el.innerHTML=x&&x.score&&mMs(m.time)<=now?mxScoreHtml(x):""});
+ const old=c.rows.length&&!c.rows.some(q=>"score" in q);
+ info.innerHTML=c.err?'<span style="color:var(--red)">تعذّر قراءة النتائج من المصدر: '+esc(c.err)+'</span>':old?'<span style="color:var(--amber)">الوركر المنشور قديم (لا يرسل النتائج) — انشر worker.js الأحدث.</span>':(c.rows.length?"النتائج من المصدر: "+matched+" من "+total+" مباراة رُبطت.":"لا توجد مباريات لهذا اليوم في المصدر.")}
 /* MATCHES_V2_END */
 
 const PAGES=[["overview","نظرة عامة","grid"],["channels","إدارة القنوات","tv"],["editor","إضافة / تعديل","plus"],["tester","اختبار المصدر","target"],["health","فحص القنوات","pulse"],["mtoday","لوحة اليوم (المباريات)","pulse"],["matches","الجدول الكامل (المباريات)","ball"],["mteams","الفرق والبطولات","users"],["mtemplates","قوالب القنوات","tv"],["mauto","النشر التلقائي للمباريات","target"],["mhistory","سجل المباريات","history"],["viewers","المشاهدون الآن","users"],["smartlinks","مدير الروابط الذكي","link"],["errors","سجل الأخطاء","alert"],["history","سجل التعديلات","history"],["security","الحماية والإعدادات","shield"],["logs","حالة النظام","log"],["seriesadmin","إدارة الأفلام والمسلسلات","tv"]];
