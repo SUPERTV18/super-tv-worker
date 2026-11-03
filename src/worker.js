@@ -3861,6 +3861,10 @@ async function matchesFetchSource(date) {
       id: String(m.match_id || ""),
       league: String((m.championship && m.championship.title) || "").trim() || "بدون بطولة",
       time,
+      live: Number(m.live) === 1,
+      status: m.status == null ? null : Number(m.status),
+      score: (m.home_scores != null && m.away_scores != null && m.home_scores !== "" && m.away_scores !== "") ? { h: Number(m.home_scores), a: Number(m.away_scores) } : null,
+      minute: m.score_time != null ? String(m.score_time) : "",
       team1: { name: String(h.title).trim(), flag: matchesSrcLogo(h.image) },
       team2: { name: String(a.title).trim(), flag: matchesSrcLogo(a.image) }
     });
