@@ -939,14 +939,14 @@
     {
       "id": "90",
       "name": "AL-FAJER 2 HD",
-      "url": "https://sptvspk.st-plasma.workers.dev/f2/index.m3u8",
+      "url": "https://krikartv4k.shaqlawatvworkersdev.workers.dev/fa2/index.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
       },
       "endpoint": "m3u8",
-      "backupUrl": "https://krikartv4k.shaqlawatvworkersdev.workers.dev/fa2/index.m3u8",
+      "backupUrl": "https://blcco.linkip.org/live/1113_.m3u8",
       "backupEnabled": true
     },
     {
