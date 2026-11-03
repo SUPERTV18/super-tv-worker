@@ -1095,6 +1095,8 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 /* MATCHES SECTION v2 */
 .nav-accordion[data-nav-group="matches"]>.nav-group-trigger .nav-group-icon{background:linear-gradient(145deg,#0a8f5b,#0b6a8f);color:#a6ffd9}
 .mx-bar{margin-bottom:14px}
+.mx-score{display:inline-block;margin-inline-start:8px;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:800;background:var(--surface-2);border:1px solid var(--border);font-variant-numeric:tabular-nums}
+.mx-score.live{color:var(--green);border-color:var(--green)}
 .mx-lgs{display:flex;flex-direction:column;gap:6px;margin-top:10px;max-height:260px;overflow:auto}
 .mx-lgrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:center}
 .mx-lgrow .src{overflow-wrap:anywhere;font-size:13px;font-weight:700}.mx-lgrow .src small{color:var(--muted)}
@@ -2532,9 +2534,9 @@ function mxToday(){
  $("mxStats").innerHTML=mxStat(off?"مباريات غدًا":"مباريات اليوم",rows.length,vis+" ظاهرة · "+(rows.length-vis)+" مخفية")+mxStat("مباشر الآن",live,"","var(--green)")+mxStat("بدون قناة",noc,"قادمة أو جارية","var(--amber)")+mxStat("ظاهرة في التطبيق",vis,"بدون x");
  const tabs='<div class="mday-tabs" style="margin-bottom:12px"><button type="button" class="mday'+(off?"":" on")+'" data-mxoff="0">اليوم<small>'+mDayKey(0).slice(5)+'</small></button><button type="button" class="mday'+(off?" on":"")+'" data-mxoff="1">غدًا<small>'+mDayKey(1).slice(5)+'</small></button></div>';
  $("mxTimeline").innerHTML=tabs+(rows.length?rows.map(m=>{const s=mStatus(m,now),ch=m.channels||[],h=mHidden(m),warn=s.k!=="end"&&!ch.length;
-  return'<div class="mx-row '+(s.k==="live"?"live":s.k==="end"?"end":"")+(warn?" warn":"")+'"><div class="t">'+esc(String(m.time).slice(11,16))+'</div><div class="rail"><i></i></div><div class="box"><b>'+esc(mxTitle(m))+'</b><div class="muted">'+esc(mLeagueLabel(m.league))+' · '+(s.k==="live"?'<span class="st st-live"><i></i>مباشر</span>':s.k==="soon"?esc(mIn(s.in)):s.k==="stop"?"موقوفة":"انتهت")+' · '+(ch.length?ch.length+" قناة":'<span class="st st-off">بدون قنوات</span>')+'</div></div><div class="act"><label class="mx-sw" title="ظاهرة في التطبيق = بدون علامة x"><input type="checkbox" data-mxk="'+m._k+'"'+(h?"":" checked")+'><span class="tr"></span><span>'+(h?"مخفية":"ظاهرة")+'</span></label><button type="button" class="soft" data-mxedit="'+m._k+'" style="padding:5px 10px;font-size:12px">تعديل</button></div></div>'}).join(""):'<div class="mx-emptyline">لا توجد مباريات في هذا اليوم.</div>');
+  return'<div class="mx-row '+(s.k==="live"?"live":s.k==="end"?"end":"")+(warn?" warn":"")+'"><div class="t">'+esc(String(m.time).slice(11,16))+'</div><div class="rail"><i></i></div><div class="box"><b>'+esc(mxTitle(m))+' <span data-sk="'+m._k+'"></span></b><div class="muted">'+esc(mLeagueLabel(m.league))+' · '+(s.k==="live"?'<span class="st st-live"><i></i>مباشر</span>':s.k==="soon"?esc(mIn(s.in)):s.k==="stop"?"موقوفة":"انتهت")+' · '+(ch.length?ch.length+" قناة":'<span class="st st-off">بدون قنوات</span>')+'</div></div><div class="act"><label class="mx-sw" title="ظاهرة في التطبيق = بدون علامة x"><input type="checkbox" data-mxk="'+m._k+'"'+(h?"":" checked")+'><span class="tr"></span><span>'+(h?"مخفية":"ظاهرة")+'</span></label><button type="button" class="soft" data-mxedit="'+m._k+'" style="padding:5px 10px;font-size:12px">تعديل</button></div></div>'}).join(""):'<div class="mx-emptyline">لا توجد مباريات في هذا اليوم.</div>');
  const is=mxIssues();$("mxAlerts").innerHTML=is.length?is.map(i=>'<div class="mx-alert '+i.l+'"><span data-ico="'+(i.l==="i"?"info":"alert")+'" data-size="16"></span><div class="b">'+esc(i.t)+'</div>'+(i.k?'<button type="button" class="soft" data-mxedit="'+i.k+'" style="padding:5px 10px;font-size:12px">فتح</button>':"")+'</div>').join(""):'<div class="mx-emptyline">✓ لا توجد مشاكل — كل شيء سليم.</div>';
- paintIcons($("page-mtoday"))}
+ paintIcons($("page-mtoday"));mxLiveDecorate().catch(()=>{})}
 function mxTeamsData(){const t=new Map();M.list.forEach(m=>[m.team1,m.team2].forEach(x=>{if(!x||!String(x.name||"").trim())return;const n=x.name.trim(),o=t.get(n)||{name:n,n:0,flags:new Map()};o.n++;const f=String(x.flag||"").trim();o.flags.set(f,(o.flags.get(f)||0)+1);t.set(n,o)}));return[...t.values()].map(o=>{const fl=[...o.flags.entries()].sort((a,b)=>b[1]-a[1]);const best=(fl.find(([f])=>/^https?:\/\//i.test(f))||[""])[0];const issue=fl.some(([f])=>f&&!/^https?:\/\//i.test(f))?"شعار مكسور":(fl.filter(([f])=>f).length>1?"شعارات مختلفة":(!fl.some(([f])=>f)?"بدون شعار":""));return{name:o.name,n:o.n,flag:best,issue}}).sort((a,b)=>a.name.localeCompare(b.name,"ar"))}
 function mxTeamsAll(){const base=mxTeamsData(),lib=new Map(((C.cfg&&C.cfg.teams)||[]).map(t=>[t.name,t])),seen=new Set();const out=base.map(t=>{seen.add(t.name);const l=lib.get(t.name);return{...t,inLib:!!l,flag:t.flag||(l?l.flag:""),issue:(t.issue==="بدون شعار"&&l&&l.flag)?"":t.issue,libFlag:l?l.flag:""}});lib.forEach(l=>{if(!seen.has(l.name))out.push({name:l.name,n:0,flag:l.flag,issue:"",inLib:true,libFlag:l.flag})});return out.sort((a,b)=>a.name.localeCompare(b.name,"ar"))}
 function mxTeams(){
@@ -2709,6 +2711,20 @@ async function mxSource(){
   picks.forEach(x=>{const a=mxMapTeam(x.team1,lib),b=mxMapTeam(x.team2,lib);M.list.push({league:(nm(x.league)||x.league)+(hide?" x":""),title:a.name+" × "+b.name,time:x.time,team1:{name:a.name,flag:a.flag||""},team2:{name:b.name,flag:b.flag||""},extra:false,channels:tp?tp.channels.map(c=>({name:c.name,url:c.url})):[],_k:++M.k})});
   if(C.cfg){const used=new Set(picks.map(x=>x.league));C.cfg.leagueMap=C.cfg.leagueMap||{};used.forEach(k=>{const v=nm(k);if(v&&v!==k)C.cfg.leagueMap[k]=v;else delete C.cfg.leagueMap[k]});mxSaveCfg(true).catch(()=>{})}
   M.day=picks[0].time.slice(0,10);renderMatches();notify("أُضيفت "+picks.length+" مباراة"+(mAuto()?" — جارٍ الحفظ…":""));mTouch();return}}
+/* live scores (read-only, from source) */
+function mxNorm(x){return String(x||"").replace(/[ً-ٟ]/g,"").replace(/\s+/g," ").trim().toLowerCase()}
+async function mxLive(day){
+ M.live=M.live||{};const c=M.live[day];if(c&&Date.now()-c.at<45000)return c.rows;
+ let rows=[];try{const r=await api("/api/admin/matches/source?date="+encodeURIComponent(day));rows=r.matches||[]}catch(e){rows=[]}
+ M.live[day]={at:Date.now(),rows};return rows}
+function mxFindLive(m,rows){const t=String(m.time).slice(0,16),n1=mxNorm((m.team1||{}).name),n2=mxNorm((m.team2||{}).name),lib=(C.cfg&&C.cfg.teams)||[];
+ const alias=n=>{const l=lib.find(x=>mxNorm(x.name)===n);return[n,...(l&&l.en?[mxNorm(l.en)]:[])]},a1=alias(n1),a2=alias(n2);
+ const hit=(x,as)=>as.includes(mxNorm(x.name));
+ return rows.find(x=>String(x.time).slice(0,16)===t&&((hit(x.team1,a1)&&hit(x.team2,a2))||(hit(x.team1,a2)&&hit(x.team2,a1))))||rows.find(x=>String(x.time).slice(0,16)===t&&(hit(x.team1,a1)||hit(x.team2,a1)||hit(x.team1,a2)||hit(x.team2,a2)))||null}
+async function mxLiveDecorate(){
+ if(mxActive()!=="mtoday"||!M.loaded)return;const day=mDayKey(M.mxOff||0),rows=await mxLive(day);if(mxActive()!=="mtoday")return;
+ document.querySelectorAll("#mxTimeline [data-sk]").forEach(el=>{const m=M.list.find(x=>x._k===+el.dataset.sk);if(!m)return;const x=mxFindLive(m,rows);if(!x||!x.score||(x.status===0&&!x.live)){el.innerHTML="";return}
+  el.innerHTML='<span class="mx-score'+(x.live?" live":"")+'" title="النتيجة من المصدر — للعرض في اللوحة فقط">'+x.score.h+' - '+x.score.a+(x.live?' · مباشر'+(x.minute?" "+esc(x.minute):""):"")+'</span>'})}
 /* MATCHES_V2_END */
 
 const PAGES=[["overview","نظرة عامة","grid"],["channels","إدارة القنوات","tv"],["editor","إضافة / تعديل","plus"],["tester","اختبار المصدر","target"],["health","فحص القنوات","pulse"],["mtoday","لوحة اليوم (المباريات)","pulse"],["matches","الجدول الكامل (المباريات)","ball"],["mteams","الفرق والبطولات","users"],["mtemplates","قوالب القنوات","tv"],["mauto","النشر التلقائي للمباريات","target"],["mhistory","سجل المباريات","history"],["viewers","المشاهدون الآن","users"],["smartlinks","مدير الروابط الذكي","link"],["errors","سجل الأخطاء","alert"],["history","سجل التعديلات","history"],["security","الحماية والإعدادات","shield"],["logs","حالة النظام","log"],["seriesadmin","إدارة الأفلام والمسلسلات","tv"]];
