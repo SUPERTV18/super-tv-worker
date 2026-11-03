@@ -38,12 +38,13 @@
     {
       "id": "supertv3",
       "name": "SUPER TV 3 (multi)",
-      "url": "https://super-livetv-eta.vercel.app/SUPERTV_3.m3u8",
+      "url": "https://pylink-python-project-web-runner-sharer.ai.studio/live/ok/15651304709717.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "supertv4",
