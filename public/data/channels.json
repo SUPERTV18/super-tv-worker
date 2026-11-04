@@ -550,7 +550,10 @@
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://aln-plasma4k-extraali4k.b-cdn.net/order/aln3_1080.m3u8",
+      "backupEnabled": true
     },
     {
       "id": "27",
