@@ -49,7 +49,7 @@
     {
       "id": "supertv4",
       "name": "SUPER TV 4 (multi)",
-      "url": "https://pylink-python-project-web-runner-sharer.ai.studio/live/ok/15651325025877.m3u8",
+      "url": "https://pylink-python-project-web-runner-sharer.ai.studio/live/direct.m3u8?url=https%3A%2F%2Fpylink-python-project-web-runner-sharer.ai.studio%2Flive%2Fok%2F15651325025877.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
