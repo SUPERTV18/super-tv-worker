@@ -400,7 +400,7 @@
       "name": "Bein Sports 5 SD",
       "url": "http://assets.pushyourcss.world:8080/assets/res2/java2/1347.css?x=/hls",
       "headers": {
-        "User-Agent": "OSCARTV2021&Referer",
+        "User-Agent": "OSCARTV2021",
         "Referer": "",
         "Origin": ""
       },
