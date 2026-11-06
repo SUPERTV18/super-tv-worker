@@ -215,7 +215,7 @@
       "url": "https://spe7.speeddatacenter.cyou/hd/keajjclvfomg/index.html",
       "headers": {
         "User-Agent": "",
-        "Referer": "",
+        "Referer": "https://spe7.speeddatacenter.cyou/",
         "Origin": ""
       },
       "endpoint": "m3u8",
