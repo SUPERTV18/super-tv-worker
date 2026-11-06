@@ -166,12 +166,13 @@
     {
       "id": "b2_4K",
       "name": "Bein Sports 2 4K",
-      "url": "https://bein.kianezidi.workers.dev/bein_sports2&q=FHD.m3u8",
+      "url": "http://assets.pushyourcss.world:8080/assets/res2/java2/1391.css?x=/hls",
       "headers": {
-        "User-Agent": "OSCARTV2020",
+        "User-Agent": "OSCARTV2021",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "b3_4K",
@@ -398,7 +399,7 @@
     {
       "id": "b5_SD",
       "name": "Bein Sports 5 SD",
-      "url": "http://assets.pushyourcss.world:8080/assets/res2/java2/1347.css?x=/hls",
+      "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1347.css?x=/hls/",
       "headers": {
         "User-Agent": "OSCARTV2021",
         "Referer": "",
