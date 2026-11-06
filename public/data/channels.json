@@ -1025,12 +1025,15 @@
     {
       "id": "94",
       "name": "ON SPORT 1 HD",
-      "url": "https://ali.albesriali8.workers.dev/?url=http://ar.ycncdn.online/live/006900/index.m3u8",
+      "url": "https://fastly.live.brightcove.com/6386028928112/us-east-1/6416013238001/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJob3N0IjoieWN3Ymx1LmVncmVzcy5zenkzeHgiLCJhY2NvdW50X2lkIjoiNjQxNjAxMzIzODAwMSIsImVobiI6ImZhc3RseS5saXZlLmJyaWdodGNvdmUuY29tIiwiaXNzIjoiYmxpdmUtcGxheWJhY2stc291cmNlLWFwaSIsInN1YiI6InBhdGhtYXB0b2tlbiIsImF1ZCI6WyI2NDE2MDEzMjM4MDAxIl0sImp0aSI6IjYzODYwMjg5MjgxMTIifQ.7pBZHXb93BJ47HBrEiPQvSquoHi92NStYSX3JKYcznQ/playlist-hls.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://ali.albesriali8.workers.dev/?url=http://ar.ycncdn.online/live/006900/index.m3u8",
+      "backupEnabled": true
     },
     {
       "id": "95",
