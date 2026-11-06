@@ -488,7 +488,7 @@
         "Origin": ""
       },
       "endpoint": "m3u8",
-      "backupUrl": "http://assets.pushyourcss.world:8080/assets/res2/java2/1451.css?x=/hls",
+      "backupUrl": "http://assets.pushyourcss.world:8080/assets/res2/java2/1452.css?x=/hls",
       "backupEnabled": true,
       "backupHeaders": {
         "User-Agent": "OSCARTV2021",
