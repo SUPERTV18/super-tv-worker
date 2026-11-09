@@ -27,7 +27,7 @@
     {
       "id": "supertv2",
       "name": "SUPER TV 2 (multi)",
-      "url": "https://super-livetv-9ux.pages.dev/SUPERTV_2.m3u8",
+      "url": "https://super-livetv.stvlp.workers.dev/SUPERTV_2.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
