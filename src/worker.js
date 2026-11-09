@@ -2298,6 +2298,34 @@ async function playApi(
       recordAdminEvent({ type: "play_error", channelId: String(id), status: response.status, ok: false, host: finalTargetHost, message: "فشل المصدر أثناء التشغيل" });
     }
 
+    // For this single diagnostic channel, capture a short sanitized error
+    // hint from the upstream response without consuming the playback body.
+    if (String(id) === "b8_FHD" && !response.ok) {
+      try {
+        const errorHint = (await response.clone().text())
+          .slice(0, 1200)
+          .replace(/<script[\\s\\S]*?<\\/script>/gi, " ")
+          .replace(/<style[\\s\\S]*?<\\/style>/gi, " ")
+          .replace(/<[^>]*>/g, " ")
+          .replace(/https?:\\/\\/[^\\s"'<>]+/gi, "[url]")
+          .replace(/\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b/g, "[ip]")
+          .replace(/\\s+/g, " ")
+          .trim()
+          .slice(0, 500);
+        console.log("PLAY_UPSTREAM_ERROR_HINT", JSON.stringify({
+          channelId: String(id),
+          status: response.status,
+          hint: errorHint
+        }));
+      } catch (diagnosticError) {
+        console.log("PLAY_UPSTREAM_ERROR_HINT", JSON.stringify({
+          channelId: String(id),
+          status: response.status,
+          hintReadFailed: true
+        }));
+      }
+    }
+
     // If the upstream explicitly reports a tiny body, inspect a clone only.
     // The live response body remains untouched for normal playback.
     const reportedLength = Number(upstreamContentLength);
