@@ -2147,10 +2147,50 @@ async function playApi(
     // ========================================================
 
     try {
-      response = await fetch(cleanUrl, {
-        redirect: "follow",
-        headers
-      });
+      if (String(id) === "b8_FHD") {
+        // Inspect only this test channel's first redirect without logging
+        // signed URLs, query strings, cookies, or other sensitive values.
+        response = await fetch(cleanUrl, {
+          redirect: "manual",
+          headers
+        });
+        const redirectStatus = response.status;
+        const redirectLocation = response.headers.get("location") || "";
+        const hasSetCookie = !!response.headers.get("set-cookie");
+        if (redirectStatus >= 300 && redirectStatus < 400 && redirectLocation) {
+          let redirectHost = "";
+          let redirectProtocol = "";
+          try {
+            const redirectUrl = new URL(redirectLocation, cleanUrl);
+            redirectHost = redirectUrl.hostname;
+            redirectProtocol = redirectUrl.protocol;
+          } catch {}
+          console.log("PLAY_REDIRECT_DIAGNOSTIC", JSON.stringify({
+            channelId: String(id),
+            redirectStatus,
+            redirectHost,
+            redirectProtocol,
+            hasSetCookie
+          }));
+          try { await response.body?.cancel(); } catch {}
+          response = await fetch(new URL(redirectLocation, cleanUrl).href, {
+            redirect: "follow",
+            headers
+          });
+        } else {
+          console.log("PLAY_REDIRECT_DIAGNOSTIC", JSON.stringify({
+            channelId: String(id),
+            redirectStatus,
+            hasLocation: !!redirectLocation,
+            hasSetCookie
+          }));
+        }
+      } else {
+        response = await fetch(cleanUrl, {
+          redirect: "follow",
+          headers
+        });
+      }
     } catch (primaryError) {
       if (!backupEnabled) throw primaryError;
       usingBackup = true;
