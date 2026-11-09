@@ -2367,6 +2367,12 @@ async function playApi(
           /\.css$/i.test(
             parsedRequestedSource.pathname
           ) ||
+          /\.php$/i.test(
+            parsedSource.pathname
+          ) ||
+          /\.php$/i.test(
+            parsedRequestedSource.pathname
+          ) ||
           parsedSource.hostname
             .toLowerCase() ===
             "assets.pushyourcss.world";
