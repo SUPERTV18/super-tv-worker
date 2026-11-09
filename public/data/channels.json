@@ -64,7 +64,7 @@
     {
       "id": "stvquraan",
       "name": "SUPER TV قرأن (multi)",
-      "url": "https://super-livetv-eta.vercel.app/SUPERTV_QURAAN.m3u8",
+      "url": "https://super-livetv.stvlp.workers.dev/SUPERTV_QURAAN.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
@@ -77,7 +77,7 @@
     {
       "id": "stvaflam",
       "name": "SUPER TV افلام (multi)",
-      "url": "https://super-livetv-eta.vercel.app/SUPERTV_AFLAM.m3u8",
+      "url": "https://super-livetv.stvlp.workers.dev/SUPERTV_AFLAM.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
@@ -90,7 +90,7 @@
     {
       "id": "stvseries",
       "name": "SUPER TV مسلسلات (multi)",
-      "url": "https://super-livetv-eta.vercel.app/SUPERTV_MUSALSALAT.m3u8",
+      "url": "https://super-livetv.stvlp.workers.dev/SUPERTV_MUSALSALAT.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
@@ -103,7 +103,7 @@
     {
       "id": "stvkids",
       "name": "SUPER TV اطفال (multi)",
-      "url": "https://super-livetv-eta.vercel.app/SUPERTV_KIDS.m3u8",
+      "url": "https://super-livetv.stvlp.workers.dev/SUPERTV_KIDS.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
