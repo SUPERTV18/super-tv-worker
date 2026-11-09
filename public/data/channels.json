@@ -276,6 +276,28 @@
       "backupEnabled": true
     },
     {
+      "id": "b8_FHD",
+      "name": "Bein Sports 8 FHD",
+      "url": "https://abody.optikl.ink/ksmkfadi/index.php?r=1&cat=bein&ci=6&si=0",
+      "endpoint": "m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "b9_FHD",
+      "name": "Bein Sports 9 FHD",
+      "url": "https://abody.optikl.ink/ksmkfadi/index.php?r=1&cat=bein&ci=7&si=0",
+      "endpoint": "m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
       "id": "b1_HD",
       "name": "Bein Sports 1 4K QA",
       "url": "https://genral.oxml1237.workers.dev/index.m3u8?base=https%3A%2F%2Fs1.marketplace-io-none-kode-steeeee.lol%2F%2F&id=b1_1080&key=MmYmJhIhdIDJHdoF22",
@@ -521,28 +543,6 @@
       "endpoint": "m3u8",
       "backupUrl": "https://yassineerrayexetv.lovable.app/hls/50.m3u8",
       "backupEnabled": true
-    },
-    {
-      "id": "b8_FHD",
-      "name": "Bein Sports 8 FHD",
-      "url": "https://abody.optikl.ink/ksmkfadi/index.php?r=1&cat=bein&ci=6&si=0",
-      "endpoint": "m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "b9_FHD",
-      "name": "Bein Sports 9 FHD",
-      "url": "https://abody.optikl.ink/ksmkfadi/index.php?r=1&cat=bein&ci=7&si=0",
-      "endpoint": "m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
     }
   ],
   "ALWAN": [
