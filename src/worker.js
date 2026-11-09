@@ -2305,8 +2305,8 @@ async function playApi(
         const errorHint = (await response.clone().text())
           .slice(0, 1200)
           .replace(/<[^>]*>/g, " ")
-          .replace(/https?:[^\\s"'<>]+/gi, "[url]")
-          .replace(/\\s+/g, " ")
+          .replace(/https?:[^\s"'<>]+/gi, "[url]")
+          .replace(/\s+/g, " ")
           .trim()
           .slice(0, 500);
         console.log("PLAY_UPSTREAM_ERROR_HINT", JSON.stringify({
