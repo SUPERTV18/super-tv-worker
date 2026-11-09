@@ -2304,11 +2304,8 @@ async function playApi(
       try {
         const errorHint = (await response.clone().text())
           .slice(0, 1200)
-          .replace(/<script[\\s\\S]*?<\\/script>/gi, " ")
-          .replace(/<style[\\s\\S]*?<\\/style>/gi, " ")
           .replace(/<[^>]*>/g, " ")
-          .replace(/https?:\\/\\/[^\\s"'<>]+/gi, "[url]")
-          .replace(/\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b/g, "[ip]")
+          .replace(/https?:[^\\s"'<>]+/gi, "[url]")
           .replace(/\\s+/g, " ")
           .trim()
           .slice(0, 500);
