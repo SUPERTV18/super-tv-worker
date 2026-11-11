@@ -1330,12 +1330,13 @@
     {
       "id": "105",
       "name": "CINEMA 2",
-      "url": "https://super-tv.pages.dev/Cinema_2.m3u8",
+      "url": "https://sham-proxy.stvlp.workers.dev/?url=https://data-hosting.app-sham-tv.xyz/flu/auth3.m3u8?id=4140",
       "headers": {
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "106",
