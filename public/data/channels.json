@@ -377,7 +377,7 @@
         "Origin": ""
       },
       "endpoint": "m3u8",
-      "backupUrl": "https://10g.vitarani.com/live/DuWplb6wGAwV0A_NhVTeDA__/master.m3u8",
+      "backupUrl": "https://sham-proxy.stvlp.workers.dev/?url=https://basic.app-sham-tv.xyz/aandsaiabbaanab/v1/index.m3u8?id=0331/2",
       "backupEnabled": true,
       "backupHeaders": {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.128 Safari/537.36",
