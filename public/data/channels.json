@@ -297,7 +297,9 @@
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "backupUrl": "https://sportsbite.org/247/beINAR9?m3u8",
+      "backupEnabled": true
     },
     {
       "id": "b1_HD",
