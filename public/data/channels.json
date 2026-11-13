@@ -265,9 +265,9 @@
     {
       "id": "b7_FHD",
       "name": "Bein Sports 7 FHD",
-      "url": "https://yacinflash.mandooosports.workers.dev/4973946197352370819.m3u8",
+      "url": "https://sham-proxy.stvlp.workers.dev/?url=https://basic.app-sham-tv.xyz/aandsaiabbaanab/v1/index.m3u8?id=0337/4",
       "headers": {
-        "User-Agent": "FFLASHTV/1.0&Referer",
+        "User-Agent": "",
         "Referer": "",
         "Origin": ""
       },
