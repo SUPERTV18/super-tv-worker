@@ -1874,20 +1874,9 @@ async function hlsApi(
 
     }
 
-    const contentLength =
-      upstream.headers.get(
-        "Content-Length"
-      );
-
-    if (contentLength) {
-
-      headers.set(
-        "Content-Length",
-        contentLength
-      );
-
-    }
-
+    // Do not forward the upstream Content-Length for streamed media.
+    // Cloudflare may alter transfer framing; letting the Worker runtime
+    // frame the streamed body avoids a stale length making HLS clients wait.
     const contentRange =
       upstream.headers.get(
         "Content-Range"
