@@ -1827,10 +1827,10 @@ async function hlsApi(
           contentType: contentType.slice(0, 100),
           contentLength: upstream.headers.get("content-length") || "",
           kind: "manifest",
-          lines: body.split(/\\r?\\n/).length,
+          lines: body.split(/\r?\n/).length,
           hasStreamInf: body.includes("#EXT-X-STREAM-INF"),
           hasExtInf: body.includes("#EXTINF"),
-          rewrittenLines: rewritten.split(/\\r?\\n/).filter(line => line.includes("/api/hls?token=")).length
+          rewrittenLines: rewritten.split(/\r?\n/).filter(line => line.includes("/api/hls?token=")).length
         })
       );
 
