@@ -1827,10 +1827,10 @@ async function hlsApi(
           contentType: contentType.slice(0, 100),
           contentLength: upstream.headers.get("content-length") || "",
           kind: "manifest",
-          lines: body.split(/\r?\n/).length,
+          lines: body.split(/\\r?\\n/).length,
           hasStreamInf: body.includes("#EXT-X-STREAM-INF"),
           hasExtInf: body.includes("#EXTINF"),
-          rewrittenLines: rewritten.split(/\r?\n/).filter(line => line.includes("/api/hls?token=")).length
+          rewrittenLines: rewritten.split(/\\r?\\n/).filter(line => line.includes("/api/hls?token=")).length
         })
       );
 
@@ -1874,9 +1874,20 @@ async function hlsApi(
 
     }
 
-    // Do not forward the upstream Content-Length for streamed media.
-    // Cloudflare may alter transfer framing; letting the Worker runtime
-    // frame the streamed body avoids a stale length making HLS clients wait.
+    const contentLength =
+      upstream.headers.get(
+        "Content-Length"
+      );
+
+    if (contentLength) {
+
+      headers.set(
+        "Content-Length",
+        contentLength
+      );
+
+    }
+
     const contentRange =
       upstream.headers.get(
         "Content-Range"
