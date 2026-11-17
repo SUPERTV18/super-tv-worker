@@ -1480,7 +1480,7 @@ async function rewriteHLSManifest(
       if (
         preserveDirectSegmentUrls &&
         absoluteUrl.protocol === "http:" &&
-        /^37\\.49\\.\\d+\\.\\d+$/.test(absoluteUrl.hostname)
+        /^37\.49\.\d+\.\d+$/.test(absoluteUrl.hostname)
       ) {
         output.push(absolute);
         continue;
