@@ -1813,7 +1813,7 @@ async function hlsApi(
         await rewriteHLSManifest(
           env,
           body,
-          targetUrl.toString(),
+          upstream.url || targetUrl.toString(),
           url.origin,
           decoded.headers
         );
