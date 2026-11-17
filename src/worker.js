@@ -1615,7 +1615,8 @@ async function rewriteURIAttributes(
           env,
           fetchTarget,
           channelHeaders,
-          channelId
+          channelId,
+          segmentProxyBase
         );
 
       const replacement =
