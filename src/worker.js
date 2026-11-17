@@ -2240,7 +2240,7 @@ async function playApi(
       let primaryIsHLS = false;
       try {
         const primaryBody = (await response.clone().text())
-          .replace(/^\\uFEFF/, "")
+          .replace(/^\uFEFF/, "")
           .trimStart();
         primaryIsHLS = primaryBody.startsWith("#EXTM3U");
       } catch (primaryInspectError) {
