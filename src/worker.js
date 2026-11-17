@@ -1818,6 +1818,22 @@ async function hlsApi(
           decoded.headers
         );
 
+      console.log(
+        "HLS_UPSTREAM_OK",
+        JSON.stringify({
+          status: upstream.status,
+          requestedHost: targetUrl.hostname,
+          finalHost: (() => { try { return new URL(upstream.url || targetUrl.toString()).hostname; } catch { return ""; } })(),
+          contentType: contentType.slice(0, 100),
+          contentLength: upstream.headers.get("content-length") || "",
+          kind: "manifest",
+          lines: body.split(/\\r?\\n/).length,
+          hasStreamInf: body.includes("#EXT-X-STREAM-INF"),
+          hasExtInf: body.includes("#EXTINF"),
+          rewrittenLines: rewritten.split(/\\r?\\n/).filter(line => line.includes("/api/hls?token=")).length
+        })
+      );
+
       return new Response(
         rewritten,
         {
@@ -1908,6 +1924,20 @@ async function hlsApi(
     headers.set(
       "Cache-Control",
       "no-store"
+    );
+
+    console.log(
+      "HLS_UPSTREAM_OK",
+      JSON.stringify({
+        status: upstream.status,
+        requestedHost: targetUrl.hostname,
+        finalHost: (() => { try { return new URL(upstream.url || targetUrl.toString()).hostname; } catch { return ""; } })(),
+        contentType: contentType.slice(0, 100),
+        contentLength: contentLength || "",
+        contentRange: contentRange || "",
+        rangeRequested: Boolean(request.headers.get("Range")),
+        kind: "media"
+      })
     );
 
     return new Response(
