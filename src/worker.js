@@ -353,7 +353,8 @@ async function createHLSToken(
   env,
   target,
   channelHeaders = {},
-  channelId = ""
+  channelId = "",
+  segmentProxyBase = ""
 ) {
 
   const expires =
@@ -368,7 +369,8 @@ async function createHLSToken(
         normalizeChannelHeaders(
           channelHeaders
         ),
-      c: String(channelId || "")
+      c: String(channelId || ""),
+      p: String(segmentProxyBase || "")
     });
 
   const payloadBytes =
@@ -498,7 +500,8 @@ async function verifyHLSToken(
         normalizeChannelHeaders(
           payload.h
         ),
-      channelId: String(payload.c || "")
+      channelId: String(payload.c || ""),
+      segmentProxyBase: String(payload.p || "")
     };
 
   } catch (e) {
@@ -1404,6 +1407,23 @@ function isProbablyM3U8(
 }
 
 // ============================================================
+// DETECT A WRAPPED UPSTREAM PROXY
+// When a channel URL contains ?url=<origin>, reuse that wrapper
+// for every HLS segment and nested playlist.
+// ============================================================
+
+function getSegmentProxyBase(sourceUrl) {
+  try {
+    const parsed = new URL(sourceUrl);
+    const nested = parsed.searchParams.get("url");
+    if (!nested || !/^https?:\/\//i.test(nested)) return "";
+    return parsed.origin + parsed.pathname;
+  } catch {
+    return "";
+  }
+}
+
+// ============================================================
 // REWRITE HLS MANIFEST
 // ============================================================
 
@@ -1502,7 +1522,8 @@ async function rewriteHLSManifest(
           env,
           fetchTarget,
           channelHeaders,
-          channelId
+          channelId,
+          segmentProxyBase
         );
 
       output.push(
@@ -1899,7 +1920,7 @@ async function hlsApi(
           url.origin,
           decoded.headers,
           "/api/hls",
-          "",
+          decoded.segmentProxyBase || "",
           false,
           decoded.channelId
         );
@@ -2657,6 +2678,7 @@ async function playApi(
           ? detectedManifestBody
           : await response.text();
 
+      const segmentProxyBase = getSegmentProxyBase(finalSourceUrl) || getSegmentProxyBase(cleanUrl);
       const rewritten =
         await rewriteHLSManifest(
           env,
@@ -2665,8 +2687,8 @@ async function playApi(
           url.origin,
           channelHeaders,
           "/api/hls",
-          "",
-          ["24", "25", "26"].includes(String(id)),
+          segmentProxyBase,
+          !segmentProxyBase && ["24", "25", "26"].includes(String(id)),
           String(id)
         );
 
