@@ -1412,7 +1412,8 @@ async function rewriteHLSManifest(
   workerOrigin,
   channelHeaders = {},
   proxyPath = "/api/hls",
-  segmentProxyBase = ""
+  segmentProxyBase = "",
+  preserveDirectSegmentUrls = false
 ) {
 
   const lines =
@@ -1471,8 +1472,20 @@ async function rewriteHLSManifest(
           sourceUrl
         ).toString();
 
-      // Channel 25's TS URLs point to an origin clients cannot reach.
-      // Fetch those resources through the same sham-proxy used for its playlist.
+      // Channel 25: keep absolute 37.49.x.x TS segment URLs direct.
+      // Cloudflare Worker egress to these IPs is rejected (HTTP 403 / error 1003),
+      // while the source playlist and segments are reachable by client players.
+      // URI attributes (keys/maps) remain proxied by rewriteURIAttributes above.
+      const absoluteUrl = new URL(absolute);
+      if (
+        preserveDirectSegmentUrls &&
+        absoluteUrl.protocol === "http:" &&
+        /^37\\.49\\.\\d+\\.\\d+$/.test(absoluteUrl.hostname)
+      ) {
+        output.push(absolute);
+        continue;
+      }
+
       let fetchTarget = absolute;
       if (segmentProxyBase) {
         const proxied = new URL(segmentProxyBase);
@@ -2597,7 +2610,9 @@ async function playApi(
           finalSourceUrl,
           url.origin,
           channelHeaders,
-          "/api/hls"
+          "/api/hls",
+          "",
+          String(id) === "25"
         );
 
       return new Response(
