@@ -2666,7 +2666,7 @@ async function playApi(
           channelHeaders,
           "/api/hls",
           "",
-          String(id) === "25",
+          ["24", "25", "26"].includes(String(id)),
           String(id)
         );
 
