@@ -352,7 +352,8 @@ async function getCryptoKey(env) {
 async function createHLSToken(
   env,
   target,
-  channelHeaders = {}
+  channelHeaders = {},
+  channelId = ""
 ) {
 
   const expires =
@@ -366,7 +367,8 @@ async function createHLSToken(
       h:
         normalizeChannelHeaders(
           channelHeaders
-        )
+        ),
+      c: String(channelId || "")
     });
 
   const payloadBytes =
@@ -495,8 +497,8 @@ async function verifyHLSToken(
       headers:
         normalizeChannelHeaders(
           payload.h
-        )
-
+        ),
+      channelId: String(payload.c || "")
     };
 
   } catch (e) {
@@ -1413,7 +1415,8 @@ async function rewriteHLSManifest(
   channelHeaders = {},
   proxyPath = "/api/hls",
   segmentProxyBase = "",
-  preserveDirectSegmentUrls = false
+  preserveDirectSegmentUrls = false,
+  channelId = ""
 ) {
 
   const lines =
@@ -1443,7 +1446,8 @@ async function rewriteHLSManifest(
           workerOrigin,
           channelHeaders,
           proxyPath,
-          segmentProxyBase
+          segmentProxyBase,
+          channelId
         );
 
       output.push(
@@ -1497,7 +1501,8 @@ async function rewriteHLSManifest(
         await createHLSToken(
           env,
           fetchTarget,
-          channelHeaders
+          channelHeaders,
+          channelId
         );
 
       output.push(
@@ -1531,7 +1536,8 @@ async function rewriteURIAttributes(
   workerOrigin,
   channelHeaders = {},
   proxyPath = "/api/hls",
-  segmentProxyBase = ""
+  segmentProxyBase = "",
+  channelId = ""
 ) {
 
   const regex =
@@ -1587,7 +1593,8 @@ async function rewriteURIAttributes(
         await createHLSToken(
           env,
           fetchTarget,
-          channelHeaders
+          channelHeaders,
+          channelId
         );
 
       const replacement =
@@ -1761,13 +1768,30 @@ async function hlsApi(
 
     }
 
-  } catch {
+  } catch (urlError) {
+
+    if (decoded.channelId === "24") {
+      console.warn("HLS24_INVALID_TARGET", JSON.stringify({
+        reason: String(urlError.message || urlError).slice(0, 100),
+        targetLength: String(target || "").length
+      }));
+    }
 
     return text(
       "Invalid upstream URL",
       400
     );
 
+  }
+
+  if (decoded.channelId === "24") {
+    console.log("HLS24_REQUEST", JSON.stringify({
+      host: targetUrl.hostname,
+      pathType: /\.m3u8?(?:$|\/)/i.test(targetUrl.pathname) ? "playlist" :
+        /\.(?:ts|m4s|mp4|aac|key)(?:$|\/)/i.test(targetUrl.pathname) ? "media_or_key" : "other",
+      rangeRequested: Boolean(request.headers.get("Range")),
+      method: request.method
+    }));
   }
 
   try {
@@ -1820,6 +1844,9 @@ async function hlsApi(
       }
 
       console.warn("HLS_UPSTREAM_FAILURE", JSON.stringify(failureDetails));
+      if (decoded.channelId === "24") {
+        console.warn("HLS24_UPSTREAM_FAILURE", JSON.stringify(failureDetails));
+      }
     }
 
     // Some providers serve nested HLS playlists through .css URLs.
@@ -1870,7 +1897,11 @@ async function hlsApi(
           body,
           upstream.url || targetUrl.toString(),
           url.origin,
-          decoded.headers
+          decoded.headers,
+          "/api/hls",
+          "",
+          false,
+          decoded.channelId
         );
 
       console.log(
@@ -1980,6 +2011,29 @@ async function hlsApi(
       "Cache-Control",
       "no-store"
     );
+
+    if (decoded.channelId === "24") {
+      console.log("HLS24_MANIFEST_OK", JSON.stringify({
+        status: upstream.status,
+        host: targetUrl.hostname,
+        finalHost: (() => { try { return new URL(upstream.url || targetUrl.toString()).hostname; } catch { return ""; } })(),
+        lines: body.split(/\r?\n/).length,
+        hasStreamInf: body.includes("#EXT-X-STREAM-INF"),
+        hasExtInf: body.includes("#EXTINF"),
+        rewrittenLines: rewritten.split(/\r?\n/).filter(line => line.includes("/api/hls?token=")).length
+      }));
+    }
+
+    if (decoded.channelId === "24") {
+      console.log("HLS24_MEDIA_OK", JSON.stringify({
+        status: upstream.status,
+        host: targetUrl.hostname,
+        finalHost: (() => { try { return new URL(upstream.url || targetUrl.toString()).hostname; } catch { return ""; } })(),
+        contentType: contentType.slice(0, 100),
+        contentLength: contentLength || "",
+        rangeRequested: Boolean(request.headers.get("Range"))
+      }));
+    }
 
     console.log(
       "HLS_UPSTREAM_OK",
@@ -2612,7 +2666,8 @@ async function playApi(
           channelHeaders,
           "/api/hls",
           "",
-          String(id) === "25"
+          String(id) === "25",
+          String(id)
         );
 
       return new Response(
