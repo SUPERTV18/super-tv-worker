@@ -2574,8 +2574,7 @@ async function playApi(
           finalSourceUrl,
           url.origin,
           channelHeaders,
-          "/api/hls",
-          String(id) === "25" ? "https://sham-proxy.stvlp.workers.dev/" : ""
+          "/api/hls"
         );
 
       return new Response(
