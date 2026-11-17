@@ -1775,15 +1775,38 @@ async function hlsApi(
 
     // Safe diagnostics for failed HLS requests; never log full URLs or tokens.
     if (!upstream.ok) {
-      console.warn(
-        "HLS_UPSTREAM_FAILURE",
-        JSON.stringify({
-          status: upstream.status,
-          host: targetUrl.hostname,
-          contentType: contentType.slice(0, 100),
-          rangeRequested: Boolean(request.headers.get("Range"))
-        })
-      );
+      const failureDetails = {
+        status: upstream.status,
+        host: targetUrl.hostname,
+        contentType: contentType.slice(0, 100),
+        rangeRequested: Boolean(request.headers.get("Range"))
+      };
+
+      // ALWAN segment diagnostics: inspect only a short cloned error body and
+      // non-sensitive response metadata. The original upstream body is untouched.
+      if (upstream.status === 403 && /^37\\.49\\.\\d+\\.\\d+$/.test(targetUrl.hostname)) {
+        try {
+          const hint = (await upstream.clone().text())
+            .replace(/<[^>]*>/g, " ")
+            .replace(/https?:\\/\\/[^\\s"'<>]+/gi, "[url]")
+            .replace(/[^\\x20-\\x7E\\r\\n\\t]/g, " ")
+            .replace(/\\s+/g, " ")
+            .trim()
+            .slice(0, 160);
+          failureDetails.bodyHint = hint;
+        } catch {
+          failureDetails.bodyHint = "unavailable";
+        }
+        failureDetails.server = upstream.headers.get("server") || "";
+        failureDetails.authChallenge = upstream.headers.get("www-authenticate") || "";
+        failureDetails.hasSetCookie = upstream.headers.has("set-cookie");
+        failureDetails.finalHost = (() => {
+          try { return new URL(upstream.url || targetUrl.toString()).hostname; }
+          catch { return ""; }
+        })();
+      }
+
+      console.warn("HLS_UPSTREAM_FAILURE", JSON.stringify(failureDetails));
     }
 
     // Some providers serve nested HLS playlists through .css URLs.
