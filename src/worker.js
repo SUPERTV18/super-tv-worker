@@ -2233,6 +2233,43 @@ async function playApi(
       });
     }
 
+    // ALWAN 1 (channel 24) uses a PHP entry point. Some PHP endpoints
+    // return an HTML page with HTTP 200 instead of an HLS manifest.
+    // Treat that as a failed primary source and use its configured backup.
+    if (String(id) === "24" && !usingBackup && response.ok) {
+      let primaryIsHLS = false;
+      try {
+        const primaryBody = (await response.clone().text())
+          .replace(/^\\uFEFF/, "")
+          .trimStart();
+        primaryIsHLS = primaryBody.startsWith("#EXTM3U");
+      } catch (primaryInspectError) {
+        console.warn("ALWAN1_PRIMARY_INSPECT_FAILED");
+      }
+
+      if (!primaryIsHLS && backupEnabled) {
+        const primaryStatus = response.status;
+        try { if (response.body) await response.body.cancel(); } catch {}
+        usingBackup = true;
+        cleanUrl = backupUrl;
+        channelHeaders = normalizeChannelHeaders({
+          ...(channel.headers && typeof channel.headers === "object" ? channel.headers : {}),
+          ...(channel.backupHeaders && typeof channel.backupHeaders === "object" ? channel.backupHeaders : {})
+        });
+        headers = getUpstreamHeaders(cleanUrl, channelHeaders);
+        console.warn("PLAY_FAILOVER", JSON.stringify({
+          channelId: String(id),
+          reason: "primary_php_response_not_hls",
+          primaryStatus,
+          backupHost: (() => { try { return new URL(cleanUrl).hostname; } catch { return ""; } })()
+        }));
+        response = await fetch(cleanUrl, {
+          redirect: "follow",
+          headers
+        });
+      }
+    }
+
     if (usingBackup) {
       console.log("PLAYBACK_USING_BACKUP", JSON.stringify({
         channelId: String(id),
