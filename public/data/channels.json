@@ -581,11 +581,11 @@
     {
       "id": "26",
       "name": "ALWAN Sports 3",
-      "url": "https://iraqmaxprozeone.de5.net/drama/live_tv_panel_7b6fb9cf2640af7bbd8601b32e455ffb.m3u8?s=HD",
+      "url": "https://sham-proxy.stvlp.workers.dev/?url=https://data-hosting.app-sham-tv.xyz/flu/auth3.m3u8?id=241397",
       "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        "Referer": "https://data-hosting.app-sham-tv.xyz/",
+        "Origin": "https://data-hosting.app-sham-tv.xyz"
       },
       "endpoint": "m3u8",
       "backupUrl": "https://aln-plasma4k-extraali4k.b-cdn.net/order/aln3_1080.m3u8",
