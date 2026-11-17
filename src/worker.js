@@ -1784,13 +1784,13 @@ async function hlsApi(
 
       // ALWAN segment diagnostics: inspect only a short cloned error body and
       // non-sensitive response metadata. The original upstream body is untouched.
-      if (upstream.status === 403 && /^37\\.49\\.\\d+\\.\\d+$/.test(targetUrl.hostname)) {
+      if (upstream.status === 403 && /^37\.49\.\d+\.\d+$/.test(targetUrl.hostname)) {
         try {
           const hint = (await upstream.clone().text())
             .replace(/<[^>]*>/g, " ")
-            .replace(/https?:\\/\\/[^\\s"'<>]+/gi, "[url]")
-            .replace(/[^\\x20-\\x7E\\r\\n\\t]/g, " ")
-            .replace(/\\s+/g, " ")
+            .replace(/https?:\/\/[^\s"'<>]+/gi, "[url]")
+            .replace(/[^\x20-\x7E\r\n\t]/g, " ")
+            .replace(/\s+/g, " ")
             .trim()
             .slice(0, 160);
           failureDetails.bodyHint = hint;
