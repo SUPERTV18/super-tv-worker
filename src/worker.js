@@ -1411,7 +1411,8 @@ async function rewriteHLSManifest(
   sourceUrl,
   workerOrigin,
   channelHeaders = {},
-  proxyPath = "/api/hls"
+  proxyPath = "/api/hls",
+  segmentProxyBase = ""
 ) {
 
   const lines =
@@ -1440,7 +1441,8 @@ async function rewriteHLSManifest(
           sourceUrl,
           workerOrigin,
           channelHeaders,
-          proxyPath
+          proxyPath,
+          segmentProxyBase
         );
 
       output.push(
@@ -1469,10 +1471,19 @@ async function rewriteHLSManifest(
           sourceUrl
         ).toString();
 
+      // Channel 25's TS URLs point to an origin clients cannot reach.
+      // Fetch those resources through the same sham-proxy used for its playlist.
+      let fetchTarget = absolute;
+      if (segmentProxyBase) {
+        const proxied = new URL(segmentProxyBase);
+        proxied.searchParams.set("url", absolute);
+        fetchTarget = proxied.toString();
+      }
+
       const token =
         await createHLSToken(
           env,
-          absolute,
+          fetchTarget,
           channelHeaders
         );
 
@@ -1506,7 +1517,8 @@ async function rewriteURIAttributes(
   sourceUrl,
   workerOrigin,
   channelHeaders = {},
-  proxyPath = "/api/hls"
+  proxyPath = "/api/hls",
+  segmentProxyBase = ""
 ) {
 
   const regex =
@@ -1551,10 +1563,17 @@ async function rewriteURIAttributes(
           sourceUrl
         ).toString();
 
+      let fetchTarget = absolute;
+      if (segmentProxyBase) {
+        const proxied = new URL(segmentProxyBase);
+        proxied.searchParams.set("url", absolute);
+        fetchTarget = proxied.toString();
+      }
+
       const token =
         await createHLSToken(
           env,
-          absolute,
+          fetchTarget,
           channelHeaders
         );
 
@@ -2554,7 +2573,9 @@ async function playApi(
           body,
           finalSourceUrl,
           url.origin,
-          channelHeaders
+          channelHeaders,
+          "/api/hls",
+          String(id) === "25" ? "https://sham-proxy.stvlp.workers.dev/" : ""
         );
 
       return new Response(
