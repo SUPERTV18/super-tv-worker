@@ -4074,6 +4074,24 @@ function matchesCairoStamp(ms) {
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(d).map(x => [x.type, x.value]));
   return p.year + "-" + p.month + "-" + p.day + "T" + (p.hour === "24" ? "00" : p.hour) + ":" + p.minute + ":00";
 }
+const MATCHES_TV_NAME_KEYS = ["title", "name", "title_ar", "name_ar", "channel_name", "channel_title", "channel", "ar_title", "text", "label"];
+function matchesTvFlatten(v, out, depth) {
+  if (depth > 3 || v == null) return;
+  if (typeof v === "string") { const t = v.trim(); if (t && !/^https?:\/\//i.test(t) && !/^\d+$/.test(t)) out.push({ name: t, image: "" }); return; }
+  if (Array.isArray(v)) { v.forEach(x => matchesTvFlatten(x, out, depth + 1)); return; }
+  if (typeof v === "object") {
+    const nk = MATCHES_TV_NAME_KEYS.find(k => typeof v[k] === "string" && v[k].trim() && !/^https?:\/\//i.test(v[k]));
+    if (nk) { const im = v.image || v.logo || v.icon; out.push({ name: v[nk].trim(), image: typeof im === "string" ? im : "" }); return; }
+    for (const k of Object.keys(v)) { if (typeof v[k] === "object") matchesTvFlatten(v[k], out, depth + 1); }
+  }
+}
+function matchesSrcTvKeys(m) { return Object.keys(m || {}).filter(k => /chan|tv|broadcast|comm/i.test(k)); }
+function matchesSrcTv(m) {
+  const found = [];
+  for (const k of matchesSrcTvKeys(m)) matchesTvFlatten(m[k], found, 0);
+  const seen = new Set();
+  return found.filter(x => x.name && !seen.has(x.name) && seen.add(x.name));
+}
 async function matchesSrcGet(path) {
   const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 9000);
   try {
@@ -4116,13 +4134,17 @@ async function matchesFetchSource(date) {
       status: m.status == null ? null : Number(m.status),
       score: (m.home_scores != null && m.away_scores != null && m.home_scores !== "" && m.away_scores !== "") ? { h: Number(m.home_scores), a: Number(m.away_scores) } : null,
       minute: m.score_time != null ? String(m.score_time) : "",
+      tv: matchesSrcTv(m),
       team1: { name: String(h.title).trim(), flag: matchesSrcLogo(h.image) },
       team2: { name: String(a.title).trim(), flag: matchesSrcLogo(a.image) }
     });
   }
   matches.sort((x, y) => x.time.localeCompare(y.time));
   const lg = new Map(); matches.forEach(m => lg.set(m.league, (lg.get(m.league) || 0) + 1));
-  return { leagues: [...lg.entries()].map(([label, count]) => ({ label, count })), matches, offset: off };
+  const keys = new Set(); let raw = "", withRaw = 0;
+  for (const m of data) for (const k of matchesSrcTvKeys(m)) { keys.add(k); const v = m[k]; if (v != null && !(Array.isArray(v) && !v.length) && v !== "") { withRaw++; if (!raw) raw = JSON.stringify(v).slice(0, 300); } }
+  const tvInfo = { keys: [...keys], total: matches.length, withTv: matches.filter(x => x.tv.length).length, rawFields: withRaw, sample: raw };
+  return { leagues: [...lg.entries()].map(([label, count]) => ({ label, count })), matches, offset: off, tvInfo };
 }
 
 async function matchesAdminApi(request, env, url) {
