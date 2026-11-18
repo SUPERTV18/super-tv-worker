@@ -1095,6 +1095,11 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 /* MATCHES SECTION v2 */
 .nav-accordion[data-nav-group="matches"]>.nav-group-trigger .nav-group-icon{background:linear-gradient(145deg,#0a8f5b,#0b6a8f);color:#a6ffd9}
 .mx-bar{margin-bottom:14px}
+.dialog:has(.mx-imp) #dlgBody{max-height:min(62vh,560px);overflow:auto}
+.dialog:has(.mx-imp){max-width:680px}
+.dialog:has(.mx-tcard),.dialog:has(.mx-lgrow){max-width:680px}
+.mx-imp input:not([type=checkbox]):not([type=date]),.mx-imp select{background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:10px;font:inherit}
+.mmid .mx-tv{max-width:150px;margin-inline:auto;text-align:center;font-size:11px}
 .mx-tv{margin-top:6px;font-size:12px;font-weight:700;color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
 .mmid .mx-score{margin:6px 0 0;font-size:15px}
 .mx-score{display:inline-block;margin-inline-start:8px;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:800;background:var(--surface-2);border:1px solid var(--border);font-variant-numeric:tabular-nums}
@@ -2720,8 +2725,8 @@ async function mxSource(){
 function mxNorm(x){return String(x||"").replace(/[ً-ٟـ]/g,"").replace(/[أإآ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه").replace(/^ال/,"").replace(/\s+ال/g," ").replace(/\s+/g," ").trim().toLowerCase()}
 async function mxLive(day,force){
  M.live=M.live||{};const c=M.live[day];if(c&&!force&&Date.now()-c.at<45000)return c;
- let rows=[],err="";try{const r=await api("/api/admin/matches/source?date="+encodeURIComponent(day));rows=r.matches||[]}catch(e){err=e.message||"خطأ"}
- return M.live[day]={at:Date.now(),rows,err}}
+ let rows=[],err="",tvi=null;try{const r=await api("/api/admin/matches/source?date="+encodeURIComponent(day));rows=r.matches||[];tvi=r.tvInfo||null}catch(e){err=e.message||"خطأ"}
+ return M.live[day]={at:Date.now(),rows,err,tvi}}
 function mxFindLive(m,rows){const mt=mMs(m.time),n1=mxNorm((m.team1||{}).name),n2=mxNorm((m.team2||{}).name),lib=(C.cfg&&C.cfg.teams)||[];
  const alias=n=>{const l=lib.find(x=>mxNorm(x.name)===n);return[n,...(l&&l.en?[mxNorm(l.en)]:[])]},a1=alias(n1),a2=alias(n2);
  const eq=(x,as)=>{const y=mxNorm(x.name);return as.some(a=>a===y||(a.length>=4&&y.length>=4&&(a.includes(y)||y.includes(a))))};
@@ -2736,7 +2741,7 @@ async function mxLiveDecorate(force){
   el.innerHTML='<span class="mx-score'+(x.live?" live":"")+'" title="النتيجة من المصدر — للعرض في اللوحة فقط">'+x.score.h+' - '+x.score.a+(x.live?' · مباشر'+(x.minute?" "+esc(x.minute):""):"")+'</span>'});
  const info=$("mxLiveInfo");if(!info)return;
  const old=c.rows.length&&!c.rows.some(r=>"score" in r);
- info.innerHTML=c.err?'<span style="color:var(--red)">تعذّر قراءة النتائج من المصدر: '+esc(c.err)+'</span> <button type="button" class="soft" data-mx="livere" style="padding:3px 10px;font-size:12px">إعادة المحاولة</button>':old?'<span style="color:var(--amber)">الوركر المنشور قديم (لا يرسل النتائج) — انشر worker.js الأحدث.</span>':'النتائج من المصدر: '+c.rows.length+' مباراة مقروءة، '+matched+' من '+total+' رُبطت بمبارياتك. <button type="button" class="soft" data-mx="livere" style="padding:3px 10px;font-size:12px">تحديث</button>'}
+ info.innerHTML=c.err?'<span style="color:var(--red)">تعذّر قراءة النتائج من المصدر: '+esc(c.err)+'</span> <button type="button" class="soft" data-mx="livere" style="padding:3px 10px;font-size:12px">إعادة المحاولة</button>':old?'<span style="color:var(--amber)">الوركر المنشور قديم (لا يرسل النتائج) — انشر worker.js الأحدث.</span>':'النتائج من المصدر: '+c.rows.length+' مباراة مقروءة، '+matched+' من '+total+' رُبطت بمبارياتك.'+mxTvNote(c)+' <button type="button" class="soft" data-mx="livere" style="padding:3px 10px;font-size:12px">تحديث</button>'}
 /* copy day / repeat */
 function mxClone(m,date,opts){const o=mClone(mStrip(m));delete o.stoppedAt;delete o.resumeAt;delete o.status;o.time=date+"T"+String(m.time).slice(11,19);const base=String(o.league||"").replace(/\s+x\s*$/i,"").trim();if(opts.hide!==undefined)o.league=base+(opts.hide?" x":"");if(opts.noch)o.channels=[];return{...o,_k:++M.k}}
 function mxHas(m,date){const k=a=>String(a||"").trim().toLowerCase(),t1=k((m.team1||{}).name),t2=k((m.team2||{}).name);return M.list.some(x=>String(x.time).slice(0,10)===date&&[k((x.team1||{}).name),k((x.team2||{}).name)].sort().join("|")===[t1,t2].sort().join("|"))}
@@ -2754,6 +2759,7 @@ async function mxRepeat(key){
   let n=0;const d0=String(m.time).slice(0,10);for(let i=1;i<=c;i++){const d=mxAddDays(d0,e*i);if(mxHas(m,d))continue;M.list.push(mxClone(m,d,{hide:w.querySelector("#rpH").checked}));n++}
   renderMatches();notify(n?"أُنشئت "+n+" نسخة":"النسخ موجودة بالفعل");if(n)mTouch();return}}
 /* scores on full-schedule cards */
+function mxTvNote(c){const t=c&&c.tvi;if(!t)return c&&c.rows&&c.rows.length?" · قنوات ناقلة: الوركر لا يرسلها (انشر worker.js الأحدث)":"";if(t.withTv)return" · قنوات ناقلة: "+t.withTv+" من "+t.total;return" · المصدر لا يرسل قنوات ناقلة لهذا اليوم"+(t.rawFields?" (وصل حقل غير مفهوم: "+esc(t.sample)+")":"")}
 function mxTvHtml(x){return x&&x.tv&&x.tv.length?'<div class="mx-tv" title="القنوات الناقلة — من المصدر، للعرض في اللوحة فقط">📺 '+x.tv.map(t=>esc(t.name)).join(" · ")+'</div>':""}
 function mxScoreHtml(x){return'<span class="mx-score'+(x.live?" live":"")+'" title="النتيجة من المصدر — للعرض في اللوحة فقط">'+x.score.h+' - '+x.score.a+(x.live?' · مباشر':"")+'</span>'}
 async function mxCardsDecorate(){
@@ -2763,7 +2769,7 @@ async function mxCardsDecorate(){
  let matched=0,total=0;
  document.querySelectorAll("#mList [data-csk]").forEach(el=>{const m=M.list.find(v=>v._k===+el.dataset.csk);if(!m)return;total++;const x=mxFindLive(m,c.rows);if(x)matched++;el.innerHTML=(x&&x.score&&mMs(m.time)<=now?mxScoreHtml(x):"")+mxTvHtml(x)});
  const old=c.rows.length&&!c.rows.some(q=>"score" in q);
- info.innerHTML=c.err?'<span style="color:var(--red)">تعذّر قراءة النتائج من المصدر: '+esc(c.err)+'</span>':old?'<span style="color:var(--amber)">الوركر المنشور قديم (لا يرسل النتائج) — انشر worker.js الأحدث.</span>':(c.rows.length?"النتائج من المصدر: "+matched+" من "+total+" مباراة رُبطت.":"لا توجد مباريات لهذا اليوم في المصدر.")}
+ info.innerHTML=c.err?'<span style="color:var(--red)">تعذّر قراءة النتائج من المصدر: '+esc(c.err)+'</span>':old?'<span style="color:var(--amber)">الوركر المنشور قديم (لا يرسل النتائج) — انشر worker.js الأحدث.</span>':(c.rows.length?"النتائج من المصدر: "+matched+" من "+total+" مباراة رُبطت."+mxTvNote(c):"لا توجد مباريات لهذا اليوم في المصدر.")}
 /* MATCHES_V2_END */
 
 const PAGES=[["overview","نظرة عامة","grid"],["channels","إدارة القنوات","tv"],["editor","إضافة / تعديل","plus"],["tester","اختبار المصدر","target"],["health","فحص القنوات","pulse"],["mtoday","لوحة اليوم (المباريات)","pulse"],["matches","الجدول الكامل (المباريات)","ball"],["mteams","الفرق والبطولات","users"],["mtemplates","قوالب القنوات","tv"],["mauto","النشر التلقائي للمباريات","target"],["mhistory","سجل المباريات","history"],["viewers","المشاهدون الآن","users"],["smartlinks","مدير الروابط الذكي","link"],["errors","سجل الأخطاء","alert"],["history","سجل التعديلات","history"],["security","الحماية والإعدادات","shield"],["logs","حالة النظام","log"],["seriesadmin","إدارة الأفلام والمسلسلات","tv"]];
