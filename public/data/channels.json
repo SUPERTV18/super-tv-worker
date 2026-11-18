@@ -7,7 +7,7 @@
       "headers": {
         "User-Agent": "",
         "Referer": "",
-        "Origin": ""
+        "Origin": "" 
       },
       "endpoint": "m3u8"
     },
