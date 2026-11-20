@@ -945,12 +945,13 @@
     {
       "id": "60",
       "name": "Thmanyah 3 SD",
-      "url": "https://genral.oxml1237.workers.dev/index.m3u8?base=https%3A%2F%2Fs1.marketplace-io-none-kode-steeeee.lol%2F%2F&id=thamnya_sd3&key=MmYmJhIhdIDJHdoF22",
+      "url": "https://blcco.linkip.org/live/3453_.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     }
   ],
   "StarzPlay": [
