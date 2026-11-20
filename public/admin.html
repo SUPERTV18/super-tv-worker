@@ -1100,6 +1100,9 @@ body{font-size:14px;background:radial-gradient(ellipse at 85% 0%,#182c58 0,trans
 .dialog:has(.mx-tcard),.dialog:has(.mx-lgrow){max-width:680px}
 .mx-imp input:not([type=checkbox]):not([type=date]),.mx-imp select{background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:10px;font:inherit}
 .mmid .mx-tv{max-width:150px;margin-inline:auto;text-align:center;font-size:11px}
+.mx-bc{margin-top:6px;border:1px dashed var(--line,#3a4358);background:transparent;color:var(--muted);font:inherit;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;cursor:pointer;max-width:170px;overflow-wrap:anywhere;line-height:1.5}
+.mx-bc:not(.empty){border-style:solid;color:var(--text,inherit)}
+.mx-bc:hover{border-color:var(--accent,#7c5cff)}
 .mx-tv{margin-top:6px;font-size:12px;font-weight:700;color:var(--muted);line-height:1.6;overflow-wrap:anywhere}
 .mmid .mx-score{margin:6px 0 0;font-size:15px}
 .mx-score{display:inline-block;margin-inline-start:8px;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:800;background:var(--surface-2);border:1px solid var(--border);font-variant-numeric:tabular-nums}
@@ -2506,10 +2509,10 @@ setInterval(()=>{if(document.visibilityState==="visible"&&M.loaded&&$("page-matc
 const C={cfg:null,syncing:false,sha:null,tg:false,last:null,loaded:false,dirty:false,loading:null};
 const MX_PAGES=["mtoday","mteams","mtemplates","mauto","mhistory"];
 function mxActive(){const a=document.querySelector(".page.active");return a?a.id.replace("page-",""):""}
-function mxDefaultCfg(){return{templates:[],teams:[],leagueMap:{},autoImport:{enabled:false,daysAhead:1,leagues:[],hidden:true,templateId:""},autoPublish:{enabled:false,hoursBefore:2},alerts:{enabled:false,minutesBefore:60,noChannels:true}}}
+function mxDefaultCfg(){return{templates:[],teams:[],leagueMap:{},broadcasts:{byLeague:{},byMatch:{}},autoImport:{enabled:false,daysAhead:1,leagues:[],hidden:true,templateId:""},autoPublish:{enabled:false,hoursBefore:2},alerts:{enabled:false,minutesBefore:60,noChannels:true}}}
 async function mxLoadCfg(force){
  if(C.loaded&&!force&&C.worker===activeWorker)return C.cfg;if(C.loading)return C.loading;
- C.loading=(async()=>{try{const r=await api("/api/admin/matches/config");C.cfg={...mxDefaultCfg(),...r.config,autoImport:{...mxDefaultCfg().autoImport,...(r.config||{}).autoImport},autoPublish:{...mxDefaultCfg().autoPublish,...(r.config||{}).autoPublish},alerts:{...mxDefaultCfg().alerts,...(r.config||{}).alerts}};C.sha=r.sha||null;C.tg=!!r.telegram;C.last=r.lastRun||null;C.loaded=true;C.dirty=false;C.worker=activeWorker;return C.cfg}finally{C.loading=null}})();
+ C.loading=(async()=>{try{const r=await api("/api/admin/matches/config");C.cfg={...mxDefaultCfg(),...r.config,broadcasts:{byLeague:{...((r.config||{}).broadcasts||{}).byLeague},byMatch:{...((r.config||{}).broadcasts||{}).byMatch}},autoImport:{...mxDefaultCfg().autoImport,...(r.config||{}).autoImport},autoPublish:{...mxDefaultCfg().autoPublish,...(r.config||{}).autoPublish},alerts:{...mxDefaultCfg().alerts,...(r.config||{}).alerts}};C.sha=r.sha||null;C.tg=!!r.telegram;C.last=r.lastRun||null;C.loaded=true;C.dirty=false;C.worker=activeWorker;return C.cfg}finally{C.loading=null}})();
  return C.loading}
 async function mxSaveCfg(quiet){
  if(!C.cfg)return;try{const r=await api("/api/admin/matches/config",{method:"POST",headers:C.sha?{"X-Base-Sha":C.sha}:{},body:JSON.stringify({config:C.cfg})});if(quiet){C.sha=r.sha||C.sha;return}notify(r.message||"تم حفظ الإعدادات");await mxLoadCfg(true);mxRender()}
@@ -2574,11 +2577,13 @@ function mxTemplates(){
  const box=$("mxTplBox");if(!C.loaded){box.innerHTML='<div class="empty">جار التحميل...</div>';return}
  const ts=C.cfg.templates;
  box.innerHTML=ts.length?'<div class="mx-tcards">'+ts.map(t=>'<div class="mx-tcard"><h4>'+esc(t.name)+'</h4>'+(t.desc?'<div class="muted" style="font-size:12px">'+esc(t.desc)+'</div>':"")+'<div class="chs">'+mxTplChips(t)+'</div><div class="acts"><button type="button" class="primary" data-mxtpl="apply" data-id="'+esc(t.id)+'" style="padding:7px 12px;font-size:12px">تطبيق على…</button><button type="button" class="soft" data-mxtpl="edit" data-id="'+esc(t.id)+'">تعديل</button><button type="button" class="soft" data-mxtpl="del" data-id="'+esc(t.id)+'">حذف</button></div></div>').join("")+'</div>':'<div class="panel"><div class="empty">لا توجد قوالب بعد. اضغط «قالب جديد» (مثال: «بين 1 كامل» = FHD + HD + SD + LOW).</div></div>';
+ const known=M.loaded?mKnownChannels():[],bun=mBundles(known);
+ box.innerHTML+='<h3 style="margin:22px 2px 6px">الحزم الجاهزة <small class="muted" style="font-weight:600">(اللي بتظهر في تعديل المباراة)</small></h3><div class="muted" style="margin:0 2px 10px;font-size:12.5px">دي بتتولّد تلقائيًا من القنوات المستخدمة. اضغط «تعديل» لتحويل أي حزمة لقالب محفوظ تعدّل فيه براحتك (تضيف/تحذف/ترتب قنوات)، وهيظهر بعدها في «تطبيق قالب قنوات» داخل المباراة.</div>'+(bun.length?'<div class="mx-tcards">'+bun.map(b=>'<div class="mx-tcard"><h4>'+esc(b.label)+'</h4><div class="muted" style="font-size:12px">'+b.items.length+' جودات</div><div class="chs">'+mxTplChips({channels:b.items})+'</div><div class="acts"><button type="button" class="primary" data-mxtpl="seed" data-id="'+esc(b.key)+'" style="padding:7px 12px;font-size:12px">تعديل كقالب</button></div></div>').join("")+'</div>':'<div class="panel"><div class="empty">لا توجد حزم بعد.</div></div>');
  paintIcons(box)}
-async function mxTplEdit(id){
+async function mxTplEdit(id,seed){
  const ex=id?C.cfg.templates.find(t=>t.id===id):null;if(id&&!ex)return;
- const known=mKnownChannels(),bundles=mBundles(known);let chans=ex?ex.channels.map(c=>({name:c.name,url:c.url})):[];
- const w=document.createElement("div");w.className="medit";w.innerHTML='<div class="formgrid"><div class="field wide"><label for="mtplN">اسم القالب</label><input id="mtplN" maxlength="80" value="'+esc(ex?ex.name:"")+'" placeholder="مثال: بين 1 كامل"></div><div class="field wide"><label for="mtplD">وصف (اختياري)</label><input id="mtplD" maxlength="200" value="'+esc(ex?ex.desc||"":"")+'"></div></div><h4>قنوات القالب</h4><div class="mpick"><div class="sel" id="mtSel"></div><div class="muted" style="margin:0">حزم جاهزة</div><div class="pool" id="mtBun"></div><input id="mtQ" type="search" placeholder="ابحث في القنوات المعروفة" style="margin-top:8px"><div class="pool" id="mtPool"></div><div class="mrow3"><input id="mtCn" placeholder="اسم قناة مخصصة"><input id="mtCu" dir="ltr" placeholder="go:CODE أو https://..."><button type="button" class="soft" id="mtCadd">إضافة</button></div></div>';
+ const known=mKnownChannels(),bundles=mBundles(known);let chans=ex?ex.channels.map(c=>({name:c.name,url:c.url})):(seed?seed.channels.map(c=>({name:c.name,url:c.url})):[]);
+ const w=document.createElement("div");w.className="medit";w.innerHTML='<div class="formgrid"><div class="field wide"><label for="mtplN">اسم القالب</label><input id="mtplN" maxlength="80" value="'+esc(ex?ex.name:(seed?seed.name:""))+'" placeholder="مثال: بين 1 كامل"></div><div class="field wide"><label for="mtplD">وصف (اختياري)</label><input id="mtplD" maxlength="200" value="'+esc(ex?ex.desc||"":"")+'"></div></div><h4>قنوات القالب</h4><div class="mpick"><div class="sel" id="mtSel"></div><div class="muted" style="margin:0">حزم جاهزة</div><div class="pool" id="mtBun"></div><input id="mtQ" type="search" placeholder="ابحث في القنوات المعروفة" style="margin-top:8px"><div class="pool" id="mtPool"></div><div class="mrow3"><input id="mtCn" placeholder="اسم قناة مخصصة"><input id="mtCu" dir="ltr" placeholder="go:CODE أو https://..."><button type="button" class="soft" id="mtCadd">إضافة</button></div></div>';
  const g=s=>w.querySelector("#"+s);
  function draw(){const have=new Set(chans.map(c=>c.url)),q=g("mtQ").value.trim().toLowerCase();
   g("mtSel").innerHTML=mxChipsHtml(chans)||'<span class="muted">لم تُضف قنوات بعد</span>';
@@ -2652,6 +2657,7 @@ async function mxEnter(name){
  mxRender();mxSyncLib().catch(()=>{})}
 document.addEventListener("click",async e=>{
  const t=e.target;let b;
+ if(b=t.closest("[data-bc]")){const m=M.list.find(v=>v._k===+b.dataset.bc);if(m)mxBcEdit(m);return}
  if(b=t.closest("[data-mx]")){const a=b.dataset.mx;
   if(a==="refresh"){if(M.loaded&&mUnsaved()){const ok=await openDialog({title:"تجاهل التعديلات غير المحفوظة؟",text:"التحديث سيعيد تحميل الجدول من GitHub.",ok:"تحديث",danger:true});if(!ok)return}await loadMatches(true)}
   else if(a==="add"){if(!M.loaded)return notify("انتظر تحميل الجدول أولًا","error");mEdit(null)}
@@ -2671,7 +2677,7 @@ document.addEventListener("click",async e=>{
  if(b=t.closest("[data-mxteam]")){mxEditTeam(b.dataset.mxteam);return}
  if(b=t.closest("[data-mxleague]")){mxEditLeague(b.dataset.mxleague);return}
  if(b=t.closest("[data-mxrestore]")){mxRestore(b.dataset.mxrestore);return}
- if(b=t.closest("[data-mxtpl]")){const a=b.dataset.mxtpl,id=b.dataset.id;if(a==="apply")mxTplApply(id);else if(a==="edit")mxTplEdit(id);else if(a==="del"){const tp=C.cfg.templates.find(x=>x.id===id);const ok=await openDialog({title:"حذف القالب؟",text:"«"+(tp?tp.name:"")+"» — لا يؤثر على المباريات التي طُبّق عليها.",ok:"حذف",danger:true});if(ok){C.cfg.templates=C.cfg.templates.filter(x=>x.id!==id);await mxSaveCfg()}}}});
+ if(b=t.closest("[data-mxtpl]")){const a=b.dataset.mxtpl,id=b.dataset.id;if(a==="apply")mxTplApply(id);else if(a==="edit")mxTplEdit(id);else if(a==="seed"){const bd=mBundles(mKnownChannels()).find(x=>x.key===id);if(bd)mxTplEdit(null,{name:bd.label,channels:bd.items.map(i=>({name:i.name,url:i.url}))})}else if(a==="del"){const tp=C.cfg.templates.find(x=>x.id===id);const ok=await openDialog({title:"حذف القالب؟",text:"«"+(tp?tp.name:"")+"» — لا يؤثر على المباريات التي طُبّق عليها.",ok:"حذف",danger:true});if(ok){C.cfg.templates=C.cfg.templates.filter(x=>x.id!==id);await mxSaveCfg()}}}});
 document.addEventListener("change",e=>{const c=e.target.closest&&e.target.closest("[data-mxk]");if(c)mToggleHide(+c.dataset.mxk)});
 ["mxTeamQ","mxTeamF"].forEach(id=>$(id).addEventListener(id==="mxTeamQ"?"input":"change",()=>mxTeams()));
 setInterval(()=>{if(document.visibilityState==="visible"&&M.loaded&&mxActive()==="mtoday"&&$("modal").classList.contains("hidden"))mxToday()},60000);
@@ -2736,7 +2742,7 @@ async function mxLiveDecorate(force){
  if(mxActive()!=="mtoday"||!M.loaded)return;const day=mDayKey(M.mxOff||0),c=await mxLive(day,force);if(mxActive()!=="mtoday")return;
  const now=mMs(mCairoNow());let matched=0,total=0;
  document.querySelectorAll("#mxTimeline [data-sk]").forEach(el=>{const m=M.list.find(x=>x._k===+el.dataset.sk);if(!m)return;total++;const x=mxFindLive(m,c.rows);if(x)matched++;
-  const tk=document.querySelector('#mxTimeline [data-tk="'+m._k+'"]');if(tk)tk.innerHTML=mxTvHtml(x);
+  const tk=document.querySelector('#mxTimeline [data-tk="'+m._k+'"]');if(tk)tk.innerHTML=mxTvHtml(x)||mxBcHtml(m);
   if(!x||!x.score||mMs(m.time)>now){el.innerHTML=x&&x.score&&mMs(m.time)>now?"":(x?"":'<span class="mx-score" style="opacity:.5" title="لم تُطابق أي مباراة من المصدر">—</span>');return}
   el.innerHTML='<span class="mx-score'+(x.live?" live":"")+'" title="النتيجة من المصدر — للعرض في اللوحة فقط">'+x.score.h+' - '+x.score.a+(x.live?' · مباشر'+(x.minute?" "+esc(x.minute):""):"")+'</span>'});
  const info=$("mxLiveInfo");if(!info)return;
@@ -2760,6 +2766,21 @@ async function mxRepeat(key){
   renderMatches();notify(n?"أُنشئت "+n+" نسخة":"النسخ موجودة بالفعل");if(n)mTouch();return}}
 /* scores on full-schedule cards */
 function mxTvNote(c){const t=c&&c.tvi;if(!t)return c&&c.rows&&c.rows.length?" · قنوات ناقلة: الوركر لا يرسلها (انشر worker.js الأحدث)":"";if(t.withTv)return" · قنوات ناقلة: "+t.withTv+" من "+t.total;return" · المصدر لا يرسل قنوات ناقلة لهذا اليوم"+(t.rawFields?" (وصل حقل غير مفهوم: "+esc(t.sample)+")":"")}
+function mxBcLeague(m){return String(m.league||"").replace(/\s+x\s*$/i,"").trim()}
+function mxBcKey(m){return String(m.time||"").slice(0,16)+"|"+((m.team1||{}).name||"")+"|"+((m.team2||{}).name||"")}
+function mxBcGet(m){const b=(C.cfg&&C.cfg.broadcasts)||{};return(b.byMatch&&b.byMatch[mxBcKey(m)])||(b.byLeague&&b.byLeague[mxBcLeague(m)])||""}
+function mxBcHtml(m){const v=mxBcGet(m),own=!!(C.cfg&&C.cfg.broadcasts&&C.cfg.broadcasts.byMatch&&C.cfg.broadcasts.byMatch[mxBcKey(m)]);return'<button type="button" class="mx-bc'+(v?"":" empty")+'" data-bc="'+m._k+'" title="القناة الناقلة — للعرض في اللوحة فقط، اضغط للتعديل">📺 '+(v?esc(v)+(own?" ✎":""):"حدد القناة الناقلة")+'</button>'}
+async function mxBcEdit(m){
+ await mxLoadCfg();const B=C.cfg.broadcasts=C.cfg.broadcasts||{};B.byLeague=B.byLeague||{};B.byMatch=B.byMatch||{};
+ const k=mxBcKey(m),lg=mxBcLeague(m),cur=B.byMatch[k]||B.byLeague[lg]||"";
+ const v=await openDialog({title:"القناة الناقلة — "+mxTitle(m),text:"اكتب اسم القناة، أو أكثر من قناة مفصولة بـ « · » مثل: beIN 1 · ثانية. اتركها فاضية للحذف. تظهر في اللوحة فقط.",ok:"حفظ",input:{label:"القنوات الناقلة",value:cur}});
+ if(v===null||v===undefined)return;const val=v.trim();
+ if(!val){delete B.byMatch[k];if(lg&&B.byLeague[lg]&&await openDialog({title:"حذف على مستوى البطولة؟",text:"«"+lg+"» لها قناة افتراضية. هل تحذفها لكل مباريات البطولة؟",ok:"نعم، احذفها",danger:true}))delete B.byLeague[lg]}
+ else if(lg&&B.byLeague[lg]!==val&&await openDialog({title:"تعميم على البطولة؟",text:"هل تريد اعتبار «"+val+"» القناة الناقلة لكل مباريات «"+lg+"»؟ (اختيار «لا» يطبّقها على هذه المباراة فقط)",ok:"نعم، كل البطولة"})){B.byLeague[lg]=val;delete B.byMatch[k]}
+ else if(B.byLeague[lg]===val)delete B.byMatch[k];else B.byMatch[k]=val;
+ try{await mxSaveCfg(true);notify("تم حفظ القناة الناقلة")}catch(e){notify(e.message,"error")}
+ mxRepaintBc()}
+function mxRepaintBc(){document.querySelectorAll("#mxTimeline [data-tk], #mList [data-csk]").forEach(el=>{const m=M.list.find(v=>v._k===+(el.dataset.tk||el.dataset.csk));if(!m)return;const old=el.querySelector(".mx-bc");if(old)old.outerHTML=mxBcHtml(m)})}
 function mxTvHtml(x){return x&&x.tv&&x.tv.length?'<div class="mx-tv" title="القنوات الناقلة — من المصدر، للعرض في اللوحة فقط">📺 '+x.tv.map(t=>esc(t.name)).join(" · ")+'</div>':""}
 function mxScoreHtml(x){return'<span class="mx-score'+(x.live?" live":"")+'" title="النتيجة من المصدر — للعرض في اللوحة فقط">'+x.score.h+' - '+x.score.a+(x.live?' · مباشر':"")+'</span>'}
 async function mxCardsDecorate(){
@@ -2767,7 +2788,7 @@ async function mxCardsDecorate(){
  const day=M.day,c=await mxLive(day);if(M.day!==day||!$("page-matches").classList.contains("active"))return;
  const now=mMs(mCairoNow());let info=$("mxCardInfo");if(!info){$("mDays").insertAdjacentHTML("afterend",'<div class="muted" id="mxCardInfo" style="font-size:12px;margin:-4px 2px 10px"></div>');info=$("mxCardInfo")}
  let matched=0,total=0;
- document.querySelectorAll("#mList [data-csk]").forEach(el=>{const m=M.list.find(v=>v._k===+el.dataset.csk);if(!m)return;total++;const x=mxFindLive(m,c.rows);if(x)matched++;el.innerHTML=(x&&x.score&&mMs(m.time)<=now?mxScoreHtml(x):"")+mxTvHtml(x)});
+ document.querySelectorAll("#mList [data-csk]").forEach(el=>{const m=M.list.find(v=>v._k===+el.dataset.csk);if(!m)return;total++;const x=mxFindLive(m,c.rows);if(x)matched++;el.innerHTML=(x&&x.score&&mMs(m.time)<=now?mxScoreHtml(x):"")+(mxTvHtml(x)||mxBcHtml(m))});
  const old=c.rows.length&&!c.rows.some(q=>"score" in q);
  info.innerHTML=c.err?'<span style="color:var(--red)">تعذّر قراءة النتائج من المصدر: '+esc(c.err)+'</span>':old?'<span style="color:var(--amber)">الوركر المنشور قديم (لا يرسل النتائج) — انشر worker.js الأحدث.</span>':(c.rows.length?"النتائج من المصدر: "+matched+" من "+total+" مباراة رُبطت."+mxTvNote(c):"لا توجد مباريات لهذا اليوم في المصدر.")}
 /* MATCHES_V2_END */
