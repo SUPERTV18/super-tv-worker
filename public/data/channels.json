@@ -7,7 +7,7 @@
       "headers": {
         "User-Agent": "",
         "Referer": "",
-        "Origin": "" 
+        "Origin": ""
       },
       "endpoint": "m3u8"
     },
@@ -923,12 +923,13 @@
     {
       "id": "58",
       "name": "Thmanyah 1 SD",
-      "url": "https://genral.oxml1237.workers.dev/index.m3u8?base=https%3A%2F%2Fs1.marketplace-io-none-kode-steeeee.lol%2F%2F&id=thamnya_sd&key=MmYmJhIhdIDJHdoF22",
+      "url": "https://blcco.linkip.org/live/3455_.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "59",
