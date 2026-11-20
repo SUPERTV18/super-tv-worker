@@ -781,7 +781,9 @@ async function checkAppSecurity(
 
 const COOKIE_NAME = "stv_did";
 const COOKIE_TTL_S = 24 * 60 * 60;
-const COOKIE_STATS = { issued: 0, returnedValid: 0, returnedInvalid: 0, expired: 0, since: Date.now() };
+const COOKIE_STATS = { calls: 0, skipped: 0, issued: 0, returnedValid: 0, returnedInvalid: 0, expired: 0, since: Date.now() };
+const COOKIE_FLUSHED = { calls: 0, skipped: 0, issued: 0, returnedValid: 0, returnedInvalid: 0, expired: 0 };
+let COOKIE_LAST_FLUSH = 0;
 const COOKIE_IP_ISSUE = new Map();
 
 async function cookieSig(env, body) {
@@ -801,11 +803,28 @@ async function readDeviceCookie(env, request) {
   return { ok: true, id };
 }
 
+// الإحصائيات تُجمع في Durable Object حتى تكون مشتركة بين كل نسخ الوركر
+async function flushCookieStats(env, force) {
+  const now = Date.now();
+  if (!env.TRACKER || (!force && now - COOKIE_LAST_FLUSH < 15000)) return;
+  const delta = {};
+  let any = false;
+  for (const k of Object.keys(COOKIE_FLUSHED)) { delta[k] = COOKIE_STATS[k] - COOKIE_FLUSHED[k]; if (delta[k]) any = true; }
+  if (!any) return;
+  COOKIE_LAST_FLUSH = now;
+  try {
+    const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
+    const res = await stub.fetch("https://viewer-tracker/cookie-stats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(delta) });
+    if (res.ok) for (const k of Object.keys(COOKIE_FLUSHED)) COOKIE_FLUSHED[k] = COOKIE_STATS[k];
+  } catch (e) { console.warn("COOKIE_STATS_FLUSH_ERROR", String(e && e.message || e)); }
+}
+
 async function withDeviceCookie(request, env, response) {
-  if (String(env.COOKIE_TEST || "on").toLowerCase() === "off" || !env.APP_SECRET || response.status !== 200) return response;
+  COOKIE_STATS.calls++;
+  if (String(env.COOKIE_TEST || "on").toLowerCase() === "off" || !env.APP_SECRET || response.status !== 200) { COOKIE_STATS.skipped++; await flushCookieStats(env); return response; }
   try {
     const got = await readDeviceCookie(env, request);
-    if (got && got.ok) { COOKIE_STATS.returnedValid++; return response; }
+    if (got && got.ok) { COOKIE_STATS.returnedValid++; await flushCookieStats(env); return response; }
     if (got && got.expired) COOKIE_STATS.expired++; else if (got) COOKIE_STATS.returnedInvalid++;
     // حد إصدار الكوكيز الجديدة لكل IP (يبطّئ من يجرّب أجهزة كثيرة)
     const ip = getClientIP(request), now = Date.now();
@@ -823,6 +842,7 @@ async function withDeviceCookie(request, env, response) {
     const headers = new Headers(response.headers);
     headers.append("Set-Cookie", COOKIE_NAME + "=" + value + "; Max-Age=" + COOKIE_TTL_S + "; Path=/; Secure; HttpOnly; SameSite=Lax");
     COOKIE_STATS.issued++;
+    await flushCookieStats(env);
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   } catch (e) {
     console.warn("COOKIE_TEST_ERROR", String(e && e.message || e));
@@ -830,11 +850,20 @@ async function withDeviceCookie(request, env, response) {
   }
 }
 
-function cookieStatsRow() {
-  const s = COOKIE_STATS, seen = s.returnedValid + s.returnedInvalid + s.expired;
+async function cookieStatsRow(env) {
+  await flushCookieStats(env, true);
+  let s = { ...COOKIE_STATS }, shared = false, since = 0;
+  try {
+    if (env.TRACKER) {
+      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
+      const res = await stub.fetch("https://viewer-tracker/cookie-stats");
+      if (res.ok) { const d = await res.json(); s = d.stats || s; since = d.since || 0; shared = true; }
+    }
+  } catch {}
+  const seen = s.returnedValid + s.returnedInvalid + s.expired;
   return {
-    time: new Date().toISOString(), type: "cookie_stats", host: "الكوكي التجريبي", status: seen ? "يعمل" : (s.issued ? "لم يرجع بعد" : "—"),
-    message: "أُصدر " + s.issued + " | رجع صالحًا " + s.returnedValid + " | رجع غير صالح " + s.returnedInvalid + " | منتهي " + s.expired + " (منذ تشغيل النسخة)"
+    time: new Date().toISOString(), type: "cookie_stats", host: "الكوكي التجريبي", status: seen ? "يعمل" : (s.issued ? "لم يرجع بعد" : (s.calls ? "لم يُصدر" : "—")),
+    message: "طلبات play: " + (s.calls || 0) + " | أُصدر " + (s.issued || 0) + " | رجع صالحًا " + (s.returnedValid || 0) + " | رجع غير صالح " + (s.returnedInvalid || 0) + " | منتهي " + (s.expired || 0) + " | تخطّى (غير 200 أو متوقف) " + (s.skipped || 0) + (shared ? " — مجموع كل النسخ" + (since ? " منذ " + new Date(since).toLocaleString("en-GB", { timeZone: "Africa/Cairo" }) : "") : " — نسخة واحدة فقط")
   };
 }
 
@@ -3517,7 +3546,7 @@ async function adminApi(request, env, url) {
   }
 
   if (url.pathname === "/api/admin/logs" && request.method === "GET") {
-    return json({ status: "ok", scope: "ذاكرة Worker الحالية فقط؛ السجلات تُمسح عند تبديل النسخة أو إعادة تشغيلها", logs: [cookieStatsRow(), ...ADMIN_EVENT_LOGS.slice(0, 99)], timestamp: new Date().toISOString() });
+    return json({ status: "ok", scope: "ذاكرة Worker الحالية فقط؛ السجلات تُمسح عند تبديل النسخة أو إعادة تشغيلها", logs: [await cookieStatsRow(env), ...ADMIN_EVENT_LOGS.slice(0, 99)], timestamp: new Date().toISOString() });
   }
 
 
@@ -4614,6 +4643,16 @@ export class ViewerTracker {
     const now = Date.now();
     const ACTIVE_MS = 2 * 60 * 1000;
 
+    if (url.pathname === "/cookie-stats") {
+      const cur = (await this.state.storage.get("cookiestats")) || { stats: {}, since: now };
+      if (request.method === "POST") {
+        let d; try { d = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+        for (const k of ["calls", "skipped", "issued", "returnedValid", "returnedInvalid", "expired"]) cur.stats[k] = (Number(cur.stats[k]) || 0) + (Number(d[k]) || 0);
+        await this.state.storage.put("cookiestats", cur);
+        return json({ status: "ok" });
+      }
+      return json({ status: "ok", stats: cur.stats, since: cur.since });
+    }
     if (url.pathname === "/block" && request.method === "POST") {
       let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
       const sessionId = String(body.sessionId || "");
