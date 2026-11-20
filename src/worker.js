@@ -346,6 +346,38 @@ async function getCryptoKey(env) {
 }
 
 // ============================================================
+// TOKEN V2 (AES-GCM) — يخفي رابط المصدر داخل التوكن
+// TOKEN_V2=off في Variables يرجّع للتوكن القديم فورًا.
+// مفتاح التشفير: TOKEN_ENC_SECRET (اختياري) وإلا APP_SECRET.
+// ============================================================
+
+async function getTokenAesKey(env) {
+  const secret = env.TOKEN_ENC_SECRET || env.APP_SECRET;
+  if (!secret) throw new Error("APP_SECRET is not configured");
+  const raw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("stv-token-v2|" + secret));
+  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+
+async function encryptTokenV2(env, payloadJson) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv }, await getTokenAesKey(env), new TextEncoder().encode(payloadJson)
+  ));
+  const all = new Uint8Array(iv.length + ct.length);
+  all.set(iv); all.set(ct, iv.length);
+  return "v2." + base64UrlEncode(all);
+}
+
+async function decryptTokenV2(env, token) {
+  const all = base64UrlDecode(token.slice(3));
+  if (all.length < 29) return null;
+  const pt = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: all.slice(0, 12) }, await getTokenAesKey(env), all.slice(12)
+  );
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+// ============================================================
 // CREATE HLS TOKEN
 // ============================================================
 
@@ -370,6 +402,10 @@ async function createHLSToken(
         ),
       c: String(channelId || "")
     });
+
+  if (env.TOKEN_V2 !== "off") {
+    return encryptTokenV2(env, payload);
+  }
 
   const payloadBytes =
     new TextEncoder().encode(
@@ -423,49 +459,57 @@ async function verifyHLSToken(
       return null;
     }
 
-    const parts =
-      token.split(".");
+    let payload;
 
-    if (
-      parts.length !== 2
-    ) {
-      return null;
-    }
+    if (token.startsWith("v2.")) {
+      // التوكن الجديد: AES-GCM (يكشف أي تعديل تلقائيًا)
+      payload = await decryptTokenV2(env, token);
+    } else {
+      // التوكن القديم (HMAC) — يُقبل للتوافق أثناء الانتقال
+      const parts =
+        token.split(".");
 
-    const [
-      payload64,
-      sig64
-    ] = parts;
+      if (
+        parts.length !== 2
+      ) {
+        return null;
+      }
 
-    const key =
-      await getCryptoKey(
-        env
-      );
+      const [
+        payload64,
+        sig64
+      ] = parts;
 
-    const valid =
-      await crypto.subtle.verify(
-        "HMAC",
-        key,
-        base64UrlDecode(
-          sig64
-        ),
-        new TextEncoder().encode(
-          payload64
-        )
-      );
+      const key =
+        await getCryptoKey(
+          env
+        );
 
-    if (!valid) {
-      return null;
-    }
-
-    const payload =
-      JSON.parse(
-        new TextDecoder().decode(
+      const valid =
+        await crypto.subtle.verify(
+          "HMAC",
+          key,
           base64UrlDecode(
+            sig64
+          ),
+          new TextEncoder().encode(
             payload64
           )
-        )
-      );
+        );
+
+      if (!valid) {
+        return null;
+      }
+
+      payload =
+        JSON.parse(
+          new TextDecoder().decode(
+            base64UrlDecode(
+              payload64
+            )
+          )
+        );
+    }
 
     if (
       !payload ||
@@ -730,6 +774,121 @@ async function checkAppSecurity(
 }
 
 // ============================================================
+// DEVICE COOKIE (تجربة: بدون أي تأثير على البث)
+// الوركر يضع كوكي موقّع ومتجدد كل 24 ساعة في رد play.m3u8،
+// ويسجّل هل مشغّل التطبيق يعيده أم لا. COOKIE_TEST=off لإيقافه.
+// ============================================================
+
+const COOKIE_NAME = "stv_did";
+const COOKIE_TTL_S = 24 * 60 * 60;
+const COOKIE_STATS = { issued: 0, returnedValid: 0, returnedInvalid: 0, expired: 0, since: Date.now() };
+const COOKIE_IP_ISSUE = new Map();
+
+async function cookieSig(env, body) {
+  const key = await getCryptoKey(env);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("did|" + body));
+  return base64UrlEncode(new Uint8Array(sig)).slice(0, 16);
+}
+
+async function readDeviceCookie(env, request) {
+  const raw = (request.headers.get("Cookie") || "").split(";").map(s => s.trim()).find(s => s.startsWith(COOKIE_NAME + "="));
+  if (!raw) return null;
+  const parts = raw.slice(COOKIE_NAME.length + 1).split(".");
+  if (parts.length !== 3) return { ok: false };
+  const [id, exp, sig] = parts;
+  if (sig !== await cookieSig(env, id + "." + exp)) return { ok: false };
+  if (Date.now() > Number(exp)) return { ok: false, expired: true };
+  return { ok: true, id };
+}
+
+async function withDeviceCookie(request, env, response) {
+  if (String(env.COOKIE_TEST || "on").toLowerCase() === "off" || !env.APP_SECRET || response.status !== 200) return response;
+  try {
+    const got = await readDeviceCookie(env, request);
+    if (got && got.ok) { COOKIE_STATS.returnedValid++; return response; }
+    if (got && got.expired) COOKIE_STATS.expired++; else if (got) COOKIE_STATS.returnedInvalid++;
+    // حد إصدار الكوكيز الجديدة لكل IP (يبطّئ من يجرّب أجهزة كثيرة)
+    const ip = getClientIP(request), now = Date.now();
+    const list = (COOKIE_IP_ISSUE.get(ip) || []).filter(t => now - t < 3600000);
+    list.push(now); COOKIE_IP_ISSUE.set(ip, list);
+    if (COOKIE_IP_ISSUE.size > 5000) COOKIE_IP_ISSUE.clear();
+    const lim = Number(env.COOKIE_ISSUE_PER_IP_HOUR) || 30;
+    if (list.length > lim && abuseMode(env) !== "off") {
+      recordAdminEvent({ type: "abuse", status: abuseMode(env) === "block" ? "محظور" : "تسجيل", host: ip, message: "إصدار كوكيز كثير من نفس الـ IP: " + list.length + " خلال ساعة" });
+      if (abuseMode(env) === "block") return text("Forbidden", 403);
+    }
+    const id = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, "0")).join("");
+    const exp = String(now + COOKIE_TTL_S * 1000);
+    const value = id + "." + exp + "." + await cookieSig(env, id + "." + exp);
+    const headers = new Headers(response.headers);
+    headers.append("Set-Cookie", COOKIE_NAME + "=" + value + "; Max-Age=" + COOKIE_TTL_S + "; Path=/; Secure; HttpOnly; SameSite=Lax");
+    COOKIE_STATS.issued++;
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  } catch (e) {
+    console.warn("COOKIE_TEST_ERROR", String(e && e.message || e));
+    return response;
+  }
+}
+
+function cookieStatsRow() {
+  const s = COOKIE_STATS, seen = s.returnedValid + s.returnedInvalid + s.expired;
+  return {
+    time: new Date().toISOString(), type: "cookie_stats", host: "الكوكي التجريبي", status: seen ? "يعمل" : (s.issued ? "لم يرجع بعد" : "—"),
+    message: "أُصدر " + s.issued + " | رجع صالحًا " + s.returnedValid + " | رجع غير صالح " + s.returnedInvalid + " | منتهي " + s.expired + " (منذ تشغيل النسخة)"
+  };
+}
+
+// ============================================================
+// ABUSE GUARD HELPERS
+// ============================================================
+// 1) الاتصال من شبكات استضافة/سحابة (AWS, OVH, Hetzner...) بدل شبكة موبايل
+//    أو إنترنت منزلي — وده شكل أي سيرفر يعيد بث قنواتك.
+// 2) نفس الـ IP يطلب عددًا كبيرًا من القنوات المختلفة خلال دقائق.
+// يعمل في ذاكرة الـ isolate (بدون KV) فالأرقام تقريبية.
+// المتغيرات (اختيارية):
+//   ABUSE_GUARD = off | log | block     (الافتراضي log: يسجّل ولا يمنع)
+//   MAX_CHANNELS_PER_IP = 4            (قنوات مختلفة خلال 5 دقائق)
+//   ABUSE_ALLOW_ORGS = "اسم شبكة,اسم تاني" (استثناء شبكات معينة)
+// ============================================================
+
+const ABUSE_DC_RE = /amazon|aws|google cloud|googleusercontent|microsoft|azure|digitalocean|ovh|hetzner|linode|akamai|vultr|contabo|choopa|leaseweb|oracle|alibaba|tencent|m247|datacamp|scaleway|hostinger|hosting|datacenter|data center|vps|colocation|cloudflare|packet|psychz|quadranet|serverius|greenhost/i;
+const ABUSE_IP_CHANNELS = new Map();
+const ABUSE_WINDOW_MS = 5 * 60 * 1000;
+
+function abuseMode(env) {
+  const m = String(env.ABUSE_GUARD || "log").toLowerCase();
+  return m === "off" || m === "block" ? m : "log";
+}
+
+function abuseCheck(request, env, ip, type) {
+  if (abuseMode(env) === "off") return null;
+
+  const org = String(request.cf?.asOrganization || "");
+  const allow = String(env.ABUSE_ALLOW_ORGS || "").split(",").map(x => x.trim().toLowerCase()).filter(Boolean);
+
+  if (org && ABUSE_DC_RE.test(org) && !allow.some(x => org.toLowerCase().includes(x))) {
+    return { reason: "datacenter", detail: org };
+  }
+
+  if (type === "play") {
+    let id = "";
+    try { id = new URL(request.url).searchParams.get("id") || ""; } catch {}
+    if (id) {
+      const now = Date.now();
+      let m = ABUSE_IP_CHANNELS.get(ip);
+      if (!m) { m = new Map(); ABUSE_IP_CHANNELS.set(ip, m); }
+      m.set(id, now);
+      for (const [k, t] of m) if (now - t > ABUSE_WINDOW_MS) m.delete(k);
+      if (ABUSE_IP_CHANNELS.size > 5000) ABUSE_IP_CHANNELS.clear();
+      const limit = Number(env.MAX_CHANNELS_PER_IP) || 4;
+      if (m.size > limit) return { reason: "many-channels", detail: m.size + " قنوات خلال 5 دقائق" };
+    }
+  }
+
+  return null;
+}
+
+// ============================================================
 // SECURITY GUARD
 // ============================================================
 
@@ -891,6 +1050,40 @@ async function securityGuard(
             }
           )
 
+      };
+
+    }
+
+  }
+
+  // ==========================================================
+  // ABUSE GUARD (كشف إعادة البث / السيرفرات المقلِّدة)
+  // ABUSE_GUARD = off | log (الافتراضي) | block
+  // ==========================================================
+
+  const abuse = abuseCheck(request, env, ip, type);
+
+  if (abuse) {
+
+    recordAdminEvent({
+      type: "abuse",
+      reason: abuse.reason,
+      detail: abuse.detail,
+      ip,
+      org: request.cf?.asOrganization || "",
+      country: request.cf?.country || "",
+      host: request.cf?.asOrganization || ip,
+      status: abuseMode(env) === "block" ? "محظور" : "تسجيل",
+      message: (abuse.reason === "datacenter" ? "اتصال من شبكة استضافة: " : "قنوات كثيرة من نفس الـ IP: ") + abuse.detail + " | IP " + ip
+    });
+
+    console.warn("ABUSE_GUARD", JSON.stringify({ reason: abuse.reason, detail: abuse.detail, mode: abuseMode(env) }));
+
+    if (abuseMode(env) === "block") {
+
+      return {
+        allowed: false,
+        response: text("Forbidden", 403)
       };
 
     }
@@ -3324,7 +3517,7 @@ async function adminApi(request, env, url) {
   }
 
   if (url.pathname === "/api/admin/logs" && request.method === "GET") {
-    return json({ status: "ok", scope: "ذاكرة Worker الحالية فقط؛ السجلات تُمسح عند تبديل النسخة أو إعادة تشغيلها", logs: ADMIN_EVENT_LOGS.slice(0, 100), timestamp: new Date().toISOString() });
+    return json({ status: "ok", scope: "ذاكرة Worker الحالية فقط؛ السجلات تُمسح عند تبديل النسخة أو إعادة تشغيلها", logs: [cookieStatsRow(), ...ADMIN_EVENT_LOGS.slice(0, 99)], timestamp: new Date().toISOString() });
   }
 
 
@@ -3830,7 +4023,13 @@ async function matchesSave(env, data, sha, message, path) {
 // ------------------------------------------------------------
 const MATCHES_CONFIG_PATH = "matches-config.json";
 function matchesDefaultConfig() {
-  return { templates: [], teams: [], leagueMap: {}, autoImport: { enabled: false, daysAhead: 1, leagues: [], hidden: true, templateId: "" }, autoPublish: { enabled: false, hoursBefore: 2 }, alerts: { enabled: false, minutesBefore: 60, noChannels: true } };
+  return { templates: [], teams: [], leagueMap: {}, broadcasts: { byLeague: {}, byMatch: {} }, autoImport: { enabled: false, daysAhead: 1, leagues: [], hidden: true, templateId: "" }, autoPublish: { enabled: false, hoursBefore: 2 }, alerts: { enabled: false, minutesBefore: 60, noChannels: true } };
+}
+function matchesNormBroadcasts(b) {
+  const o = { byLeague: {}, byMatch: {} };
+  if (!b || typeof b !== "object") return o;
+  for (const k of ["byLeague", "byMatch"]) { const v = b[k]; if (v && typeof v === "object" && !Array.isArray(v)) for (const [a, n] of Object.entries(v)) if (typeof n === "string" && n.trim()) o[k][a] = n; }
+  return o;
 }
 function matchesNormalizeConfig(c) {
   const d = matchesDefaultConfig();
@@ -3839,6 +4038,7 @@ function matchesNormalizeConfig(c) {
     templates: Array.isArray(c.templates) ? c.templates : [],
     teams: Array.isArray(c.teams) ? c.teams : [],
     leagueMap: c.leagueMap && typeof c.leagueMap === "object" && !Array.isArray(c.leagueMap) ? c.leagueMap : {},
+    broadcasts: matchesNormBroadcasts(c.broadcasts),
     autoImport: { ...d.autoImport, ...(c.autoImport || {}) },
     autoPublish: { ...d.autoPublish, ...(c.autoPublish || {}) },
     alerts: { ...d.alerts, ...(c.alerts || {}) }
@@ -3877,6 +4077,15 @@ function validateMatchesConfig(c) {
     const ks = Object.keys(c.leagueMap);
     if (ks.length > 400) return "خريطة أسماء البطولات كبيرة";
     for (const k of ks) { const v = c.leagueMap[k]; if (!k || k.length > 120 || typeof v !== "string" || !v.trim() || v.length > 80) return "اسم بطولة غير صالح في الخريطة"; }
+  }
+  if (c.broadcasts !== undefined) {
+    const b = c.broadcasts;
+    if (!b || typeof b !== "object" || Array.isArray(b)) return "إعدادات القنوات الناقلة غير صالحة";
+    for (const k of ["byLeague", "byMatch"]) {
+      const v = b[k] === undefined ? {} : b[k];
+      if (!v || typeof v !== "object" || Array.isArray(v) || Object.keys(v).length > 3000) return "إعدادات القنوات الناقلة غير صالحة";
+      for (const [a, n] of Object.entries(v)) if (!a || a.length > 200 || typeof n !== "string" || !n.trim() || n.length > 160) return "قناة ناقلة غير صالحة";
+    }
   }
   if (c.autoImport !== undefined) {
     const ai = c.autoImport;
@@ -4698,10 +4907,14 @@ export default {
       "/api/play.m3u8"
     ) {
 
-      return playApi(
+      return withDeviceCookie(
         request,
         env,
-        url
+        await playApi(
+          request,
+          env,
+          url
+        )
       );
 
     }
