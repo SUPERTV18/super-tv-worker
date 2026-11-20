@@ -351,8 +351,8 @@ async function getCryptoKey(env) {
 // مفتاح التشفير: TOKEN_ENC_SECRET (اختياري) وإلا APP_SECRET.
 // ============================================================
 
-async function getTokenAesKey(env) {
-  const secret = env.TOKEN_ENC_SECRET || env.APP_SECRET;
+async function getTokenAesKey(env, prev) {
+  const secret = prev ? env.APP_SECRET_PREV : (env.TOKEN_ENC_SECRET || env.APP_SECRET);
   if (!secret) throw new Error("APP_SECRET is not configured");
   const raw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("stv-token-v2|" + secret));
   return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
@@ -371,10 +371,15 @@ async function encryptTokenV2(env, payloadJson) {
 async function decryptTokenV2(env, token) {
   const all = base64UrlDecode(token.slice(3));
   if (all.length < 29) return null;
-  const pt = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: all.slice(0, 12) }, await getTokenAesKey(env), all.slice(12)
-  );
-  return JSON.parse(new TextDecoder().decode(pt));
+  const tryKey = async (prev) => JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: all.slice(0, 12) }, await getTokenAesKey(env, prev), all.slice(12)
+  )));
+  try { return await tryKey(false); }
+  catch (e) {
+    // أثناء تدوير المفتاح: التوكنات الصادرة بالمفتاح القديم تظل صالحة حتى تنتهي (30 دقيقة)
+    if (env.APP_SECRET_PREV) return tryKey(true);
+    throw e;
+  }
 }
 
 // ============================================================
@@ -751,8 +756,8 @@ async function checkAppSecurity(
   }
 
   if (
-    appKey !==
-    env.APP_SECRET
+    appKey !== env.APP_SECRET &&
+    !(env.APP_SECRET_PREV && appKey === env.APP_SECRET_PREV)
   ) {
 
     return {
@@ -771,100 +776,6 @@ async function checkAppSecurity(
 
   };
 
-}
-
-// ============================================================
-// DEVICE COOKIE (تجربة: بدون أي تأثير على البث)
-// الوركر يضع كوكي موقّع ومتجدد كل 24 ساعة في رد play.m3u8،
-// ويسجّل هل مشغّل التطبيق يعيده أم لا. COOKIE_TEST=off لإيقافه.
-// ============================================================
-
-const COOKIE_NAME = "stv_did";
-const COOKIE_TTL_S = 24 * 60 * 60;
-const COOKIE_STATS = { calls: 0, skipped: 0, issued: 0, returnedValid: 0, returnedInvalid: 0, expired: 0, since: Date.now() };
-const COOKIE_FLUSHED = { calls: 0, skipped: 0, issued: 0, returnedValid: 0, returnedInvalid: 0, expired: 0 };
-let COOKIE_LAST_FLUSH = 0;
-const COOKIE_IP_ISSUE = new Map();
-
-async function cookieSig(env, body) {
-  const key = await getCryptoKey(env);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode("did|" + body));
-  return base64UrlEncode(new Uint8Array(sig)).slice(0, 16);
-}
-
-async function readDeviceCookie(env, request) {
-  const raw = (request.headers.get("Cookie") || "").split(";").map(s => s.trim()).find(s => s.startsWith(COOKIE_NAME + "="));
-  if (!raw) return null;
-  const parts = raw.slice(COOKIE_NAME.length + 1).split(".");
-  if (parts.length !== 3) return { ok: false };
-  const [id, exp, sig] = parts;
-  if (sig !== await cookieSig(env, id + "." + exp)) return { ok: false };
-  if (Date.now() > Number(exp)) return { ok: false, expired: true };
-  return { ok: true, id };
-}
-
-// الإحصائيات تُجمع في Durable Object حتى تكون مشتركة بين كل نسخ الوركر
-async function flushCookieStats(env, force) {
-  const now = Date.now();
-  if (!env.TRACKER || (!force && now - COOKIE_LAST_FLUSH < 15000)) return;
-  const delta = {};
-  let any = false;
-  for (const k of Object.keys(COOKIE_FLUSHED)) { delta[k] = COOKIE_STATS[k] - COOKIE_FLUSHED[k]; if (delta[k]) any = true; }
-  if (!any) return;
-  COOKIE_LAST_FLUSH = now;
-  try {
-    const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
-    const res = await stub.fetch("https://viewer-tracker/cookie-stats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(delta) });
-    if (res.ok) for (const k of Object.keys(COOKIE_FLUSHED)) COOKIE_FLUSHED[k] = COOKIE_STATS[k];
-  } catch (e) { console.warn("COOKIE_STATS_FLUSH_ERROR", String(e && e.message || e)); }
-}
-
-async function withDeviceCookie(request, env, response) {
-  COOKIE_STATS.calls++;
-  if (String(env.COOKIE_TEST || "on").toLowerCase() === "off" || !env.APP_SECRET || response.status !== 200) { COOKIE_STATS.skipped++; await flushCookieStats(env); return response; }
-  try {
-    const got = await readDeviceCookie(env, request);
-    if (got && got.ok) { COOKIE_STATS.returnedValid++; await flushCookieStats(env); return response; }
-    if (got && got.expired) COOKIE_STATS.expired++; else if (got) COOKIE_STATS.returnedInvalid++;
-    // حد إصدار الكوكيز الجديدة لكل IP (يبطّئ من يجرّب أجهزة كثيرة)
-    const ip = getClientIP(request), now = Date.now();
-    const list = (COOKIE_IP_ISSUE.get(ip) || []).filter(t => now - t < 3600000);
-    list.push(now); COOKIE_IP_ISSUE.set(ip, list);
-    if (COOKIE_IP_ISSUE.size > 5000) COOKIE_IP_ISSUE.clear();
-    const lim = Number(env.COOKIE_ISSUE_PER_IP_HOUR) || 30;
-    if (list.length > lim && abuseMode(env) !== "off") {
-      recordAdminEvent({ type: "abuse", status: abuseMode(env) === "block" ? "محظور" : "تسجيل", host: ip, message: "إصدار كوكيز كثير من نفس الـ IP: " + list.length + " خلال ساعة" });
-      if (abuseMode(env) === "block") return text("Forbidden", 403);
-    }
-    const id = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, "0")).join("");
-    const exp = String(now + COOKIE_TTL_S * 1000);
-    const value = id + "." + exp + "." + await cookieSig(env, id + "." + exp);
-    const headers = new Headers(response.headers);
-    headers.append("Set-Cookie", COOKIE_NAME + "=" + value + "; Max-Age=" + COOKIE_TTL_S + "; Path=/; Secure; HttpOnly; SameSite=Lax");
-    COOKIE_STATS.issued++;
-    await flushCookieStats(env);
-    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
-  } catch (e) {
-    console.warn("COOKIE_TEST_ERROR", String(e && e.message || e));
-    return response;
-  }
-}
-
-async function cookieStatsRow(env) {
-  await flushCookieStats(env, true);
-  let s = { ...COOKIE_STATS }, shared = false, since = 0;
-  try {
-    if (env.TRACKER) {
-      const stub = env.TRACKER.get(env.TRACKER.idFromName("global-viewers"));
-      const res = await stub.fetch("https://viewer-tracker/cookie-stats");
-      if (res.ok) { const d = await res.json(); s = d.stats || s; since = d.since || 0; shared = true; }
-    }
-  } catch {}
-  const seen = s.returnedValid + s.returnedInvalid + s.expired;
-  return {
-    time: new Date().toISOString(), type: "cookie_stats", host: "الكوكي التجريبي", status: seen ? "يعمل" : (s.issued ? "لم يرجع بعد" : (s.calls ? "لم يُصدر" : "—")),
-    message: "طلبات play: " + (s.calls || 0) + " | أُصدر " + (s.issued || 0) + " | رجع صالحًا " + (s.returnedValid || 0) + " | رجع غير صالح " + (s.returnedInvalid || 0) + " | منتهي " + (s.expired || 0) + " | تخطّى (غير 200 أو متوقف) " + (s.skipped || 0) + (shared ? " — مجموع كل النسخ" + (since ? " منذ " + new Date(since).toLocaleString("en-GB", { timeZone: "Africa/Cairo" }) : "") : " — نسخة واحدة فقط")
-  };
 }
 
 // ============================================================
@@ -891,6 +802,10 @@ function abuseMode(env) {
 
 function abuseCheck(request, env, ip, type) {
   if (abuseMode(env) === "off") return null;
+
+  const uaRaw = String(request.headers.get("User-Agent") || "");
+  const foreignUA = foreignPlayerInUA(uaRaw);
+  if (foreignUA && /stv2026|2026stv/i.test(uaRaw)) return { reason: "foreign-ua", detail: foreignUA + " | " + uaRaw.slice(0, 120) };
 
   const org = String(request.cf?.asOrganization || "");
   const allow = String(env.ABUSE_ALLOW_ORGS || "").split(",").map(x => x.trim().toLowerCase()).filter(Boolean);
@@ -1103,7 +1018,7 @@ async function securityGuard(
       country: request.cf?.country || "",
       host: request.cf?.asOrganization || ip,
       status: abuseMode(env) === "block" ? "محظور" : "تسجيل",
-      message: (abuse.reason === "datacenter" ? "اتصال من شبكة استضافة: " : "قنوات كثيرة من نفس الـ IP: ") + abuse.detail + " | IP " + ip
+      message: (abuse.reason === "datacenter" ? "اتصال من شبكة استضافة: " : abuse.reason === "foreign-ua" ? "مشغّل غريب يستخدم UA تطبيقك: " : "قنوات كثيرة من نفس الـ IP: ") + abuse.detail + " | IP " + ip
     });
 
     console.warn("ABUSE_GUARD", JSON.stringify({ reason: abuse.reason, detail: abuse.detail, mode: abuseMode(env) }));
@@ -3546,7 +3461,7 @@ async function adminApi(request, env, url) {
   }
 
   if (url.pathname === "/api/admin/logs" && request.method === "GET") {
-    return json({ status: "ok", scope: "ذاكرة Worker الحالية فقط؛ السجلات تُمسح عند تبديل النسخة أو إعادة تشغيلها", logs: [await cookieStatsRow(env), ...ADMIN_EVENT_LOGS.slice(0, 99)], timestamp: new Date().toISOString() });
+    return json({ status: "ok", scope: "ذاكرة Worker الحالية فقط؛ السجلات تُمسح عند تبديل النسخة أو إعادة تشغيلها", logs: ADMIN_EVENT_LOGS.slice(0, 100), timestamp: new Date().toISOString() });
   }
 
 
@@ -4615,10 +4530,19 @@ function classifyViewerDevice(ua) {
   if (/linux/.test(s)) return "Linux";
   return "غير معروف";
 }
+function foreignPlayerInUA(s) {
+  s = String(s || "").toLowerCase();
+  const m = s.match(/vlc|kodi|iptv smarters|smarters|tivimate|ott navigator|ottplayer|ffmpeg|lavf|libav|curl|wget|python|postman|axios|node-fetch|go-http|aiohttp|httpie|gstreamer|mpv|potplayer|perfect player|gse|vidaa/);
+  if (!m) return "";
+  const map = { vlc: "VLC", kodi: "Kodi", smarters: "IPTV Smarters", "iptv smarters": "IPTV Smarters", tivimate: "TiviMate", ffmpeg: "FFmpeg", lavf: "FFmpeg", libav: "FFmpeg", curl: "curl", wget: "wget", python: "Python", postman: "Postman", mpv: "mpv", potplayer: "PotPlayer" };
+  return map[m[0]] || m[0];
+}
 function classifyViewerApp(ua) {
   const s = String(ua || "").toLowerCase();
   // Recognize the app's configured security User-Agent.
-  if (/stv2026|2026stv/.test(s)) return "SUPER LIVE TV";
+  // مشغّل/أداة غريبة تضع User-Agent تطبيقك داخل نصها: غالبًا نسخة مقلَّدة
+  const foreign = foreignPlayerInUA(s);
+  if (/stv2026|2026stv/.test(s)) return foreign ? "⚠ " + foreign + " (يحمل UA تطبيقك)" : "SUPER LIVE TV";
   if (/vlc/.test(s)) return "VLC";
   if (/iptv smarters|smarters/.test(s)) return "IPTV Smarters";
   if (/tivimate/.test(s)) return "TiviMate";
@@ -4643,16 +4567,6 @@ export class ViewerTracker {
     const now = Date.now();
     const ACTIVE_MS = 2 * 60 * 1000;
 
-    if (url.pathname === "/cookie-stats") {
-      const cur = (await this.state.storage.get("cookiestats")) || { stats: {}, since: now };
-      if (request.method === "POST") {
-        let d; try { d = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
-        for (const k of ["calls", "skipped", "issued", "returnedValid", "returnedInvalid", "expired"]) cur.stats[k] = (Number(cur.stats[k]) || 0) + (Number(d[k]) || 0);
-        await this.state.storage.put("cookiestats", cur);
-        return json({ status: "ok" });
-      }
-      return json({ status: "ok", stats: cur.stats, since: cur.since });
-    }
     if (url.pathname === "/block" && request.method === "POST") {
       let body; try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
       const sessionId = String(body.sessionId || "");
@@ -4946,14 +4860,10 @@ export default {
       "/api/play.m3u8"
     ) {
 
-      return withDeviceCookie(
+      return playApi(
         request,
         env,
-        await playApi(
-          request,
-          env,
-          url
-        )
+        url
       );
 
     }
