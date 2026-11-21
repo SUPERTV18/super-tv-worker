@@ -5,8 +5,8 @@
 // KV OPTIMIZED VERSION
 // ============================================================
 
-const DEFAULT_NEW_UA = "stv2026";
-const DEFAULT_OLD_UA = "2026stv";
+const DEFAULT_NEW_UA = "stvnew2026";
+const DEFAULT_OLD_UA = "stv2026";
 const DEFAULT_PROXY_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36";
 const SERVER_SETTINGS_URL = "https://raw.githubusercontent.com/SUPERTV18/super-tv-worker/main/public/data/server-settings.json";
 let SERVER_UA_SETTINGS_CACHE = null;
