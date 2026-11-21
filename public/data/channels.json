@@ -116,11 +116,11 @@
     {
       "id": "TOD1",
       "name": "TOD 1",
-      "url": "https://smarter.majedfiles.site/live/ch1/v1.1795289983.0.a4ab8083e86594970ceef8c363d37a65.b8cc9197171a152d/master.css",
+      "url": "https://smarter.majedfiles.site/live/ch1/v1.1795297556.0.c7315119b8beaf51bb2ae25544dc45b6.5b598d903ff38290/v/v_stream_02.css",
       "headers": {
         "User-Agent": "",
-        "Referer": "https://player.majedfiles.site/v2/api/stream.php?id=ms1&_=1795275583087/",
-        "Origin": "https://player.majedfiles.site"
+        "Referer": "https://smarter.majedfiles.site/",
+        "Origin": "https://smarter.majedfiles.site"
       },
       "endpoint": "m3u8",
       "backupUrl": "https://castx.online/live/beinsports1/stream_3.m3u8",
