@@ -119,8 +119,8 @@
       "url": "https://smarter.majedfiles.site/live/ch1/v1.1795287182.0.2cdea4d35cf56e05daac24e2cf65ca77.1aacbce35f381788/master.css",
       "headers": {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:156.0) Gecko/20100101 Firefox/156.0",
-        "Referer": "https://player.majed-koora.live/?player=hls&channel=tood1",
-        "Origin": "https://player.majed-koora.live"
+        "Referer": "https://player.majedfiles.site/",
+        "Origin": "https://player.majedfiles.site"
       },
       "endpoint": "m3u8",
       "backupUrl": "https://castx.online/live/beinsports1/stream_3.m3u8",
