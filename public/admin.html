@@ -274,6 +274,12 @@ details.adv .formgrid{padding:6px 16px 0}
 .login{margin:7vh 12px;padding:22px}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+#viewerHistoryTable{scroll-margin-top:96px}
+.vh-pager{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between;margin:10px 0}
+.vh-info{color:var(--muted);font-size:13px}.vh-nav{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.vh-nav button{min-width:38px;padding:7px 11px;font-size:13px}.vh-nav button[disabled]{opacity:.45;cursor:not-allowed}.vh-dots{color:var(--muted);padding:0 4px}
+.vh-size{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:13px}.vh-size select{width:auto;padding:6px 10px}
+@media(max-width:720px){.vh-pager{justify-content:center}}
 .viewer-history-table{min-width:1150px}.viewer-history-table tbody tr{transition:background .15s}.viewer-history-table tbody tr:hover{background:var(--surface-2,rgba(90,120,170,.08))}.viewer-device{display:flex;align-items:center;gap:10px;min-width:150px}.viewer-device-icon{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:12px;background:rgba(0,191,255,.12);font-size:19px}.visit-count{display:inline-flex;min-width:32px;justify-content:center;padding:5px 10px;border-radius:10px;background:rgba(0,191,255,.12);font-weight:800}.ua-details{margin-top:6px;font-size:11px}.ua-details summary{cursor:pointer;color:var(--muted,#7c8798)}.ua-details code{display:block;max-width:260px;white-space:normal;overflow-wrap:anywhere;padding:8px}.blocked-label{color:#e05252;font-weight:700;margin-top:5px}.viewer-history-table button{white-space:nowrap}
 
 /* Phase 2: polished theme control, motion, and loading states */
@@ -2295,6 +2301,24 @@ async function renderViewerActivityHeatmap(matrix){
  el.className="";
  el.innerHTML='<div style="overflow-x:auto"><div style="min-width:560px"><div style="display:grid;grid-template-columns:54px repeat(24,minmax(12px,1fr));gap:3px;align-items:center;margin-bottom:6px"><div></div>'+heads+'</div>'+rows+'</div></div><p class="notice">إجمالي الجلسات المسجلة خلال آخر 7 أيام: '+total.toLocaleString("ar-EG")+' · أعلى كثافة: '+max.toLocaleString("ar-EG")+' زيارة في ساعة واحدة.</p>';
 }
+const VH={rows:[],page:1,size:(()=>{try{return+localStorage.getItem("stvVhSize")||25}catch(e){return 25}})()};
+function vhRow(v){
+   const ua=String(v.ua||""),device=v.device&&v.device!=="غير معروف"?v.device:deviceOf(ua),app=v.app&&v.app!=="غير معروف"?v.app:appOf(ua);
+   const blocked=!!v.blocked;
+   return '<tr><td><div class="viewer-device"><span class="viewer-device-icon">'+deviceIcon(device)+'</span><div><b>'+esc(device)+'</b><div class="meta">ID: '+esc(String(v.sessionId||"").slice(0,10)||"—")+'</div></div></div></td><td><b>'+esc(app)+'</b><details class="ua-details"><summary>عرض User-Agent</summary><code dir="ltr">'+esc(ua||"غير متوفر")+'</code></details></td><td>'+esc((v.channelsSeen||[v.ch]).filter(Boolean).join("، ")||"—")+'</td><td>'+esc(v.firstSeen?new Date(v.firstSeen).toLocaleString("ar-EG"):"—")+'</td><td>'+esc(v.lastSeen?new Date(v.lastSeen).toLocaleString("ar-EG"):"—")+'</td><td><b>'+esc(v.sessionWatchedMs!=null?dur(Number(v.sessionWatchedMs)/1000):"تُحسب بعد التحديث")+'</b></td><td><b>'+esc(v.watchedMs!=null?dur(Number(v.watchedMs)/1000):"تُحسب بعد التحديث")+'</b></td><td><span class="visit-count">'+esc(String(v.visitCount||1))+'</span></td><td>'+esc([v.country,v.city].filter(Boolean).join(" · ")||"—")+'<div class="meta">'+esc(v.org||"")+'</div></td><td><code dir="ltr">'+esc(maskIp(v.ip))+'</code></td><td><button type="button" class="'+(blocked?'success':'danger')+'" data-hvact="'+(blocked?'unblock':'block')+'" data-session="'+esc(v.sessionId||"")+'">'+(blocked?'فك الحظر':'حظر الجهاز')+'</button>'+(blocked?'<div class="meta blocked-label">محظور</div>':'')+'</td></tr>'
+}
+function vhPager(total,pages){
+ const p=VH.page,from=total?(p-1)*VH.size+1:0,to=Math.min(total,p*VH.size);
+ const nums=[];for(let i=1;i<=pages;i++){if(i===1||i===pages||Math.abs(i-p)<=1)nums.push(i);else if(nums[nums.length-1]!=="…")nums.push("…")}
+ return '<div class="vh-pager"><div class="vh-info">عرض <b>'+from.toLocaleString("ar-EG")+'–'+to.toLocaleString("ar-EG")+'</b> من <b>'+total.toLocaleString("ar-EG")+'</b> مشاهد</div><div class="vh-nav"><button type="button" class="soft" data-vhpage="'+(p-1)+'"'+(p<=1?' disabled':'')+'>السابق</button>'+nums.map(n=>n==="…"?'<span class="vh-dots">…</span>':'<button type="button" class="'+(n===p?'primary':'soft')+'" data-vhpage="'+n+'"'+(n===p?' aria-current="page"':'')+'>'+n.toLocaleString("ar-EG")+'</button>').join("")+'<button type="button" class="soft" data-vhpage="'+(p+1)+'"'+(p>=pages?' disabled':'')+'>التالي</button></div><label class="vh-size">لكل صفحة <select data-vhsize>'+[10,25,50,100].map(n=>'<option value="'+n+'"'+(n===VH.size?' selected':'')+'>'+n+'</option>').join("")+'</select></label></div>'}
+function vhDraw(){
+ const out=$("viewerHistoryTable");if(!out)return;
+ const total=VH.rows.length,pages=Math.max(1,Math.ceil(total/VH.size));VH.page=Math.min(Math.max(1,VH.page),pages);
+ const slice=VH.rows.slice((VH.page-1)*VH.size,VH.page*VH.size);
+ out.className="";
+ out.innerHTML=vhPager(total,pages)+'<div class="tablewrap"><table class="viewer-history-table"><thead><tr><th>المشاهد / الجهاز</th><th>التطبيق</th><th>القنوات</th><th>أول مشاهدة</th><th>آخر مشاهدة</th><th>مدة آخر جلسة</th><th>إجمالي المشاهدة</th><th>الزيارات</th><th>الموقع / الشبكة</th><th>IP</th><th>إدارة الحظر</th></tr></thead><tbody>'+slice.map(vhRow).join("")+'</tbody></table></div>'+(pages>1?vhPager(total,pages):"")}
+$("viewerHistoryTable").addEventListener("click",e=>{const b=e.target.closest("[data-vhpage]");if(!b||b.disabled)return;VH.page=+b.dataset.vhpage;vhDraw();$("viewerHistoryTable").scrollIntoView({block:"start",behavior:"smooth"})});
+$("viewerHistoryTable").addEventListener("change",e=>{const s=e.target.closest("[data-vhsize]");if(!s)return;VH.size=+s.value||25;VH.page=1;try{localStorage.setItem("stvVhSize",String(VH.size))}catch(x){}vhDraw()});
 async function loadViewerHistory(){
  const out=$("viewerHistoryTable");out.className="cards";out.setAttribute("aria-busy","true");out.innerHTML=Array.from({length:4},()=>'<div class="skcard" aria-hidden="true"><div class="sk" style="height:14px;width:42%"></div><div class="sk" style="height:12px;width:90%"></div><div class="sk" style="height:12px;width:68%"></div></div>').join("");
  try{
@@ -2313,12 +2337,7 @@ async function loadViewerHistory(){
   renderViewerActivity24(rows);
   renderViewerActivityHeatmap(r.activityHeatmap);
   if(!rows.length){out.className="empty";out.textContent="لا يوجد سجل بعد. سيظهر المشاهد بعد بدء مشاهدة قناة عبر السيرفر.";return}
-  out.className="tablewrap";
-  out.innerHTML='<table class="viewer-history-table"><thead><tr><th>المشاهد / الجهاز</th><th>التطبيق</th><th>القنوات</th><th>أول مشاهدة</th><th>آخر مشاهدة</th><th>مدة آخر جلسة</th><th>إجمالي المشاهدة</th><th>الزيارات</th><th>الموقع / الشبكة</th><th>IP</th><th>إدارة الحظر</th></tr></thead><tbody>'+rows.map(v=>{
-   const ua=String(v.ua||""),device=v.device&&v.device!=="غير معروف"?v.device:deviceOf(ua),app=v.app&&v.app!=="غير معروف"?v.app:appOf(ua);
-   const blocked=!!v.blocked;
-   return '<tr><td><div class="viewer-device"><span class="viewer-device-icon">'+deviceIcon(device)+'</span><div><b>'+esc(device)+'</b><div class="meta">ID: '+esc(String(v.sessionId||"").slice(0,10)||"—")+'</div></div></div></td><td><b>'+esc(app)+'</b><details class="ua-details"><summary>عرض User-Agent</summary><code dir="ltr">'+esc(ua||"غير متوفر")+'</code></details></td><td>'+esc((v.channelsSeen||[v.ch]).filter(Boolean).join("، ")||"—")+'</td><td>'+esc(v.firstSeen?new Date(v.firstSeen).toLocaleString("ar-EG"):"—")+'</td><td>'+esc(v.lastSeen?new Date(v.lastSeen).toLocaleString("ar-EG"):"—")+'</td><td><b>'+esc(v.sessionWatchedMs!=null?dur(Number(v.sessionWatchedMs)/1000):"تُحسب بعد التحديث")+'</b></td><td><b>'+esc(v.watchedMs!=null?dur(Number(v.watchedMs)/1000):"تُحسب بعد التحديث")+'</b></td><td><span class="visit-count">'+esc(String(v.visitCount||1))+'</span></td><td>'+esc([v.country,v.city].filter(Boolean).join(" · ")||"—")+'<div class="meta">'+esc(v.org||"")+'</div></td><td><code dir="ltr">'+esc(maskIp(v.ip))+'</code></td><td><button type="button" class="'+(blocked?'success':'danger')+'" data-hvact="'+(blocked?'unblock':'block')+'" data-session="'+esc(v.sessionId||"")+'">'+(blocked?'فك الحظر':'حظر الجهاز')+'</button>'+(blocked?'<div class="meta blocked-label">محظور</div>':'')+'</td></tr>'
-  }).join("")+'</tbody></table>';
+  VH.rows=rows;vhDraw();
  }catch(e){out.className="status";out.textContent="تعذر تحميل سجل المشاهدين: "+e.message}
 }
 function appOf(ua){const l=String(ua||"").toLowerCase();if(/stv2026|2026stv/.test(l))return "SUPER LIVE TV";if(/vlc/.test(l))return "VLC";if(/iptv smarters|smarters/.test(l))return "IPTV Smarters";if(/tivimate/.test(l))return "TiviMate";if(/kodi/.test(l))return "Kodi";if(/ott navigator|ottplayer/.test(l))return "OTT Player";if(/exoplayer/.test(l))return "مشغّل ExoPlayer";if(/stagefright|okhttp|dalvik/.test(l))return "تطبيق Android";if(/chrome|firefox|safari|edg\//.test(l))return "متصفح";return "غير معروف"}
