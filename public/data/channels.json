@@ -116,11 +116,11 @@
     {
       "id": "TOD1",
       "name": "TOD 1",
-      "url": "https://smarter.majedfiles.site/live/ch1/v1.1795297723.0.d38afdcc2398264da572fd754fabf70d.5e1fff827f99a7ca/master.css",
+      "url": "https://super-tvlive.ai.studio/live/twitch/hima_sabry91.m3u8",
       "headers": {
         "User-Agent": "",
-        "Referer": "https://smarter.majedfiles.site/",
-        "Origin": "https://smarter.majedfiles.site"
+        "Referer": "",
+        "Origin": ""
       },
       "endpoint": "m3u8",
       "backupUrl": "https://super-tvlive.ai.studio/live/twitch/hima_sabry91.m3u8",
