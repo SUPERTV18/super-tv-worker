@@ -119,7 +119,7 @@
       "url": "https://smarter.majedfiles.site/live/ch1/v1.1795289215.0.bfc59559ac5e0c0f518690ca2fcc74a5.d6a8b4a398e88b05/master.css",
       "headers": {
         "User-Agent": "",
-        "Referer": "https://player.majedfiles.site",
+        "Referer": "https://player.majedfiles.site/v2/api/stream.php?id=ms1&_=1795275583087",
         "Origin": "https://player.majedfiles.site"
       },
       "endpoint": "m3u8",
