@@ -213,7 +213,7 @@
     {
       "id": "b3_FHD",
       "name": "Bein Sports 3 FHD",
-      "url": "https://scorezone.fun/api/AboAli/Alabody/3ailtna/script/gn/tv/live/play.m3u8?r=1&cat=bein&ci=3&si=2",
+      "url": "https://scorezone.fun/api/AboAli/Alabody/3ailtna/script/gn/tv/live/play.m3u8?r=1&cat=bein&ci=1&si=1",
       "headers": {
         "User-Agent": "Abo Ali",
         "Referer": "https://arena.score/",
