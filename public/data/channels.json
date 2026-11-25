@@ -129,15 +129,20 @@
     {
       "id": "TOD2",
       "name": "TOD 2",
-      "url": "https://smarter.majedfiles.site/live/ch4/v1.1795568432.0.2a0fe72064def3ebc3a82c1b8333e4ff.f73af2fe76c1b5c2/master.css",
+      "url": "https://vibertv.nuwwub.workers.dev/4utv-viber/6106279.m3u8?k=1-QEBft5dVn6H4NU_ot0e8OQ9S7Xj2uU0KF3-vb7Rg4",
       "headers": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:160.0) Gecko/20100101 Firefox/160.0",
+        "User-Agent": "",
         "Referer": "",
-        "Origin": "https://player.majedfiles.site"
+        "Origin": ""
       },
       "endpoint": "m3u8",
       "backupUrl": "https://castx.online/live/beinsports2/stream_4.m3u8",
-      "backupEnabled": true
+      "backupEnabled": true,
+      "backupHeaders": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:160.0) Gecko/20100101 Firefox/160.0",
+        "Referer": "",
+        "Origin": "https://player.majedfiles.site"
+      }
     },
     {
       "id": "TOD3",
