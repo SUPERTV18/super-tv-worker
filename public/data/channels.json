@@ -309,12 +309,13 @@
     {
       "id": "b1_HD",
       "name": "Bein Sports 1 4K QA",
-      "url": "https://genral.oxml1237.workers.dev/index.m3u8?base=https%3A%2F%2Fs1.marketplace-io-none-kode-steeeee.lol%2F%2F&id=b1_1080&key=MmYmJhIhdIDJHdoF22",
+      "url": "http://viptvptv.ddns.net/live/ar/qa/bein/bein_sport_1_hd/tracks-v1a1/mono.ts.m3u8",
       "headers": {
-        "User-Agent": "",
-        "Referer": "",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Referer": "https://alwanlive.stream/",
         "Origin": ""
-      }
+      },
+      "endpoint": "m3u8"
     },
     {
       "id": "b2_HD",
