@@ -190,123 +190,6 @@
       }
     },
     {
-      "id": "b1_FHD",
-      "name": "Bein Sports 1 FHD",
-      "url": "https://sham-proxy.stvlp.workers.dev/?url=https://basic.app-sham-tv.xyz/aandsaiabbaanab/v1/index.m3u8?id=0331/4",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8",
-      "backupUrl": "https://krikartv4k.shaqlawatvworkersdev.workers.dev/b1s/index.m3u8",
-      "backupEnabled": true
-    },
-    {
-      "id": "b2_FHD",
-      "name": "Bein Sports 2 FHD",
-      "url": "https://krikartv4k.shaqlawatvworkersdev.workers.dev/b2s/index.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8",
-      "backupUrl": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156630",
-      "backupEnabled": true
-    },
-    {
-      "id": "b3_FHD",
-      "name": "Bein Sports 3 FHD",
-      "url": "https://scorezone.fun/api/AboAli/Alabody/3ailtna/script/gn/tv/live/play.m3u8?r=1&cat=bein&ci=1&si=2",
-      "headers": {
-        "User-Agent": "Abo Ali",
-        "Referer": "https://arena.score/",
-        "Origin": ""
-      },
-      "endpoint": "m3u8",
-      "backupUrl": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156629",
-      "backupEnabled": true
-    },
-    {
-      "id": "b4_FHD",
-      "name": "Bein Sports 4 FHD",
-      "url": "https://scorezone.fun/api/AboAli/Alabody/3ailtna/script/gn/tv/live/play.m3u8?r=1&cat=bein&ci=2&si=1",
-      "headers": {
-        "User-Agent": "Abo Ali",
-        "Referer": "https://arena.score/",
-        "Origin": ""
-      },
-      "endpoint": "m3u8",
-      "backupUrl": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156628",
-      "backupEnabled": true
-    },
-    {
-      "id": "b5_FHD",
-      "name": "Bein Sports 5 FHD",
-      "url": "https://vg162.adcdsd123321.shop/78.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8",
-      "backupUrl": "https://sportsbite.org/247/beINAR5?m3u8",
-      "backupEnabled": true
-    },
-    {
-      "id": "b6_FHD",
-      "name": "Bein Sports 6 FHD",
-      "url": "https://scorezone.fun/api/AboAli/Alabody/3ailtna/script/gn/tv/live/play.m3u8?r=1&cat=bein&ci=4&si=1",
-      "headers": {
-        "User-Agent": "Abo Ali",
-        "Referer": "https://arena.score/",
-        "Origin": ""
-      },
-      "endpoint": "m3u8",
-      "backupUrl": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156626",
-      "backupEnabled": true
-    },
-    {
-      "id": "b7_FHD",
-      "name": "Bein Sports 7 FHD",
-      "url": "https://sham-proxy.stvlp.workers.dev/?url=https://basic.app-sham-tv.xyz/aandsaiabbaanab/v1/index.m3u8?id=0337/4",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8",
-      "backupUrl": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156625",
-      "backupEnabled": true
-    },
-    {
-      "id": "b8_FHD",
-      "name": "Bein Sports 8 FHD",
-      "url": "https://super-livetv.super-stv.workers.dev/?id=01",
-      "endpoint": "m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      },
-      "backupUrl": "https://sportsbite.org/247/beINAR8?m3u8",
-      "backupEnabled": true
-    },
-    {
-      "id": "b9_FHD",
-      "name": "Bein Sports 9 FHD",
-      "url": "https://abody.optikl.ink/ksmkfadi/index.php?r=1&cat=bein&ci=7&si=0",
-      "endpoint": "m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      },
-      "backupUrl": "https://sportsbite.org/247/beINAR9?m3u8",
-      "backupEnabled": true
-    },
-    {
       "id": "b1_SD",
       "name": "Bein Sports 1 SD",
       "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1313.css?x=/hls/",
@@ -1594,6 +1477,125 @@
         "Referer": "",
         "Origin": ""
       }
+    }
+  ],
+  "Bein Sports fhd": [
+    {
+      "id": "b1_FHD",
+      "name": "Bein Sports 1 FHD",
+      "url": "https://sham-proxy.stvlp.workers.dev/?url=https://basic.app-sham-tv.xyz/aandsaiabbaanab/v1/index.m3u8?id=0331/4",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://krikartv4k.shaqlawatvworkersdev.workers.dev/b1s/index.m3u8",
+      "backupEnabled": true
+    },
+    {
+      "id": "b2_FHD",
+      "name": "Bein Sports 2 FHD",
+      "url": "https://krikartv4k.shaqlawatvworkersdev.workers.dev/b2s/index.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156630",
+      "backupEnabled": true
+    },
+    {
+      "id": "b3_FHD",
+      "name": "Bein Sports 3 FHD",
+      "url": "https://scorezone.fun/api/AboAli/Alabody/3ailtna/script/gn/tv/live/play.m3u8?r=1&cat=bein&ci=1&si=2",
+      "headers": {
+        "User-Agent": "Abo Ali",
+        "Referer": "https://arena.score/",
+        "Origin": ""
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156629",
+      "backupEnabled": true
+    },
+    {
+      "id": "b4_FHD",
+      "name": "Bein Sports 4 FHD",
+      "url": "https://scorezone.fun/api/AboAli/Alabody/3ailtna/script/gn/tv/live/play.m3u8?r=1&cat=bein&ci=2&si=1",
+      "headers": {
+        "User-Agent": "Abo Ali",
+        "Referer": "https://arena.score/",
+        "Origin": ""
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156628",
+      "backupEnabled": true
+    },
+    {
+      "id": "b5_FHD",
+      "name": "Bein Sports 5 FHD",
+      "url": "https://vg162.adcdsd123321.shop/78.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://sportsbite.org/247/beINAR5?m3u8",
+      "backupEnabled": true
+    },
+    {
+      "id": "b6_FHD",
+      "name": "Bein Sports 6 FHD",
+      "url": "https://scorezone.fun/api/AboAli/Alabody/3ailtna/script/gn/tv/live/play.m3u8?r=1&cat=bein&ci=4&si=1",
+      "headers": {
+        "User-Agent": "Abo Ali",
+        "Referer": "https://arena.score/",
+        "Origin": ""
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156626",
+      "backupEnabled": true
+    },
+    {
+      "id": "b7_FHD",
+      "name": "Bein Sports 7 FHD",
+      "url": "https://sham-proxy.stvlp.workers.dev/?url=https://basic.app-sham-tv.xyz/aandsaiabbaanab/v1/index.m3u8?id=0337/4",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://bdix.spidy.online/MAC/SBHGOLD/play.php?id=1156625",
+      "backupEnabled": true
+    },
+    {
+      "id": "b8_FHD",
+      "name": "Bein Sports 8 FHD",
+      "url": "https://super-livetv.super-stv.workers.dev/?id=01",
+      "endpoint": "m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      },
+      "backupUrl": "https://sportsbite.org/247/beINAR8?m3u8",
+      "backupEnabled": true
+    },
+    {
+      "id": "b9_FHD",
+      "name": "Bein Sports 9 FHD",
+      "url": "https://abody.optikl.ink/ksmkfadi/index.php?r=1&cat=bein&ci=7&si=0",
+      "endpoint": "m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      },
+      "backupUrl": "https://sportsbite.org/247/beINAR9?m3u8",
+      "backupEnabled": true
     }
   ]
 }
