@@ -307,77 +307,6 @@
       "backupEnabled": true
     },
     {
-      "id": "b1_HD",
-      "name": "Bein Sports 1 4K QA",
-      "url": "http://viptvptv.ddns.net/live/ar/qa/bein/bein_sport_1_hd/tracks-v1a1/mono.ts.m3u8",
-      "headers": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Referer": "https://alwanlive.stream/",
-        "Origin": ""
-      },
-      "endpoint": "m3u8"
-    },
-    {
-      "id": "b2_HD",
-      "name": "Bein Sports 2 HD",
-      "url": "https://genral.oxml1237.workers.dev/index.m3u8?base=https%3A%2F%2Fs1.marketplace-io-none-kode-steeeee.lol%2F%2F&id=b2_1080&key=MmYmJhIhdIDJHdoF22",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "b3_HD",
-      "name": "Bein Sports 3 HD",
-      "url": "https://genral.oxml1237.workers.dev/index.m3u8?base=https%3A%2F%2Fs1.marketplace-io-none-kode-steeeee.lol%2F%2F&id=b3_1080&key=MmYmJhIhdIDJHdoF22",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "b4_HD",
-      "name": "Bein Sports 4 HD",
-      "url": "https://pub-5d579cce1f8f4f8faf00f60ef6a6b791.r2.dev/Bein4.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "b5_HD",
-      "name": "Bein Sports 5 HD",
-      "url": "https://pub-5d579cce1f8f4f8faf00f60ef6a6b791.r2.dev/Bein5.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "b6_HD",
-      "name": "Bein Sports 6 HD",
-      "url": "https://pub-5d579cce1f8f4f8faf00f60ef6a6b791.r2.dev/Bein6.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
-      "id": "b7_HD",
-      "name": "Bein Sports 7 HD",
-      "url": "https://pub-5d579cce1f8f4f8faf00f60ef6a6b791.r2.dev/Bein7.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      }
-    },
-    {
       "id": "b1_SD",
       "name": "Bein Sports 1 SD",
       "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1313.css?x=/hls/",
@@ -1587,6 +1516,79 @@
       "id": "bmax4_360",
       "name": "Bein Max 4 (360)",
       "url": "https://supertv.super-stv.workers.dev/?url=http://h42.reelpush.online/live/31009988005/index.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    }
+  ],
+  "Bein Sports hd": [
+    {
+      "id": "b1_HD",
+      "name": "Bein Sports 1 4K QA",
+      "url": "http://viptvptv.ddns.net/live/ar/qa/bein/bein_sport_1_hd/tracks-v1a1/mono.ts.m3u8",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Referer": "https://alwanlive.stream/",
+        "Origin": ""
+      },
+      "endpoint": "m3u8"
+    },
+    {
+      "id": "b2_HD",
+      "name": "Bein Sports 2 HD",
+      "url": "https://genral.oxml1237.workers.dev/index.m3u8?base=https%3A%2F%2Fs1.marketplace-io-none-kode-steeeee.lol%2F%2F&id=b2_1080&key=MmYmJhIhdIDJHdoF22",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "b3_HD",
+      "name": "Bein Sports 3 HD",
+      "url": "https://genral.oxml1237.workers.dev/index.m3u8?base=https%3A%2F%2Fs1.marketplace-io-none-kode-steeeee.lol%2F%2F&id=b3_1080&key=MmYmJhIhdIDJHdoF22",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "b4_HD",
+      "name": "Bein Sports 4 HD",
+      "url": "https://pub-5d579cce1f8f4f8faf00f60ef6a6b791.r2.dev/Bein4.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "b5_HD",
+      "name": "Bein Sports 5 HD",
+      "url": "https://pub-5d579cce1f8f4f8faf00f60ef6a6b791.r2.dev/Bein5.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "b6_HD",
+      "name": "Bein Sports 6 HD",
+      "url": "https://pub-5d579cce1f8f4f8faf00f60ef6a6b791.r2.dev/Bein6.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      }
+    },
+    {
+      "id": "b7_HD",
+      "name": "Bein Sports 7 HD",
+      "url": "https://pub-5d579cce1f8f4f8faf00f60ef6a6b791.r2.dev/Bein7.m3u8",
       "headers": {
         "User-Agent": "",
         "Referer": "",
