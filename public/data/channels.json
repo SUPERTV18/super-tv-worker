@@ -190,92 +190,6 @@
       }
     },
     {
-      "id": "b1_SD",
-      "name": "Bein Sports 1 SD",
-      "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1313.css?x=/hls/",
-      "headers": {
-        "User-Agent": "OSCARTV2021",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8",
-      "backupUrl": "https://sham-proxy.stvlp.workers.dev/?url=https://basic.app-sham-tv.xyz/aandsaiabbaanab/v1/index.m3u8?id=0331/2",
-      "backupEnabled": true,
-      "backupHeaders": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.128 Safari/537.36",
-        "Referer": "https://salmal1000.com/",
-        "Origin": "https://salmal1000.com"
-      }
-    },
-    {
-      "id": "b2_SD",
-      "name": "Bein Sports 2 SD",
-      "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1322.css?x=/hls/",
-      "headers": {
-        "User-Agent": "OSCARTV2021",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8"
-    },
-    {
-      "id": "b3_SD",
-      "name": "Bein Sports 3 SD",
-      "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1331.css?x=/hls/",
-      "headers": {
-        "User-Agent": "OSCARTV2021",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8"
-    },
-    {
-      "id": "b4_SD",
-      "name": "Bein Sports 4 SD",
-      "url": "https://vg162.adcdsd123321.shop/4.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8"
-    },
-    {
-      "id": "b5_SD",
-      "name": "Bein Sports 5 SD",
-      "url": "https://vg162.adcdsd123321.shop/5.m3u8",
-      "headers": {
-        "User-Agent": "",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8"
-    },
-    {
-      "id": "b6_SD",
-      "name": "Bein Sports 6 SD",
-      "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1358.css?x=/hls/",
-      "headers": {
-        "User-Agent": "OSCARTV2021",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8",
-      "backupUrl": "https://vg162.adcdsd123321.shop/6.m3u8",
-      "backupEnabled": true
-    },
-    {
-      "id": "b7_SD",
-      "name": "Bein Sports 7 SD",
-      "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1367.css?x=/hls/",
-      "headers": {
-        "User-Agent": "OSCARTV2021",
-        "Referer": "",
-        "Origin": ""
-      },
-      "endpoint": "m3u8"
-    },
-    {
       "id": "b1_LOW",
       "name": "Bein Sports 1 LOW",
       "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1313.css?x=/hls/",
@@ -1596,6 +1510,94 @@
       },
       "backupUrl": "https://sportsbite.org/247/beINAR9?m3u8",
       "backupEnabled": true
+    }
+  ],
+  "Bein Sports sd": [
+    {
+      "id": "b1_SD",
+      "name": "Bein Sports 1 SD",
+      "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1313.css?x=/hls/",
+      "headers": {
+        "User-Agent": "OSCARTV2021",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://sham-proxy.stvlp.workers.dev/?url=https://basic.app-sham-tv.xyz/aandsaiabbaanab/v1/index.m3u8?id=0331/2",
+      "backupEnabled": true,
+      "backupHeaders": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.128 Safari/537.36",
+        "Referer": "https://salmal1000.com/",
+        "Origin": "https://salmal1000.com"
+      }
+    },
+    {
+      "id": "b2_SD",
+      "name": "Bein Sports 2 SD",
+      "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1322.css?x=/hls/",
+      "headers": {
+        "User-Agent": "OSCARTV2021",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8"
+    },
+    {
+      "id": "b3_SD",
+      "name": "Bein Sports 3 SD",
+      "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1331.css?x=/hls/",
+      "headers": {
+        "User-Agent": "OSCARTV2021",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8"
+    },
+    {
+      "id": "b4_SD",
+      "name": "Bein Sports 4 SD",
+      "url": "https://vg162.adcdsd123321.shop/4.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8"
+    },
+    {
+      "id": "b5_SD",
+      "name": "Bein Sports 5 SD",
+      "url": "https://vg162.adcdsd123321.shop/5.m3u8",
+      "headers": {
+        "User-Agent": "",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8"
+    },
+    {
+      "id": "b6_SD",
+      "name": "Bein Sports 6 SD",
+      "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1358.css?x=/hls/",
+      "headers": {
+        "User-Agent": "OSCARTV2021",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8",
+      "backupUrl": "https://vg162.adcdsd123321.shop/6.m3u8",
+      "backupEnabled": true
+    },
+    {
+      "id": "b7_SD",
+      "name": "Bein Sports 7 SD",
+      "url": "http://js.newjavalibrary.world:8080/assets/res2/java2/1367.css?x=/hls/",
+      "headers": {
+        "User-Agent": "OSCARTV2021",
+        "Referer": "",
+        "Origin": ""
+      },
+      "endpoint": "m3u8"
     }
   ]
 }
